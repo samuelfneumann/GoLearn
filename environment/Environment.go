@@ -2,9 +2,25 @@
 // concrete environments
 package environment
 
+// TODO: Create a start distribution type that each env has and samples start states from
+
 import (
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/timestep"
+)
+
+// Starter implements a distribution of starting states and samples starting
+// states for environments
+type Starter interface {
+	Start() mat.Vector
+}
+
+// Cardinality indicates whether the associated type is continuous or discrete
+type Cardinality int
+
+const (
+	Discrete Cardinality = iota
+	Continuous
 )
 
 // SpecType determines what kind of specification a Spec is. A Spec can
@@ -25,20 +41,24 @@ type Spec struct {
 	Type       SpecType
 	LowerBound mat.Vector
 	UpperBound mat.Vector
+	Cardinality
 }
 
 // Task implements the reward scheme for taking actions in some environment
 type Task interface {
 	// fmt.Stringer
-	GetReward(t timestep.TimeStep, action mat.Vector) float64
+	GetReward(t timestep.TimeStep, a mat.Vector) float64
+	AtGoal(state mat.Matrix) bool
 }
 
 // Environment implements a simualted environment, which includes a Task to
 // complete
 type Environment interface {
 	Task
+	Starter
 	// fmt.Stringer
-	Reset() timestep.TimeStep
+	New() (Environment, timestep.TimeStep) // Environment starts ready to use
+	Reset() timestep.TimeStep              // Resets between episodes
 	Step(action mat.Vector) (timestep.TimeStep, bool)
 	RewardSpec() Spec
 	DiscountSpec() Spec

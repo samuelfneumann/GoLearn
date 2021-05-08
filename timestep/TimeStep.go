@@ -1,7 +1,11 @@
 // Package timestep implements timesteps of the agent-environment interaction
 package timestep
 
-import "gonum.org/v1/gonum/mat"
+import (
+	"fmt"
+
+	"gonum.org/v1/gonum/mat"
+)
 
 // StepType denotes the type of step that a TimeStep can be, either  first
 // environmental step, a middle step, or a last step
@@ -13,16 +17,28 @@ const (
 	Last
 )
 
+func (s StepType) String() string {
+	switch s {
+	case First:
+		return "First"
+	case Last:
+		return "Last"
+	default:
+		return "Mid"
+	}
+}
+
 // TimeStep packages together a single timestep in an environment
 type TimeStep struct {
 	stepType    StepType
 	Reward      float64
 	Discount    float64
 	Observation mat.Matrix
+	Number      int
 }
 
-func New(t StepType, r, d float64, o mat.Matrix) TimeStep {
-	return TimeStep{t, r, d, o}
+func New(t StepType, r, d float64, o mat.Matrix, n int) TimeStep {
+	return TimeStep{t, r, d, o, n}
 }
 
 // First returns whether a TimeStep is the first in an environment
@@ -38,4 +54,11 @@ func (t *TimeStep) Mid() bool {
 // Last returns whether a TimeStep is the last step in an environment
 func (t *TimeStep) Last() bool {
 	return t.stepType == Last
+}
+
+func (t TimeStep) String() string {
+	str := "TimeStep | Type: %v  |  Reward:  %.2f  |  Discount: %.2f  |  " +
+		"Step Number:  %v"
+
+	return fmt.Sprintf(str, t.stepType, t.Reward, t.Discount, t.Number)
 }
