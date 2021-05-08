@@ -13,26 +13,6 @@ import (
 	"sfneuman.com/golearn/utils/matutils"
 )
 
-type SingleStart struct {
-	state mat.Vector
-	r, c  int
-}
-
-func NewSingleStart(x, y, r, c int) (environment.Starter, error) {
-	if x > c {
-		return &SingleStart{}, fmt.Errorf("x = %d > cols = %d", x, c)
-	} else if y > r {
-		return &SingleStart{}, fmt.Errorf("y = %d > cols = %d", y, c)
-	}
-
-	start := cToV(x, y, r, c)
-	return &SingleStart{start, r, c}, nil
-}
-
-func (s *SingleStart) Start() mat.Vector {
-	return s.state
-}
-
 // GridWorld represents a gridworld environment
 //
 // A gridworld is represented as a flattened matrix, but in this implementation
@@ -84,18 +64,6 @@ func (g *GridWorld) Reset() timestep.TimeStep {
 	g.currentStep = startStep
 	return startStep
 }
-
-// func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
-// 	if l := action.Len(); l > 0 {
-// 		panic(fmt.Sprintf("action dimension too large - want 1, have %d", l))
-// 	}
-
-// 	direction := action.AtVec(0)
-// 	//Left
-// 	if direction == 0 {
-// 		if
-// 	}
-// }
 
 func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
 	direction := action.AtVec(0)
