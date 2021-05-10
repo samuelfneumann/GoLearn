@@ -1,9 +1,6 @@
 // Package gridworld implements 2D gridworld environments
 package gridworld
 
-// TODO: Starting positions should be a vector of positions, with a randomly
-// chosen position each time Reset() is called
-
 import (
 	"fmt"
 
@@ -43,10 +40,11 @@ func (g *GridWorld) At(i, j int) float64 {
 
 // New creates a new gridworld with starting position (x, y), r rows, and c
 // columns, task t, and discount factor discount
-func New(x, y, r, c int, t environment.Task, d float64, s environment.Starter) (*GridWorld, timestep.TimeStep) {
+func New(r, c int, t environment.Task, d float64, s environment.Starter) (*GridWorld, timestep.TimeStep) {
 	// Set the starting position
 	start := s.Start()
-	startInd := cToInd(x, y, c)
+	// startInd := cToInd(x, y, c)
+	startInd := vToInd(start, r, c)
 
 	startStep := timestep.New(timestep.First, 0.0, d, start, 0)
 

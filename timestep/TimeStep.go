@@ -33,11 +33,11 @@ type TimeStep struct {
 	stepType    StepType
 	Reward      float64
 	Discount    float64
-	Observation mat.Matrix
+	Observation mat.Vector
 	Number      int
 }
 
-func New(t StepType, r, d float64, o mat.Matrix, n int) TimeStep {
+func New(t StepType, r, d float64, o mat.Vector, n int) TimeStep {
 	return TimeStep{t, r, d, o, n}
 }
 

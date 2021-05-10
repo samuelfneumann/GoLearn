@@ -3,45 +3,67 @@ package main
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
+	qlearning "sfneuman.com/golearn/agent/linear/qlearning"
 	"sfneuman.com/golearn/environment/gridworld"
 )
 
 func main() {
-	x := []int{2}
-	y := []int{6}
-
-	goal, err := gridworld.NewGoal(x, y, 10, 10, -0.1, 1.0)
+	// Create the gridworld task
+	x := []int{1}
+	y := []int{0}
+	goal, err := gridworld.NewGoal(x, y, 5, 5, -0.1, 1.0)
 	if err != nil {
 		fmt.Println("Could not create goal")
 		return
 	}
 
-	starter, err := gridworld.NewSingleStart(0, 0, 10, 10)
+	// Create the start-state distribution
+	starter, err := gridworld.NewSingleStart(0, 0, 5, 5)
 	if err != nil {
 		fmt.Println("Could not create starter")
 		return
 	}
 
-	g, t := gridworld.New(0, 0, 10, 10, goal, 0.99, starter)
+	// Create the gridworld
+	g, t := gridworld.New(5, 5, goal, 0.99, starter)
 	fmt.Println(t)
 	fmt.Println(g)
-	fmt.Println()
 
-	actions := []float64{1, 2, 2, 1, 2, 2, 2, 2, 1, 1, 1, 1, 1, 3, 3, 2, 2}
+	// Create the QLearning algorithm
+	var seed uint64 = 192312
+	q := qlearning.New(1.0, 0.1, seed, 25, 4)
+	q.ObserveFirst(t)
 
-	for _, action := range actions {
-		t, _ = g.Step(mat.NewVecDense(1, []float64{action}))
-		fmt.Println(t)
-		fmt.Println(g)
-		fmt.Println()
+	// Track the return
+	total := 0.0
+	episodicReward := make([]float64, 100)
+	episodeReward := 0.0
+
+	for i := 0; i < 1000000; i++ {
+		// Take an action and send to env
+		action := q.SelectAction(t)
+		t, _ = g.Step(action)
+
+		// Track return
+		total += t.Reward
+		episodeReward += t.Reward
+
+		// Observe environmental change
+		q.Observe(action, t)
+		q.Step()
+
+		// Reset env if end of episode
 		if t.Last() {
-			fmt.Println("========== At goal, resetting ==========")
+			episodicReward = append(episodicReward, episodeReward)
+			episodeReward = 0.0
+
+			// Reset the environment and observe the first episode transition
 			t = g.Reset()
-			fmt.Println(t)
-			fmt.Println(g)
-			fmt.Println()
+			q.ObserveFirst(t)
 		}
 	}
 
+	fmt.Println(q.Learner.Weights()["weights"])
+	length := len(episodicReward)
+	fmt.Println(episodicReward[length-5 : length])
 }
