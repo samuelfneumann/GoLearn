@@ -19,7 +19,7 @@ func New(e, learningRate float64, seed uint64, features,
 	actions int) *QLearning {
 
 	behaviour := policy.NewEGreedy(e, seed, features, actions)
-	target := behaviour.GreedyPolicy
+	target := policy.NewGreedy(seed, features, actions)
 	weights := behaviour.Weights()["weights"]
 	learner := NewQLearner(weights, learningRate)
 
