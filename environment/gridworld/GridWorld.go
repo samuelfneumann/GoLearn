@@ -137,11 +137,6 @@ func cToV(x, y, r, c int) mat.Vector {
 	return vec
 }
 
-// vToC converts a one-hot vector into (x, y) coordinates in the GridWorld
-func (g *GridWorld) vToC(v mat.Vector) (int, int) {
-	return vToC(v, g.r, g.c)
-}
-
 // vToC converts a vector representation of a one-hot matrix into the (x, y)
 // coordinates of the single 1.0 value in the matrix
 func vToC(v mat.Vector, r, c int) (int, int) {
@@ -153,12 +148,6 @@ func vToC(v mat.Vector, r, c int) (int, int) {
 		}
 	}
 	return -1, -1
-}
-
-// cToInd converts a coordinate (x, y) into the index for the only 1.0
-// in a GridWorld's vector representation
-func (g *GridWorld) cToInd(x, y int) int {
-	return cToInd(x, y, g.c)
 }
 
 // cToInd converts a coordinate (x, y) into the index of the 1.0 in a

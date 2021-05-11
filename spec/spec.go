@@ -31,6 +31,8 @@ func NewEnvironment(shape mat.Vector, t SpecType, lowerBound,
 	return Environment{shape, t, lowerBound, upperBound}
 }
 
+// Agent defines an agent specification which uniquely determines all
+// the hyperparameters/configurations of a single agent.
 type Agent interface {
 	Spec() map[string]float64 // Configuration for an agent
 }

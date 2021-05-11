@@ -79,7 +79,7 @@ func (g *Goal) GetReward(t timestep.TimeStep, a mat.Vector) float64 {
 // gridworld has r rows and c columns
 func NewGoal(x, y []int, r, c int, tr, gr float64) (*Goal, error) {
 	if len(x) != len(y) {
-		return &Goal{}, fmt.Errorf("X length (%d) != Y length (%d)",
+		return &Goal{}, fmt.Errorf("x length (%d) != y length (%d)",
 			len(x), len(y))
 	}
 

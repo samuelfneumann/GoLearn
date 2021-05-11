@@ -2,8 +2,6 @@
 // concrete environments
 package environment
 
-// TODO: Create a start distribution type that each env has and samples start states from
-
 import (
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/spec"

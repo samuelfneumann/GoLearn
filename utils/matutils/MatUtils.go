@@ -14,7 +14,8 @@ func Format(X mat.Matrix) string {
 	return fmt.Sprintf("%v", fa)
 }
 
-// MaxVec finds and returns the index of the maximum value in a vector
+// MaxVec finds and returns the index of the maximum value in a vector.
+// If multiple equal max values exist, only the first one is returned.
 func MaxVec(values mat.Vector) int {
 	max, idx := values.AtVec(0), 0
 	numActions, _ := values.Dims()

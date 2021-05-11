@@ -17,6 +17,7 @@ const (
 	Last
 )
 
+// String converts a StepType into a string representation
 func (s StepType) String() string {
 	switch s {
 	case First:
@@ -37,6 +38,7 @@ type TimeStep struct {
 	Number      int
 }
 
+// New constructs a new TimeStep
 func New(t StepType, r, d float64, o mat.Vector, n int) TimeStep {
 	return TimeStep{t, r, d, o, n}
 }
@@ -56,6 +58,7 @@ func (t *TimeStep) Last() bool {
 	return t.stepType == Last
 }
 
+// String converts a TimeStep into its string representation
 func (t TimeStep) String() string {
 	str := "TimeStep | Type: %v  |  Reward:  %.2f  |  Discount: %.2f  |  " +
 		"Step Number:  %v"
