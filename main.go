@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 
-	qlearning "sfneuman.com/golearn/agent/linear/qlearning"
+	"sfneuman.com/golearn/agent/linear/discrete/esarsa"
 	"sfneuman.com/golearn/environment/gridworld"
+	"sfneuman.com/golearn/spec"
 )
 
 func main() {
@@ -29,9 +30,14 @@ func main() {
 	fmt.Println(t)
 	fmt.Println(g)
 
+	// Create the QLearning spec
+	args := spec.QLearning{E: 0.1, LearningRate: 0.1}
+	// args := spec.ESarsa{TargetE: 0.0, BehaviourE: 0.1, LearningRate: 0.1}
+
 	// Create the QLearning algorithm
 	var seed uint64 = 192312
-	q := qlearning.New(1.0, 0.1, seed, 25, 4)
+	// q := qlearning.New(g, args, seed)
+	q := esarsa.New(g, args, seed)
 	q.ObserveFirst(t)
 
 	// Track the return

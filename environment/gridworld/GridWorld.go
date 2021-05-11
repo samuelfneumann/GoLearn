@@ -6,9 +6,12 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils"
 )
+
+const numActions int = 4
 
 // GridWorld represents a gridworld environment
 //
@@ -40,7 +43,8 @@ func (g *GridWorld) At(i, j int) float64 {
 
 // New creates a new gridworld with starting position (x, y), r rows, and c
 // columns, task t, and discount factor discount
-func New(r, c int, t environment.Task, d float64, s environment.Starter) (*GridWorld, timestep.TimeStep) {
+func New(r, c int, t environment.Task, d float64,
+	s environment.Starter) (*GridWorld, timestep.TimeStep) {
 	// Set the starting position
 	start := s.Start()
 	// startInd := cToInd(x, y, c)
@@ -53,6 +57,8 @@ func New(r, c int, t environment.Task, d float64, s environment.Starter) (*GridW
 	return g, g.Reset()
 }
 
+// Reset resets the GridWorld in between episodes. It must explicitly
+// be called between episodes.
 func (g *GridWorld) Reset() timestep.TimeStep {
 	startVec := g.Start()
 	g.position = g.vToInd(startVec)
@@ -63,6 +69,7 @@ func (g *GridWorld) Reset() timestep.TimeStep {
 	return startStep
 }
 
+// Step takes an action in the environemnt
 func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
 	direction := action.AtVec(0)
 	x, y := g.Coordinates()
@@ -122,6 +129,7 @@ func (g *GridWorld) cToV(x, y int) mat.Vector {
 	return cToV(x, y, g.r, g.c)
 }
 
+// cToV converts a coordinate (x, y) into a vector
 func cToV(x, y, r, c int) mat.Vector {
 	vec := mat.NewVecDense(r*c, nil)
 	ind := cToInd(x, y, c)
@@ -147,29 +155,39 @@ func vToC(v mat.Vector, r, c int) (int, int) {
 	return -1, -1
 }
 
+// cToInd converts a coordinate (x, y) into the index for the only 1.0
+// in a GridWorld's vector representation
 func (g *GridWorld) cToInd(x, y int) int {
 	return cToInd(x, y, g.c)
 }
 
+// cToInd converts a coordinate (x, y) into the index of the 1.0 in a
+// one-hot vector. The one-hot vector is a vector representation of a
+// one-hot matrix with c columns
 func cToInd(x, y, c int) int {
 	return y*c + x
 }
 
+// vToInd gets the index of the 1.0 in a one-hot vector
 func vToInd(v mat.Vector, r, c int) int {
 	x, y := vToC(v, r, c)
 	return cToInd(x, y, c)
 }
 
+// vToInd gets the index of the 1.0 in a GridWorld's one-hot vector
+// representation
 func (g *GridWorld) vToInd(v mat.Vector) int {
 	return vToInd(v, g.r, g.c)
 }
 
+// Coordinates returns the current position in the gridworld as (x, y)
 func (g *GridWorld) Coordinates() (int, int) {
 	y := (g.position / g.c)
 	x := g.position - (y * g.c)
 	return x, y
 }
 
+// String converts a GridWorld into a string representation
 func (g *GridWorld) String() string {
 	str := "GridWorld | At: %v  |   Goal: %v  |  Bounds: (%d, %d)"
 	position := matutils.Format(g.getCoordinates(g.position))
@@ -177,12 +195,15 @@ func (g *GridWorld) String() string {
 	return fmt.Sprintf(str, position, g.Task, g.r, g.c)
 }
 
+// getObservation returns the current GridWorld as a one-hot vector
+// representation
 func (g *GridWorld) getObservation() *mat.VecDense {
 	position := mat.NewVecDense(g.r*g.c, nil)
 	position.SetVec(g.position, 1.0)
 	return position
 }
 
+// getCoordinates returns the current coordinates (x, y) in the GridWorld
 func (g *GridWorld) getCoordinates(v int) mat.Matrix {
 	vec := mat.NewVecDense(g.r*g.c, nil)
 	vec.SetVec(v, 1.0)
@@ -194,149 +215,51 @@ func (g *GridWorld) getCoordinates(v int) mat.Matrix {
 	return coords
 }
 
-// Task types
-type Goal struct {
-	goals *mat.Dense // one-hot encoding of goal states
-	// goals          [][]int
-	r, c           int // total rows and columns in environment
-	timeStepReward float64
-	goalReward     float64
+// RewardSpec generates the reward specification for the GridWorld
+func (g *GridWorld) RewardSpec() spec.Environment {
+	shape := mat.NewVecDense(1, nil)
+
+	minReward := g.Min()
+	lowerBound := mat.NewVecDense(1, []float64{minReward})
+
+	maxReward := g.Max()
+	upperBound := mat.NewVecDense(1, []float64{maxReward})
+
+	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound)
 }
 
-func (g *Goal) GetReward(t timestep.TimeStep, a mat.Vector) float64 {
-	// fmt.Println("Need to implement Goal.GetReward()")
-	obs := t.Observation.(mat.Vector)
-	x, y := vToC(obs, g.r, g.c)
+// DiscountSpec generates the discount specification for the GridWorld
+func (g *GridWorld) DiscountSpec() spec.Environment {
+	shape := mat.NewVecDense(1, nil)
 
-	direction := a.AtVec(0)
-	var newPosition mat.Vector
+	min := mat.NewVecDense(1, []float64{g.discount})
 
-	// Move the current position
-	switch direction {
-	case 0: // Left
-		if newX := x - 1; newX < 0 {
-			newPosition = cToV(x, y, g.r, g.c)
-		} else {
-			newPosition = cToV(newX, y, g.r, g.c)
-		}
+	return spec.NewEnvironment(shape, spec.Discount, min, min)
 
-	case 1: // Right
-		if newX := x + 1; newX >= g.c {
-			newPosition = cToV(x, y, g.r, g.c)
-		} else {
-			newPosition = cToV(newX, y, g.r, g.c)
-		}
-
-	case 2: // Up
-		if newY := y + 1; newY >= g.r {
-			newPosition = cToV(x, y, g.r, g.c)
-		} else {
-			newPosition = cToV(x, newY, g.r, g.c)
-		}
-
-	case 3: // Down
-		if newY := y - 1; newY < 0 {
-			newPosition = cToV(x, y, g.r, g.c)
-		} else {
-			newPosition = cToV(x, newY, g.r, g.c)
-		}
-	}
-
-	nextX, nextY := vToC(newPosition, g.r, g.c)
-
-	// Get the current coordinates
-	numGoals, _ := g.goals.Dims()
-
-	for i := 0; i < numGoals; i++ {
-		ind := g.goals.RowView(i)
-		goalX := int(ind.AtVec(0))
-		goalY := int(ind.AtVec(1))
-		if nextX == goalX && nextY == goalY {
-			return g.goalReward
-		}
-	}
-
-	return g.timeStepReward
 }
 
-// NewGoal creates and returns a new goal at position (x, y), given that the
-// gridworld has r rows and c columns
-func NewGoal(x, y []int, r, c int, tr, gr float64) (*Goal, error) {
-	if len(x) != len(y) {
-		return &Goal{}, fmt.Errorf("X length (%d) != Y length (%d)",
-			len(x), len(y))
+// ObservationSpec generates the observation specification for the
+// GridWorld
+func (g *GridWorld) ObservationSpec() spec.Environment {
+	shape := mat.NewVecDense(g.r*g.c, nil)
+
+	min := mat.NewVecDense(g.r*g.c, nil)
+	ones := make([]float64, g.r*g.c)
+	for i := range ones {
+		ones[i] = 1.0
 	}
+	max := mat.NewVecDense(g.r*g.c, ones)
 
-	goals := mat.NewVecDense(r*c, nil)
-	for i := range x {
-		// Ensure that the goal is within the proper bounds
-		if x[i] > c {
-			return &Goal{}, fmt.Errorf("x[%d] = %d > cols = %d", i, x[i], c)
-		} else if y[i] > r {
-			return &Goal{}, fmt.Errorf("y[%d] = %d > cols = %d", i, y[i], c)
-		}
-
-		pos := y[i]*c + x[i]
-		goals.SetVec(pos, 1.0)
-	}
-
-	goalCoords, err := getCoordinates(goals, r, c)
-	if err != nil {
-		panic("could not parse rewards")
-	}
-
-	return &Goal{goalCoords, r, c, tr, gr}, nil
+	return spec.NewEnvironment(shape, spec.Observation, min, max)
 }
 
-func (g *Goal) String() string {
-	// coords, err := getCoordinates(g.goals, g.r, g.c)
-	// if err != nil {
-	// 	panic("Cannot reshape goals")
-	// }
-	// return ""
-	return matutils.Format(g.goals)
-}
+// ActionSpec generates the action specification for the GridWorld
+func (g *GridWorld) ActionSpec() spec.Environment {
+	shape := mat.NewVecDense(numActions, nil)
 
-func (g *Goal) AtGoal(state mat.Matrix) bool {
-	obs := state.(mat.Vector)
-	x, y := vToC(obs, g.r, g.c)
+	min := mat.NewVecDense(1, []float64{0})
+	maxAction := float64(numActions - 1)
+	max := mat.NewVecDense(1, []float64{maxAction})
 
-	// Get the current coordinates
-	numGoals, _ := g.goals.Dims()
-
-	for i := 0; i < numGoals; i++ {
-		ind := g.goals.RowView(i)
-		goalX := int(ind.AtVec(0))
-		goalY := int(ind.AtVec(1))
-		if x == goalX && y == goalY {
-			return true
-		}
-	}
-	return false
-}
-
-// getCoordinates gets the (x, y) coordinates of non-zero elements in a
-// VecDense if the VecDense were to be transformed to a matrix of shape (r, c)
-func getCoordinates(v *mat.VecDense, r, c int) (*mat.Dense, error) {
-	if r*c > v.Len() {
-		return nil, fmt.Errorf("Cannot reshape v to shape (%d, %d)", r, c)
-	}
-
-	// var x, y []float64
-	var coords []float64
-
-	for i := 0; i < r*c; i++ {
-		if v.AtVec(i) != 0.0 {
-			var row int = i / c
-			var col int = i - (row * c)
-
-			// x = append(x, float64(col))
-			// y = append(y, float64(row))
-			coords = append(coords, float64(col), float64(row))
-		}
-	}
-	// fmt.Println(x, y)
-	// coords := append(x, y...)
-	positions := mat.NewDense(len(coords)/2, 2, coords)
-	return positions, nil
+	return spec.NewEnvironment(shape, spec.Action, min, max)
 }
