@@ -2,19 +2,25 @@ package main
 
 import (
 	"fmt"
+	"math"
 
 	// "golang.org/x/exp/rand"
 	"gonum.org/v1/gonum/mat"
 	// "gonum.org/v1/gonum/stat/distmv"
 
+	"gonum.org/v1/gonum/spatial/r1"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
+	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/classiccontrol"
 	"sfneuman.com/golearn/environment/gridworld"
 	"sfneuman.com/golearn/spec"
+
 	// "sfneuman.com/golearn/utils/matutils"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
 func main() {
+
 	r, c := 5, 5
 
 	// Create the gridworld task
@@ -80,7 +86,7 @@ func main() {
 	episodicReward := make([]float64, 100)
 	episodeReward := 0.0
 
-	for i := 0; i < 2500000; i++ {
+	for i := 0; i < 10; i++ {
 		// Take an action and send to env
 		action := q.SelectAction(t)
 		t, _ = g.Step(action)
@@ -122,4 +128,17 @@ func main() {
 
 	length := len(episodicReward)
 	fmt.Println(episodicReward[length-5 : length])
+
+	// Pendulum
+	fmt.Println("=== === === Pendulum === === ===")
+	task := classiccontrol.NewPendulumSwingUp()
+	maxAngle := math.Pi
+	angleBounds := r1.Interval{Min: -maxAngle, Max: maxAngle}
+
+	maxSpeed := 8.0
+	speedBounds := r1.Interval{Min: -maxSpeed, Max: maxSpeed}
+	s := environment.NewUniformStarter([]r1.Interval{angleBounds, speedBounds}, seed)
+
+	p, t := classiccontrol.NewPendulum(s, task, 0.99, 1000)
+	fmt.Println(p, t)
 }
