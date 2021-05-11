@@ -11,20 +11,21 @@ import (
 	"sfneuman.com/golearn/agent/linear/discrete/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
 // QLearning implements the Q-Learning algorithm
 type QLearning struct {
 	agent.Learner
-	agent.Policy
-	target agent.Policy
-	seed   uint64
+	agent.Policy // Behaviour
+	Target       agent.Policy
+	seed         uint64
 }
 
 // New creates a new QLearning struct. The agent spec agent should be
 // a spec.QLearning
 func New(env environment.Environment, agent spec.Agent,
-	seed uint64) *QLearning {
+	init weights.Initializer, seed uint64) *QLearning {
 
 	agent = agent.(spec.QLearning) // Ensure we have a QLearning spec
 
@@ -48,8 +49,15 @@ func New(env environment.Environment, agent spec.Agent,
 	// Create algorithm components using previous specifications
 	behaviour := policy.NewEGreedy(e, seed, features, actions)
 	target := policy.NewGreedy(seed, features, actions)
-	weights := behaviour.Weights()["weights"]
+
+	// Ensure both policies and learner reference the same weights
+	weights := behaviour.Weights()
+	target.SetWeights(weights)
+
 	learner := NewQLearner(weights, learningRate)
+
+	// Initialize weights
+	init.Initialize(weights["weights"])
 
 	return &QLearning{learner, behaviour, target, seed}
 }

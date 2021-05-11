@@ -8,20 +8,21 @@ import (
 	"sfneuman.com/golearn/agent/linear/discrete/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
 // ESarsa implements the Q-Learning algorithm
 type ESarsa struct {
 	agent.Learner
-	agent.Policy
-	target agent.Policy
-	seed   uint64
+	agent.Policy // Behaviour
+	Target       agent.Policy
+	seed         uint64
 }
 
 // New creates a new ESarsa struct. The agent spec agent should be a
 // spec.ESarsa or spec.QLearning
 func New(env environment.Environment, agent spec.Agent,
-	seed uint64) *ESarsa {
+	init weights.Initializer, seed uint64) *ESarsa {
 
 	// Ensure we have either an ESarsa or QLearning spec
 	_, okSarsa := agent.(spec.ESarsa)
@@ -56,8 +57,15 @@ func New(env environment.Environment, agent spec.Agent,
 	// Create algorithm components using previous specifications
 	behaviour := policy.NewEGreedy(behaviourE, seed, features, actions)
 	target := policy.NewEGreedy(targetE, seed, features, actions)
-	weights := behaviour.Weights()["weights"]
+
+	// Ensure both policies and learner reference the same weights
+	weights := behaviour.Weights()
+	target.SetWeights(weights)
+
 	learner := NewESarsaLearner(weights, learningRate, targetE)
+
+	// Initialize weights
+	init.Initialize(weights["weights"])
 
 	return &ESarsa{learner, behaviour, target, seed}
 }

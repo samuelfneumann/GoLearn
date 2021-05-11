@@ -23,12 +23,14 @@ type ESarsaLearner struct {
 // NewESarsaLearner creates a new ESarsaLearner struct
 //
 // weights are the weights of the policy to learn
-func NewESarsaLearner(weights *mat.Dense, learningRate,
+func NewESarsaLearner(weights map[string]*mat.Dense, learningRate,
 	targetE float64) *ESarsaLearner {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
-	return &ESarsaLearner{weights, step, -0, nextStep, learningRate, targetE}
+	learner := &ESarsaLearner{nil, step, -0, nextStep, learningRate, targetE}
+	learner.SetWeights(weights)
+	return learner
 }
 
 // ObserveFirst observes and records the first episodic timestep
@@ -105,4 +107,17 @@ func (q *ESarsaLearner) Weights() map[string]*mat.Dense {
 	weights["weights"] = q.weights
 
 	return weights
+}
+
+// SetWeights sets the weight pointers to point to a new set of weights.
+// The SetWeights function can take the output of a call to Weights()
+// on another Learner or Linear Policy that has a key "weights"
+func (e *ESarsaLearner) SetWeights(weights map[string]*mat.Dense) error {
+	newWeights, ok := weights["weights"]
+	if !ok {
+		return fmt.Errorf("SetWeights: no weights named \"weights\"")
+	}
+
+	e.weights = newWeights
+	return nil
 }

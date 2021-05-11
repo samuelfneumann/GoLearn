@@ -21,11 +21,13 @@ type QLearner struct {
 // NewQLearner creates a new QLearner struct
 //
 // weights are the weights of the policy to learn
-func NewQLearner(weights *mat.Dense, learningRate float64) *QLearner {
+func NewQLearner(weights map[string]*mat.Dense, learningRate float64) *QLearner {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
-	return &QLearner{weights, step, -0, nextStep, learningRate}
+	learner := &QLearner{nil, step, -0, nextStep, learningRate}
+	learner.SetWeights(weights)
+	return learner
 }
 
 // ObserveFirst observes and records the first episodic timestep
@@ -86,4 +88,17 @@ func (q *QLearner) Weights() map[string]*mat.Dense {
 	weights["weights"] = q.weights
 
 	return weights
+}
+
+// SetWeights sets the weight pointers to point to a new set of weights.
+// The SetWeights function can take the output of a call to Weights()
+// on another Learner or Linear Policy that has a key "weights"
+func (e *QLearner) SetWeights(weights map[string]*mat.Dense) error {
+	newWeights, ok := weights["weights"]
+	if !ok {
+		return fmt.Errorf("SetWeights: no weights named \"weights\"")
+	}
+
+	e.weights = newWeights
+	return nil
 }
