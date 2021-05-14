@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	// "golang.org/x/exp/rand"
@@ -12,7 +11,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r1"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/classiccontrol"
+	pendulum "sfneuman.com/golearn/environment/classiccontrol/pendulum"
 	"sfneuman.com/golearn/environment/gridworld"
 	"sfneuman.com/golearn/spec"
 
@@ -132,16 +131,15 @@ func main() {
 
 	// Pendulum
 	fmt.Println("=== === === Pendulum === === ===")
-	maxAngle := math.Pi
-	angleBounds := r1.Interval{Min: -maxAngle, Max: maxAngle}
-
-	maxSpeed := 8.0
-	speedBounds := r1.Interval{Min: -maxSpeed, Max: maxSpeed}
+	angleBounds := r1.Interval{Min: -pendulum.AngleBound,
+		Max: pendulum.AngleBound}
+	speedBounds := r1.Interval{Min: -pendulum.SpeedBound,
+		Max: pendulum.SpeedBound}
 
 	s := environment.NewUniformStarter([]r1.Interval{angleBounds, speedBounds}, seed)
 
-	task := classiccontrol.NewPendulumSwingUp(s, 1000)
-	p, t := classiccontrol.NewPendulum(task, 0.99)
+	task := pendulum.NewSwingUp(s, 1000)
+	p, t := pendulum.New(task, 0.99)
 	for i := 0; i < 110; i++ {
 		action := 5.0
 		if t.Observation.AtVec(1) < 0 {
