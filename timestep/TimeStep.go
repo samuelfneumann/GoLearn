@@ -31,7 +31,7 @@ func (s StepType) String() string {
 
 // TimeStep packages together a single timestep in an environment
 type TimeStep struct {
-	stepType    StepType
+	StepType    StepType
 	Reward      float64
 	Discount    float64
 	Observation mat.Vector
@@ -45,17 +45,17 @@ func New(t StepType, r, d float64, o mat.Vector, n int) TimeStep {
 
 // First returns whether a TimeStep is the first in an environment
 func (t *TimeStep) First() bool {
-	return t.stepType == First
+	return t.StepType == First
 }
 
 // Mid returns whether a TimeStep is a middle step in an environment
 func (t *TimeStep) Mid() bool {
-	return t.stepType == Mid
+	return t.StepType == Mid
 }
 
 // Last returns whether a TimeStep is the last step in an environment
 func (t *TimeStep) Last() bool {
-	return t.stepType == Last
+	return t.StepType == Last
 }
 
 // String converts a TimeStep into its string representation
@@ -63,5 +63,5 @@ func (t TimeStep) String() string {
 	str := "TimeStep | Type: %v  |  Reward:  %.2f  |  Discount: %.2f  |  " +
 		"Step Number:  %v"
 
-	return fmt.Sprintf(str, t.stepType, t.Reward, t.Discount, t.Number)
+	return fmt.Sprintf(str, t.StepType, t.Reward, t.Discount, t.Number)
 }

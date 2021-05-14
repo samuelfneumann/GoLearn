@@ -19,7 +19,6 @@ const numActions int = 4
 // only the matrix dimensions and current agent position are tracked
 type GridWorld struct {
 	environment.Task
-	environment.Starter
 	r, c     int
 	position int // *mat.VecDense // current position
 	// start       int
@@ -43,16 +42,16 @@ func (g *GridWorld) At(i, j int) float64 {
 
 // New creates a new gridworld with starting position (x, y), r rows, and c
 // columns, task t, and discount factor discount
-func New(r, c int, t environment.Task, d float64,
-	s environment.Starter) (*GridWorld, timestep.TimeStep) {
+func New(r, c int, t environment.Task, d float64) (*GridWorld,
+	timestep.TimeStep) {
 	// Set the starting position
-	start := s.Start()
+	start := t.Start()
 	// startInd := cToInd(x, y, c)
 	startInd := vToInd(start, r, c)
 
 	startStep := timestep.New(timestep.First, 0.0, d, start, 0)
 
-	g := &GridWorld{t, s, r, c, startInd, d, startStep}
+	g := &GridWorld{t, r, c, startInd, d, startStep}
 
 	return g, g.Reset()
 }
@@ -69,8 +68,7 @@ func (g *GridWorld) Reset() timestep.TimeStep {
 	return startStep
 }
 
-// Step takes an action in the environemnt
-func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
+func (g *GridWorld) NextObs(action mat.Vector) mat.Vector {
 	direction := action.AtVec(0)
 	x, y := g.Coordinates()
 	var newPosition mat.Vector
@@ -105,6 +103,13 @@ func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
 			newPosition = g.cToV(x, newY)
 		}
 	}
+
+	return newPosition
+}
+
+// Step takes an action in the environemnt
+func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
+	newPosition := g.NextObs(action)
 	g.position = g.vToInd(newPosition)
 
 	// Get information to pass back
@@ -112,13 +117,10 @@ func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
 	number := g.currentStep.Number + 1
 	stepType := timestep.Mid
 
-	// Check if this transition is to the end state
-	if g.AtGoal(newPosition) {
-		stepType = timestep.Last
-	}
-
 	// Set up the next timestep and update the gridworld's current step
 	step := timestep.New(stepType, reward, g.discount, newPosition, number)
+	g.End(&step)
+
 	g.currentStep = step
 
 	return step, stepType == timestep.Last

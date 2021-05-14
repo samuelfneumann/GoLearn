@@ -23,24 +23,24 @@ func main() {
 
 	r, c := 5, 5
 
-	// Create the gridworld task
-	x := []int{1}
-	y := []int{0}
-	goal, err := gridworld.NewGoal(x, y, r, c, -0.1, 1.0)
-	if err != nil {
-		fmt.Println("Could not create goal")
-		return
-	}
-
 	// Create the start-state distribution
-	starter, err := gridworld.NewSingleStart(0, 0, 5, 5)
+	starter, err := gridworld.NewSingleStart(0, 0, r, c)
 	if err != nil {
 		fmt.Println("Could not create starter")
 		return
 	}
 
+	// Create the gridworld task
+	x := []int{1}
+	y := []int{0}
+	goal, err := gridworld.NewGoal(starter, x, y, r, c, -0.1, 1.0)
+	if err != nil {
+		fmt.Println("Could not create goal")
+		return
+	}
+
 	// Create the gridworld
-	g, t := gridworld.New(5, 5, goal, 0.99, starter)
+	g, t := gridworld.New(5, 5, goal, 0.99)
 	fmt.Println(t)
 	fmt.Println(g)
 
@@ -86,7 +86,7 @@ func main() {
 	episodicReward := make([]float64, 100)
 	episodeReward := 0.0
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		// Take an action and send to env
 		action := q.SelectAction(t)
 		t, _ = g.Step(action)
@@ -131,14 +131,19 @@ func main() {
 
 	// Pendulum
 	fmt.Println("=== === === Pendulum === === ===")
-	task := classiccontrol.NewPendulumSwingUp()
 	maxAngle := math.Pi
 	angleBounds := r1.Interval{Min: -maxAngle, Max: maxAngle}
 
 	maxSpeed := 8.0
 	speedBounds := r1.Interval{Min: -maxSpeed, Max: maxSpeed}
+
 	s := environment.NewUniformStarter([]r1.Interval{angleBounds, speedBounds}, seed)
 
-	p, t := classiccontrol.NewPendulum(s, task, 0.99, 1000)
+	task := classiccontrol.NewPendulumSwingUp(s, 1000)
+	p, t := classiccontrol.NewPendulum(task, 0.99)
+	for i := 0; i < 100; i++ {
+		t, _ = p.Step(mat.NewVecDense(1, []float64{-1.0}))
+		fmt.Println(t.Observation)
+	}
 	fmt.Println(p, t)
 }

@@ -5,12 +5,14 @@ import (
 
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
+	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils"
 )
 
 // Goal represents the task of reaching goal states in a GridWorld
 type Goal struct {
+	environment.Starter
 	goals *mat.Dense // one-hot encoding of goal states
 	// goals          [][]int
 	r, c           int // total rows and columns in environment
@@ -77,7 +79,8 @@ func (g *Goal) GetReward(t timestep.TimeStep, a mat.Vector) float64 {
 
 // NewGoal creates and returns a new goal at position (x, y), given that the
 // gridworld has r rows and c columns
-func NewGoal(x, y []int, r, c int, tr, gr float64) (*Goal, error) {
+func NewGoal(s environment.Starter, x, y []int, r, c int,
+	tr, gr float64) (*Goal, error) {
 	if len(x) != len(y) {
 		return &Goal{}, fmt.Errorf("x length (%d) != y length (%d)",
 			len(x), len(y))
@@ -101,7 +104,7 @@ func NewGoal(x, y []int, r, c int, tr, gr float64) (*Goal, error) {
 		panic("could not parse rewards")
 	}
 
-	return &Goal{goalCoords, r, c, tr, gr}, nil
+	return &Goal{s, goalCoords, r, c, tr, gr}, nil
 }
 
 // String returns the Goal as a string
@@ -164,4 +167,12 @@ func (g *Goal) Min() float64 {
 func (g *Goal) Max() float64 {
 	rewards := []float64{g.timeStepReward, g.goalReward}
 	return floats.Max(rewards)
+}
+
+func (g *Goal) End(t *timestep.TimeStep) bool {
+	if g.AtGoal(t.Observation) {
+		t.StepType = timestep.Last
+		return true
+	}
+	return false
 }

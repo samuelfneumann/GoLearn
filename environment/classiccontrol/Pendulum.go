@@ -22,7 +22,7 @@ import (
 // TODO: when starting a new episode
 
 type Pendulum struct {
-	environment.Starter
+	//environment.Starter
 	environment.Task
 	dt           float64
 	gravity      float64
@@ -33,11 +33,9 @@ type Pendulum struct {
 	torqueBounds r1.Interval
 	lastStep     timestep.TimeStep
 	discount     float64
-	maxSteps     int
 }
 
-func NewPendulum(s environment.Starter, t environment.Task,
-	d float64, maxSteps int) (*Pendulum, timestep.TimeStep) {
+func NewPendulum(t environment.Task, d float64) (*Pendulum, timestep.TimeStep) {
 	maxAngle := math.Pi
 	angleBounds := r1.Interval{Min: -maxAngle, Max: maxAngle}
 
@@ -52,12 +50,12 @@ func NewPendulum(s environment.Starter, t environment.Task,
 	mass := 1.0
 	length := 1.0
 
-	state := s.Start()
+	state := t.Start()
 	validateState(state, angleBounds, speedBounds)
 	firstStep := timestep.New(timestep.First, 0.0, d, state, 0)
 
-	pendulum := Pendulum{s, t, dt, gravity, mass, length, angleBounds,
-		speedBounds, torqueBounds, firstStep, d, maxSteps}
+	pendulum := Pendulum{t, dt, gravity, mass, length, angleBounds,
+		speedBounds, torqueBounds, firstStep, d}
 
 	return &pendulum, firstStep
 }
@@ -122,12 +120,11 @@ func (p *Pendulum) Step(a mat.Vector) (timestep.TimeStep, bool) {
 
 	stepNum := p.lastStep.Number + 1
 	stepType := timestep.Mid
-	if stepNum == p.maxSteps {
-		stepType = timestep.Last
-	}
 
 	reward := math.Cos(newth)
 	step := timestep.New(stepType, reward, p.discount, nextState, stepNum)
+
+	p.End(&step)
 
 	p.lastStep = step
 	return step, step.Last()
@@ -188,10 +185,10 @@ func (p *Pendulum) normalize(th float64) float64 {
 
 	if th > p.angleBounds.Max {
 		divisor := int(th / p.angleBounds.Max)
-		return th - (p.angleBounds.Max * float64(divisor))
+		return -math.Pi + th - (p.angleBounds.Max * float64(divisor))
 	} else if th < p.angleBounds.Min {
 		divisor := int(th / p.angleBounds.Min)
-		return th - (p.angleBounds.Min * float64(divisor))
+		return math.Pi + th - (p.angleBounds.Min * float64(divisor))
 	} else {
 		return th
 	}
@@ -205,10 +202,13 @@ func (p *Pendulum) String() string {
 	return fmt.Sprintf(str, theta, thetadot)
 }
 
-type PendulumSwingUp struct{}
+type PendulumSwingUp struct {
+	environment.Starter
+	maxSteps int
+}
 
-func NewPendulumSwingUp() *PendulumSwingUp {
-	return &PendulumSwingUp{}
+func NewPendulumSwingUp(s environment.Starter, maxSteps int) *PendulumSwingUp {
+	return &PendulumSwingUp{s, maxSteps}
 }
 
 func (s *PendulumSwingUp) GetReward(t timestep.TimeStep, _ mat.Vector) float64 {
@@ -226,4 +226,12 @@ func (s *PendulumSwingUp) Min() float64 {
 
 func (s *PendulumSwingUp) Max() float64 {
 	return 1.0
+}
+
+func (s *PendulumSwingUp) End(t *timestep.TimeStep) bool {
+	if t.Number >= s.maxSteps {
+		t.StepType = timestep.Last
+		return true
+	}
+	return false
 }
