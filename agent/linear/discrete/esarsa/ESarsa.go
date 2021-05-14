@@ -23,6 +23,10 @@ type ESarsa struct {
 // spec.ESarsa or spec.QLearning
 func New(env environment.Environment, agent spec.Agent,
 	init weights.Initializer, seed uint64) *ESarsa {
+	// Ensure environment has discrete actions
+	if env.ActionSpec().Cardinality != spec.Discrete {
+		panic("ESarsa can only be used with discrete actions")
+	}
 
 	// Ensure we have either an ESarsa or QLearning spec
 	_, okSarsa := agent.(spec.ESarsa)

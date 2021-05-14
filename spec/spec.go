@@ -15,6 +15,14 @@ const (
 	Reward
 )
 
+// Cardinality determines the cardinality of a number (discrete or continuous)
+type Cardinality string
+
+const (
+	Continuous Cardinality = "Continuous"
+	Discrete   Cardinality = "Discrete"
+)
+
 // Environment implements a specification, which tells the type, shape,
 // and bounds of an action, observation, discount, or reward in an
 // environment
@@ -23,12 +31,13 @@ type Environment struct {
 	Type       SpecType
 	LowerBound mat.Vector
 	UpperBound mat.Vector
+	Cardinality
 }
 
 // NewEnvironment constructs a new environment specification
 func NewEnvironment(shape mat.Vector, t SpecType, lowerBound,
-	upperBound mat.Vector) Environment {
-	return Environment{shape, t, lowerBound, upperBound}
+	upperBound mat.Vector, cardinality Cardinality) Environment {
+	return Environment{shape, t, lowerBound, upperBound, cardinality}
 }
 
 // Agent defines an agent specification, which uniquely determines all

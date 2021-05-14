@@ -26,6 +26,10 @@ type QLearning struct {
 // a spec.QLearning
 func New(env environment.Environment, agent spec.Agent,
 	init weights.Initializer, seed uint64) *QLearning {
+	// Ensure environment has discrete actions
+	if env.ActionSpec().Cardinality != spec.Discrete {
+		panic("Q-learning can only be used with discrete actions")
+	}
 
 	agent = agent.(spec.QLearning) // Ensure we have a QLearning spec
 

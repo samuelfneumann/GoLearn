@@ -216,7 +216,8 @@ func (g *GridWorld) RewardSpec() spec.Environment {
 	maxReward := g.Max()
 	upperBound := mat.NewVecDense(1, []float64{maxReward})
 
-	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound)
+	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
+		spec.Continuous)
 }
 
 // DiscountSpec generates the discount specification for the GridWorld
@@ -225,7 +226,8 @@ func (g *GridWorld) DiscountSpec() spec.Environment {
 
 	min := mat.NewVecDense(1, []float64{g.discount})
 
-	return spec.NewEnvironment(shape, spec.Discount, min, min)
+	return spec.NewEnvironment(shape, spec.Discount, min, min,
+		spec.Continuous)
 
 }
 
@@ -241,7 +243,8 @@ func (g *GridWorld) ObservationSpec() spec.Environment {
 	}
 	max := mat.NewVecDense(g.r*g.c, ones)
 
-	return spec.NewEnvironment(shape, spec.Observation, min, max)
+	return spec.NewEnvironment(shape, spec.Observation, min, max,
+		spec.Discrete)
 }
 
 // ActionSpec generates the action specification for the GridWorld
@@ -252,5 +255,6 @@ func (g *GridWorld) ActionSpec() spec.Environment {
 	maxAction := float64(numActions - 1)
 	max := mat.NewVecDense(1, []float64{maxAction})
 
-	return spec.NewEnvironment(shape, spec.Action, min, max)
+	return spec.NewEnvironment(shape, spec.Action, min, max,
+		spec.Discrete)
 }

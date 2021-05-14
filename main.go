@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"time"
 
 	// "golang.org/x/exp/rand"
 	"gonum.org/v1/gonum/mat"
@@ -141,9 +142,16 @@ func main() {
 
 	task := classiccontrol.NewPendulumSwingUp(s, 1000)
 	p, t := classiccontrol.NewPendulum(task, 0.99)
-	for i := 0; i < 100; i++ {
-		t, _ = p.Step(mat.NewVecDense(1, []float64{-1.0}))
-		fmt.Println(t.Observation)
+	for i := 0; i < 110; i++ {
+		action := 5.0
+		if t.Observation.AtVec(1) < 0 {
+			action = -5.0
+		}
+
+		t, _ = p.Step(mat.NewVecDense(1, []float64{action}))
+		p.Render()
+		time.Sleep(50000000)
+		fmt.Println(t.Observation.AtVec(0))
 	}
 	fmt.Println(p, t)
 }
