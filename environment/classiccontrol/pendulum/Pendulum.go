@@ -264,40 +264,6 @@ func (p *Pendulum) Render() {
 
 }
 
-type SwingUp struct {
-	environment.Starter
-	maxSteps int
-}
-
-func NewSwingUp(s environment.Starter, maxSteps int) *SwingUp {
-	return &SwingUp{s, maxSteps}
-}
-
-func (s *SwingUp) GetReward(t timestep.TimeStep, _ mat.Vector) float64 {
-	th := t.Observation.AtVec(0)
-	return math.Cos(th)
-}
-
-func (s *SwingUp) AtGoal(state mat.Matrix) bool {
-	return state.At(0, 0) == 0
-}
-
-func (s *SwingUp) Min() float64 {
-	return -1.0
-}
-
-func (s *SwingUp) Max() float64 {
-	return 1.0
-}
-
-func (s *SwingUp) End(t *timestep.TimeStep) bool {
-	if t.Number >= s.maxSteps {
-		t.StepType = timestep.Last
-		return true
-	}
-	return false
-}
-
 // normalizeAngle normalizes the pendulum angle to the appropriate limits
 func normalizeAngle(th float64, angleBounds r1.Interval) float64 {
 	if angleBounds.Max != -angleBounds.Min {
