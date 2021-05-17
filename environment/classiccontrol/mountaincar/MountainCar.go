@@ -171,13 +171,40 @@ func (m *MountainCar) Step(a mat.Vector) (ts.TimeStep, bool) {
 
 }
 
+func calculateRow(xIndices, width int) string {
+	var builder strings.Builder
+
+	// Starting "=" signs
+	for i := 0; i < width; i++ {
+		fmt.Fprintf(&builder, "=")
+	}
+
+	// Spaces
+	for i := 0; i < xIndices-(2*width); i++ {
+		fmt.Fprintf(&builder, " ")
+	}
+
+	// Ending "="
+	for i := 0; i < width; i++ {
+		fmt.Fprintf(&builder, "=")
+	}
+	return builder.String()
+}
+
 // Render renders a text-based version of the environment
 func (m *MountainCar) Render() {
-	xIndices := 22
+	xIndices := 16
 
-	hill := "=                ====🏁 \n==              ==" +
-		"\n===            ===\n====          ====\n=====        =====" +
-		"\n======      ======\n==================\n\n"
+	// Print the hill
+	var hill strings.Builder
+	for i := 1; i < xIndices/2+1; i++ {
+		if i == 1 {
+			fmt.Fprint(&hill, calculateRow(xIndices, i)+"🏁\n")
+		} else {
+			fmt.Fprintln(&hill, calculateRow(xIndices, i))
+		}
+	}
+	fmt.Fprintln(&hill, "")
 
 	// Calculate the x position at which to draw the car
 	xPos := m.lastStep.Observation.AtVec(0)
@@ -185,7 +212,7 @@ func (m *MountainCar) Render() {
 		(m.positionBounds.Max - m.positionBounds.Min)
 	x := int(xPos * float64(xIndices))
 
-	// Draw the environment
+	// Print the position bar
 	var builder strings.Builder
 	for i := 0; i < xIndices; i++ {
 		if i == x {
@@ -199,7 +226,7 @@ func (m *MountainCar) Render() {
 
 	// Clear screen and draw
 	os.Stdout.WriteString("\x1b[3;J\x1b[H\x1b[2J")
-	fmt.Printf("%v%v\n", hill, &builder)
+	fmt.Printf("%v%v\n", &hill, &builder)
 
 }
 
