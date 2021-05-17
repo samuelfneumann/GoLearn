@@ -27,7 +27,7 @@ type Task interface {
 	// fmt.Stringer
 	Starter
 	Ender
-	GetReward(t timestep.TimeStep, a mat.Vector) float64
+	GetReward(state mat.Vector, a mat.Vector, nextState mat.Vector) float64
 	AtGoal(state mat.Matrix) bool
 	Min() float64 // returns the min possible reward
 	Max() float64 // returns the max possible reward

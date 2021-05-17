@@ -6,14 +6,13 @@ import (
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
 )
 
 // SwingUp implements a task where the agent must swing the pendulum up
 // and hold it in a vertical position. Rewards are the cosine of the
 // pendulum angle measured from the positive y-axis. The goal state
 // is the pendulum sticking straight up, at which point the agent gets
-// a reward of 1.0 on each timestep
+// a reward of 1.0 on each timestep. This task is continuing.
 type SwingUp struct {
 	environment.Starter
 	environment.Ender
@@ -26,8 +25,9 @@ func NewSwingUp(s environment.Starter, maxSteps int) *SwingUp {
 }
 
 // GetReward gets the reward at the current timestep
-func (s *SwingUp) GetReward(t timestep.TimeStep, _ mat.Vector) float64 {
-	th := t.Observation.AtVec(0)
+func (s *SwingUp) GetReward(state mat.Vector, _ mat.Vector,
+	nextState mat.Vector) float64 {
+	th := nextState.AtVec(0)
 	return math.Cos(th)
 }
 

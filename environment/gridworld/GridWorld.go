@@ -113,7 +113,7 @@ func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
 	g.position = g.vToInd(newPosition)
 
 	// Get information to pass back
-	reward := g.GetReward(g.currentStep, action)
+	reward := g.GetReward(g.currentStep.Observation, action, newPosition)
 	number := g.currentStep.Number + 1
 	stepType := timestep.Mid
 
