@@ -1,11 +1,6 @@
 // Package pendulu, implements the pendulum classic control environment
 package pendulum
 
-// TODO: Ensure Pendulum bounds should be taken from Starter.Bounds(), and
-// TODO: it should be made sure the lower bound == - upper bound for all bounds
-
-// TODO: when starting a new episode
-
 import (
 	"fmt"
 	"math"
@@ -73,7 +68,7 @@ type Pendulum struct {
 	discount     float64
 }
 
-// NewPendulum creates and returns a new Pendulum environment
+// New creates and returns a new Pendulum environment
 func New(t environment.Task, d float64) (*Pendulum, timestep.TimeStep) {
 	angleBounds := r1.Interval{Min: -AngleBound, Max: AngleBound}
 	speedBounds := r1.Interval{Min: -SpeedBound, Max: SpeedBound}
@@ -90,7 +85,7 @@ func New(t environment.Task, d float64) (*Pendulum, timestep.TimeStep) {
 	return &pendulum, firstStep
 }
 
-// ValidateState validates the state to ensure that the angle and angular
+// validateState validates the state to ensure that the angle and angular
 // velocity are within the environmental limits
 func validateState(obs mat.Vector, angleBounds, speedBounds r1.Interval) {
 	// Check if the angle is within bounds
