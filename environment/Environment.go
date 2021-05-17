@@ -31,6 +31,7 @@ type Task interface {
 	AtGoal(state mat.Matrix) bool
 	Min() float64 // returns the min possible reward
 	Max() float64 // returns the max possible reward
+	RewardSpec() spec.Environment
 }
 
 // Environment implements a simualted environment, which includes a Task to
@@ -40,7 +41,6 @@ type Environment interface {
 	// fmt.Stringer
 	Reset() timestep.TimeStep // Resets between episodes
 	Step(action mat.Vector) (timestep.TimeStep, bool)
-	RewardSpec() spec.Environment
 	DiscountSpec() spec.Environment
 	ObservationSpec() spec.Environment
 	ActionSpec() spec.Environment

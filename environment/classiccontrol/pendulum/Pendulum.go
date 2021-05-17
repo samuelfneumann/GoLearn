@@ -165,21 +165,6 @@ func (p *Pendulum) Step(action mat.Vector) (timestep.TimeStep, bool) {
 	return step, step.Last()
 }
 
-// RewardSpec returns the reward specification of the environment
-func (p *Pendulum) RewardSpec() spec.Environment {
-	shape := mat.NewVecDense(1, nil)
-
-	minReward := p.Min()
-	lowerBound := mat.NewVecDense(2, []float64{minReward})
-
-	maxReward := p.Max()
-	upperBound := mat.NewVecDense(1, []float64{maxReward})
-
-	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
-		spec.Continuous)
-
-}
-
 // DiscountSpec returns the discount specification of the environment
 func (p *Pendulum) DiscountSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)

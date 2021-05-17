@@ -5,6 +5,7 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 )
 
@@ -43,4 +44,19 @@ func (s *SwingUp) Min() float64 {
 // Max returns the maximum possible reward
 func (s *SwingUp) Max() float64 {
 	return 1.0
+}
+
+// RewardSpec returns the reward specification of the Task
+func (s *SwingUp) RewardSpec() spec.Environment {
+	shape := mat.NewVecDense(1, nil)
+
+	minReward := s.Min()
+	lowerBound := mat.NewVecDense(2, []float64{minReward})
+
+	maxReward := s.Max()
+	upperBound := mat.NewVecDense(1, []float64{maxReward})
+
+	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
+		spec.Continuous)
+
 }
