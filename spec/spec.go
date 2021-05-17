@@ -2,7 +2,11 @@
 // environments
 package spec
 
-import "gonum.org/v1/gonum/mat"
+import (
+	"fmt"
+
+	"gonum.org/v1/gonum/mat"
+)
 
 // SpecType determines what kind of specification a Spec is. A Spec can
 // specify the layout of an acion, an observation, a discount, or a reward
@@ -37,6 +41,14 @@ type Environment struct {
 // NewEnvironment constructs a new environment specification
 func NewEnvironment(shape mat.Vector, t SpecType, lowerBound,
 	upperBound mat.Vector, cardinality Cardinality) Environment {
+	if shape.Len() != lowerBound.Len() {
+		panic(fmt.Sprintf("shape length %v must match lower bounds length %v",
+			shape.Len(), lowerBound.Len()))
+	}
+	if shape.Len() != upperBound.Len() {
+		panic(fmt.Sprintf("shape length %v must match uuper bounds length %v",
+			shape.Len(), upperBound.Len()))
+	}
 	return Environment{shape, t, lowerBound, upperBound, cardinality}
 }
 
