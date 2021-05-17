@@ -11,7 +11,9 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
-// ESarsa implements the Q-Learning algorithm
+// ESarsa implements the Expected Sarsa algorithm. Actions selected by
+// this algorithm will always be enumerated as (0, 1, 2, ... N) where
+// N is the maximum possible action.
 type ESarsa struct {
 	agent.Learner
 	agent.Policy // Behaviour
@@ -26,6 +28,13 @@ func New(env environment.Environment, agent spec.Agent,
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
 		panic("ESarsa can only be used with discrete actions")
+	}
+	if env.ActionSpec().LowerBound.Len() > 1 {
+		panic("ESarsa cannot be used with multi-dimensional actions")
+	}
+	if env.ActionSpec().LowerBound.AtVec(0) != 0.0 {
+		panic("Actions must be enumerated starting from 0 for" +
+			"value-based methods")
 	}
 
 	// Ensure we have either an ESarsa or QLearning spec
@@ -56,7 +65,10 @@ func New(env environment.Environment, agent spec.Agent,
 	// Get the environment specifrications
 	envSpec := env.ObservationSpec()
 	features := envSpec.Shape.Len()
-	actions := env.ActionSpec().Shape.Len()
+
+	// Calculate the number of actions == Upper Bound + 1
+	// e.g. if there are 4 actions (0, 1, 2, 3), then the upper bound is 3
+	actions := int(env.ActionSpec().UpperBound.AtVec(0) + 1.0)
 
 	// Create algorithm components using previous specifications
 	behaviour := policy.NewEGreedy(behaviourE, seed, features, actions)

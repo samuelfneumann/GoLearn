@@ -206,20 +206,6 @@ func (g *GridWorld) getCoordinates(v int) mat.Matrix {
 	return coords
 }
 
-// RewardSpec generates the reward specification for the GridWorld
-func (g *GridWorld) RewardSpec() spec.Environment {
-	shape := mat.NewVecDense(1, nil)
-
-	minReward := g.Min()
-	lowerBound := mat.NewVecDense(1, []float64{minReward})
-
-	maxReward := g.Max()
-	upperBound := mat.NewVecDense(1, []float64{maxReward})
-
-	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
-		spec.Continuous)
-}
-
 // DiscountSpec generates the discount specification for the GridWorld
 func (g *GridWorld) DiscountSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)
@@ -249,7 +235,7 @@ func (g *GridWorld) ObservationSpec() spec.Environment {
 
 // ActionSpec generates the action specification for the GridWorld
 func (g *GridWorld) ActionSpec() spec.Environment {
-	shape := mat.NewVecDense(numActions, nil)
+	shape := mat.NewVecDense(1, nil)
 
 	min := mat.NewVecDense(1, []float64{0})
 	maxAction := float64(numActions - 1)

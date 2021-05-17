@@ -6,6 +6,7 @@ import (
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils"
 )
@@ -21,46 +22,9 @@ type Goal struct {
 }
 
 // GetReward returns the reward for the current state and action
-func (g *Goal) GetReward(t timestep.TimeStep, a mat.Vector) float64 {
-	// fmt.Println("Need to implement Goal.GetReward()")
-	obs := t.Observation.(mat.Vector)
-	x, y := vToC(obs, g.r, g.c)
-
-	direction := a.AtVec(0)
-	var newPosition mat.Vector
-
-	// Move the current position
-	switch direction {
-	case 0: // Left
-		if newX := x - 1; newX < 0 {
-			newPosition = cToV(x, y, g.r, g.c)
-		} else {
-			newPosition = cToV(newX, y, g.r, g.c)
-		}
-
-	case 1: // Right
-		if newX := x + 1; newX >= g.c {
-			newPosition = cToV(x, y, g.r, g.c)
-		} else {
-			newPosition = cToV(newX, y, g.r, g.c)
-		}
-
-	case 2: // Up
-		if newY := y + 1; newY >= g.r {
-			newPosition = cToV(x, y, g.r, g.c)
-		} else {
-			newPosition = cToV(x, newY, g.r, g.c)
-		}
-
-	case 3: // Down
-		if newY := y - 1; newY < 0 {
-			newPosition = cToV(x, y, g.r, g.c)
-		} else {
-			newPosition = cToV(x, newY, g.r, g.c)
-		}
-	}
-
-	nextX, nextY := vToC(newPosition, g.r, g.c)
+func (g *Goal) GetReward(state mat.Vector, a mat.Vector,
+	nextState mat.Vector) float64 {
+	nextX, nextY := vToC(nextState, g.r, g.c)
 
 	// Get the current coordinates
 	numGoals, _ := g.goals.Dims()
@@ -129,6 +93,20 @@ func (g *Goal) AtGoal(state mat.Matrix) bool {
 		}
 	}
 	return false
+}
+
+// RewardSpec generates the reward specification for the GridWorld
+func (g *Goal) RewardSpec() spec.Environment {
+	shape := mat.NewVecDense(1, nil)
+
+	minReward := g.Min()
+	lowerBound := mat.NewVecDense(1, []float64{minReward})
+
+	maxReward := g.Max()
+	upperBound := mat.NewVecDense(1, []float64{maxReward})
+
+	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
+		spec.Continuous)
 }
 
 // getCoordinates gets the (x, y) coordinates of non-zero elements in a

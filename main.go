@@ -16,8 +16,8 @@ import (
 
 func main() {
 	var seed uint64 = 192312
-	// === === === === === === === === === === === === === === === ===
-	// GridWorld
+	// // === === === === === === === === === === === === === === === ===
+	// // GridWorld
 	// r, c := 5, 5
 
 	// // Create the start-state distribution
@@ -28,8 +28,8 @@ func main() {
 	// }
 
 	// // Create the gridworld task
-	// x := []int{1}
-	// y := []int{0}
+	// x := []int{4}
+	// y := []int{4}
 	// goal, err := gridworld.NewGoal(starter, x, y, r, c, -0.1, 1.0)
 	// if err != nil {
 	// 	fmt.Println("Could not create goal")
@@ -37,7 +37,7 @@ func main() {
 	// }
 
 	// // Create the gridworld
-	// g, t := gridworld.New(5, 5, goal, 0.99)
+	// g, t := gridworld.New(r, c, goal, 0.99)
 	// fmt.Println(t)
 	// fmt.Println(g)
 
@@ -82,7 +82,7 @@ func main() {
 	// episodicReward := make([]float64, 100)
 	// episodeReward := 0.0
 
-	// for i := 0; i < 100; i++ {
+	// for i := 0; i < 2000000; i++ {
 	// 	// Take an action and send to env
 	// 	action := q.SelectAction(t)
 	// 	t, _ = g.Step(action)

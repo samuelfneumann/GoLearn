@@ -14,7 +14,9 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
-// QLearning implements the Q-Learning algorithm
+// QLearning implements the Q-Learning algorithm. Actions selected by
+// this algorithm will always be enumerated as (0, 1, 2, ... N) where
+// N is the maximum possible action.
 type QLearning struct {
 	agent.Learner
 	agent.Policy // Behaviour
@@ -29,6 +31,13 @@ func New(env environment.Environment, agent spec.Agent,
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
 		panic("Q-learning can only be used with discrete actions")
+	}
+	if env.ActionSpec().Shape.Len() > 1 {
+		panic("Q-Learning cannot be used with multi-dimensional actions")
+	}
+	if env.ActionSpec().LowerBound.AtVec(0) != 0.0 {
+		panic("Actions must be enumerated starting from 0 for" +
+			"value-based methods")
 	}
 
 	agent = agent.(spec.QLearning) // Ensure we have a QLearning spec
@@ -45,10 +54,13 @@ func New(env environment.Environment, agent spec.Agent,
 		panic("no learning rate specified")
 	}
 
-	// Get the environment specifrications
+	// Get the environment specifications
 	envSpec := env.ObservationSpec()
 	features := envSpec.Shape.Len()
-	actions := env.ActionSpec().Shape.Len()
+
+	// Calculate the number of actions == Upper Bound + 1
+	// e.g. if there are 4 actions (0, 1, 2, 3), then the upper bound is 3
+	actions := int(env.ActionSpec().UpperBound.AtVec(0) + 1.0)
 
 	// Create algorithm components using previous specifications
 	behaviour := policy.NewEGreedy(e, seed, features, actions)

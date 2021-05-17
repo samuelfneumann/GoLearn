@@ -22,7 +22,9 @@ type EGreedy struct {
 }
 
 // NewEGreedy constructs a new EGreedy policy, where e=epislon is the
-// probability with which a random action is selected
+// probability with which a random action is selected; features is the
+// number of features in a given feature vector for the environment;
+// actions are the number of actions in the environment
 func NewEGreedy(e float64, seed uint64, features, actions int) *EGreedy {
 	source := rand.NewSource(seed)
 
