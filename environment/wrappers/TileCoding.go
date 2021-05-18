@@ -12,7 +12,7 @@ import (
 	"gonum.org/v1/gonum/stat/samplemv"
 )
 
-const OffsetDiv float64 = 10000.0
+const OffsetDiv float64 = 1.5
 
 // For now, we just implement a plain tile coder
 
@@ -68,12 +68,18 @@ func (t TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 	}
 	ones := mat.NewVecDense(cols, oneSlice)
 
+	// Vector that holds all the data that is manipulated
+	data := mat.NewVecDense(cols, nil)
+
+	// Tile code
 	for j := 0; j < t.numTilings; j++ {
-		indexOffset := j * t.numTilings
+		indexOffset := j * t.tilingLength
 		index := mat.NewVecDense(cols, nil)
 
 		for i := len(t.bins) - 1; i > -1; i-- {
-			data := b.ColView(i).(*mat.VecDense)
+			// Clone the next batch of features into the data vector
+			data.CloneFromVec(b.ColView(i))
+
 			data.AddScaledVec(data, t.offsets[j].At(0, i), ones)
 			data.AddScaledVec(data, -t.minDims.AtVec(i), ones)
 

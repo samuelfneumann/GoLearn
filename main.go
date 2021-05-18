@@ -13,7 +13,7 @@ import (
 // "sfneuman.com/golearn/utils/matutils"
 
 func main() {
-	var seed uint64 = 19232
+	var seed uint64 = 19232 // 1923
 	// // === === === === === === === === === === === === === === === ===
 	// // GridWorld
 	// r, c := 5, 5
@@ -189,7 +189,7 @@ func main() {
 	v := mat.NewVecDense(2, []float64{-0.1, -30.1})
 	v2 := mat.NewVecDense(2, []float64{0.0, 0.0})
 
-	t := wrappers.NewTileCoder(1, minDims, maxDims, bins, seed)
+	t := wrappers.NewTileCoder(2, minDims, maxDims, bins, seed)
 
 	b := mat.NewDense(2, 2, []float64{-0.1, -30.1, 0.0, 0.0})
 
