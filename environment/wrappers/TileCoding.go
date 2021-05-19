@@ -23,13 +23,18 @@ type TileCoding struct {
 
 // NewTileCoding creates and returns a new TileCoding environment
 func NewTileCoding(env environment.Environment, numTilings int, bins []int,
-	seed uint64) *TileCoding {
+	seed uint64) (*TileCoding, ts.TimeStep) {
 	envSpec := env.ObservationSpec()
 	minDims := envSpec.LowerBound
 	maxDims := envSpec.UpperBound
 
 	coder := tilecoder.New(numTilings, minDims, maxDims, bins, seed)
-	return &TileCoding{env, coder}
+
+	// Reset the tile-coded environment
+	step := env.Reset()
+	step.Observation = coder.Encode(step.Observation)
+
+	return &TileCoding{env, coder}, step
 }
 
 // Step takes one environmental step given action a and returns the next
