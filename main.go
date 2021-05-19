@@ -4,8 +4,12 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/spatial/r1"
+	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
+	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/utils/matutils"
-	"sfneuman.com/golearn/utils/tilecoder"
+	"sfneuman.com/golearn/utils/matutils/tilecoder"
 )
 
 // "golang.org/x/exp/rand"
@@ -150,15 +154,15 @@ func main() {
 
 	// // === === === === === === === === === === === === === === === ===
 	// // Mountain Car
-	// positionBounds := r1.Interval{Min: mountaincar.MinPosition,
-	// 	Max: mountaincar.MaxPosition}
-	// speedBounds := r1.Interval{Min: -mountaincar.MaxSpeed,
-	// 	Max: mountaincar.MaxSpeed}
+	positionBounds := r1.Interval{Min: mountaincar.MinPosition,
+		Max: mountaincar.MaxPosition}
+	speedBounds := r1.Interval{Min: -mountaincar.MaxSpeed,
+		Max: mountaincar.MaxSpeed}
 
-	// s := environment.NewUniformStarter([]r1.Interval{positionBounds, speedBounds}, seed)
-	// task := mountaincar.NewGoal(s, 250, 0.45)
-	// m, t := mountaincar.New(task, 1.0)
-	// fmt.Println(t)
+	s := environment.NewUniformStarter([]r1.Interval{positionBounds, speedBounds}, seed)
+	task := mountaincar.NewGoal(s, 250, 0.45)
+	m, t := mountaincar.New(task, 1.0)
+	fmt.Println(t)
 	// fmt.Println(m)
 
 	// for i := 0; i < 110; i++ {
@@ -189,11 +193,16 @@ func main() {
 	v := mat.NewVecDense(2, []float64{0.99, 0.0})
 	v2 := mat.NewVecDense(2, []float64{0.0, 0.0})
 
-	t := tilecoder.NewTileCoder(2, minDims, maxDims, bins, seed)
+	tc := tilecoder.New(2, minDims, maxDims, bins, seed)
 
 	b := mat.NewDense(2, 2, []float64{0.99, 0.0, 0.0, 0.0})
 
-	fmt.Println(matutils.Format(t.Encode(v).T()))
-	fmt.Println(matutils.Format(t.Encode(v2).T()))
-	fmt.Println(matutils.Format(t.EncodeBatch(b).T()))
+	fmt.Println(matutils.Format(tc.Encode(v).T()))
+	fmt.Println(matutils.Format(tc.Encode(v2).T()))
+	fmt.Println(matutils.Format(tc.EncodeBatch(b).T()))
+
+	tm := wrappers.NewTileCoding(m, 3, []int{2, 2}, seed)
+	fmt.Println(tm)
+	t, _ = tm.Step(mat.NewVecDense(1, []float64{1.0}))
+	fmt.Println(t.Observation)
 }
