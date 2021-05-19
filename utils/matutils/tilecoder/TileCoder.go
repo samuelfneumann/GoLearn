@@ -2,6 +2,7 @@
 package tilecoder
 
 import (
+	"fmt"
 	"math"
 
 	"golang.org/x/exp/rand"
@@ -203,6 +204,11 @@ func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 		tileCoded.SetVec(indexOffset+index, 1.0)
 	}
 	return tileCoded
+}
+
+// String returns a string representation of a *TileCoder
+func (t *TileCoder) String() string {
+	return fmt.Sprintf("Tilings %d  |  Tiles: %v", t.numTilings, t.bins)
 }
 
 // VecLength returns the number of features in a tile-coded vector
