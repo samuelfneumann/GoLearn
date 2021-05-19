@@ -18,7 +18,7 @@ import (
 // environment
 type TileCoding struct {
 	environment.Environment
-	coder tilecoder.TileCoder
+	coder *tilecoder.TileCoder
 }
 
 // NewTileCoding creates and returns a new TileCoding environment

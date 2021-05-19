@@ -57,7 +57,7 @@ type TileCoder struct {
 // should have the same number of elements as the minDims and maxDims
 // arguments.
 func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
-	seed uint64) TileCoder {
+	seed uint64) *TileCoder {
 	// Calculate the length of bins and the tiling offset bounds
 	var bounds []r1.Interval
 	binLengths := make([]float64, len(bins))
@@ -87,7 +87,7 @@ func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
 	// Number of features in each tiling
 	featuresPerTiling := prod(bins)
 
-	return TileCoder{numTilings, minDims, offsets, bins, binLengths, seed,
+	return &TileCoder{numTilings, minDims, offsets, bins, binLengths, seed,
 		featuresPerTiling}
 }
 
@@ -99,7 +99,7 @@ func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
 // k x c, where k is the number of features in the tile coded
 // representation and c is the number of samples in the batch (the
 // number of columns in the input matrix)
-func (t TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
+func (t *TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 	rows, cols := b.Dims()
 	tileCoded := mat.NewDense(t.VecLength(), cols, nil)
 
@@ -164,7 +164,7 @@ func (t TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 }
 
 // Encode encodes a single vector as a tile-coded vector
-func (t TileCoder) Encode(v mat.Vector) *mat.VecDense {
+func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 	tileCoded := mat.NewVecDense(t.VecLength(), nil)
 
 	// Tile code for each sequential tiling
@@ -206,7 +206,7 @@ func (t TileCoder) Encode(v mat.Vector) *mat.VecDense {
 }
 
 // VecLength returns the number of features in a tile-coded vector
-func (t TileCoder) VecLength() int {
+func (t *TileCoder) VecLength() int {
 	return t.numTilings * t.featuresPerTiling
 }
 
