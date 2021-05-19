@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/utils/matutils"
+	"sfneuman.com/golearn/utils/tilecoder"
 )
 
 // "golang.org/x/exp/rand"
@@ -13,7 +13,7 @@ import (
 // "sfneuman.com/golearn/utils/matutils"
 
 func main() {
-	var seed uint64 = 19232 // 1923
+	var seed uint64 = 1921 // 1923
 	// // === === === === === === === === === === === === === === === ===
 	// // GridWorld
 	// r, c := 5, 5
@@ -186,14 +186,14 @@ func main() {
 	maxDims := mat.NewVecDense(2, []float64{2.0, 4})
 	bins := []int{2, 8}
 
-	v := mat.NewVecDense(2, []float64{-0.1, -30.1})
+	v := mat.NewVecDense(2, []float64{0.99, 0.0})
 	v2 := mat.NewVecDense(2, []float64{0.0, 0.0})
 
-	t := wrappers.NewTileCoder(2, minDims, maxDims, bins, seed)
+	t := tilecoder.NewTileCoder(2, minDims, maxDims, bins, seed)
 
-	b := mat.NewDense(2, 2, []float64{-0.1, -30.1, 0.0, 0.0})
+	b := mat.NewDense(2, 2, []float64{0.99, 0.0, 0.0, 0.0})
 
 	fmt.Println(matutils.Format(t.Encode(v).T()))
 	fmt.Println(matutils.Format(t.Encode(v2).T()))
-	fmt.Println(matutils.Format(t.EncodeBatch(b)))
+	fmt.Println(matutils.Format(t.EncodeBatch(b).T()))
 }
