@@ -91,35 +91,59 @@ func NewTileCoder(numTilings int, minDims, maxDims mat.Vector, bins []int,
 		featuresPerTiling}
 }
 
+// EncodeBatch encodes a batch of vectors held in a Dense matrix. In
+// this batch, each row should be a sequential feature, while each
+// column should be a sequential sample in the batch. This function
+// returns a new matrix which holds the tile coded representation of
+// each vector in the batch. The returned matrix is of the size
+// k x c, where k is the number of features in the tile coded
+// representation and c is the number of samples in the batch (the
+// number of columns in the input matrix)
 func (t TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 	rows, cols := b.Dims()
 	tileCoded := mat.NewDense(t.VecLength(), cols, nil)
 
-	// Create vector of ones
-	oneSlice := make([]float64, cols)
-	for i := 0; i < rows; i++ {
-		oneSlice[i] = 1.0
-	}
-	ones := mat.NewVecDense(rows, oneSlice)
+	// A vector of 1.0's will be needed for calculations later
+	ones := matutils.VecOnes(rows)
 
 	// Vector that holds all the data that is manipulated
 	data := mat.NewVecDense(rows, nil)
 
-	// Tile code
+	// Tile code for each sequential tiling
 	for j := 0; j < t.numTilings; j++ {
+		// indexOffset is the index into the tile-coded vector at which
+		// the current tiling will start
 		indexOffset := j * t.featuresPerTiling
 		index := mat.NewVecDense(rows, nil)
 
+		// Tile code the batch based on the current tiling
+		// We loop through each feature to calculate the tile index to
+		// set to 1.0
 		for i := len(t.bins) - 1; i > -1; i-- {
 			// Clone the next batch of features into the data vector
 			data.CloneFromVec(b.RowView(i))
 
+			// Offset the tiling
 			data.AddScaledVec(data, t.offsets[j].At(0, i), ones)
-			data.AddScaledVec(data, -t.minDims.AtVec(i), ones)
 
+			// Calculate which tile each feature is in along the current
+			// dimension. Subtracting the minimum dimension will ensure that
+			// the data is between [0, 1] before multiplying by the bin
+			// length in VecFloor. The integer value of this * binLength
+			// is the tile along the current dimension that the feature is in:
+			//
+			// binLengths[i] = max - min / binLength
+			// (data - min) / ((max - min) / binLength) =
+			// = ((data - min) / (max - min)) * binLength = IND
+			// int(IND) == index into tiling along current dimension
+			data.AddScaledVec(data, -t.minDims.AtVec(i), ones)
 			matutils.VecFloor(data, t.binLengths[i])
+
+			// If out-of-bounds, use the last tile
 			matutils.VecClip(data, 0.0, float64(t.bins[i]-1))
 
+			// Calculate the index into the tile-coded representation
+			// that should be 1.0 for this tiling
 			if i == len(t.bins)-1 {
 				index.AddVec(index, data)
 			} else {
@@ -129,30 +153,44 @@ func (t TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 
 		// Set the proper 1.0 values
 		for i := 0; i < index.Len(); i++ {
+			// Offset the 1.0 based on which tiling was used for the previous
+			// iteration of coding
 			row := indexOffset + int(index.AtVec(i))
+
 			tileCoded.Set(row, i, 1.0)
 		}
 	}
 	return tileCoded
 }
 
+// Encode encodes a single vector as a tile-coded vector
 func (t TileCoder) Encode(v mat.Vector) *mat.VecDense {
 	tileCoded := mat.NewVecDense(t.VecLength(), nil)
 
+	// Tile code for each sequential tiling
 	for j := 0; j < t.numTilings; j++ {
+		// indexOffset is the index into the tile-coded vector at which
+		// the current tiling will start
 		indexOffset := j * t.featuresPerTiling
 		index := 0
 
+		// Tile code the vector based on the current tiling
+		// We loop through each feature to calculate the tile index to
+		// set to 1.0 along this feature dimension
 		for i := len(t.bins) - 1; i > -1; i-- {
 			// Offset the tiling
 			data := v.AtVec(i) + t.offsets[j].At(0, i)
 
+			// Calculate the index of the tile along the current feature
+			// dimension in which the feature falls
 			tile := math.Floor((data - t.minDims.AtVec(i)) / t.binLengths[i])
 
 			// Clip tile to within tiling bounds
 			tile = math.Min(tile, float64(t.bins[i]-1))
 			tile = math.Max(tile, 0)
 
+			// Calculate the index into the tile-coded representation
+			// that should be 1.0 for this tiling
 			tileIndex := int(tile)
 			if i == len(t.bins)-1 {
 				index += tileIndex
@@ -160,15 +198,19 @@ func (t TileCoder) Encode(v mat.Vector) *mat.VecDense {
 				index += tileIndex * t.bins[i+1]
 			}
 		}
+		// Offset the 1.0 based on which tiling was used for the previous
+		// iteration of coding
 		tileCoded.SetVec(indexOffset+index, 1.0)
 	}
 	return tileCoded
 }
 
+// VecLength returns the number of features in a tile-coded vector
 func (t TileCoder) VecLength() int {
 	return t.numTilings * t.featuresPerTiling
 }
 
+// prod calculates the product of all integers in a []int
 func prod(i []int) int {
 	prod := 1
 	for _, v := range i {

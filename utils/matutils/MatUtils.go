@@ -4,6 +4,7 @@ package matutils
 
 import (
 	"fmt"
+	"math"
 
 	"gonum.org/v1/gonum/mat"
 )
@@ -27,4 +28,36 @@ func MaxVec(values mat.Vector) int {
 		}
 	}
 	return idx
+}
+
+// VecClip performs an element-wise clipping of a vector's values such
+// that each value is at least min and at most max
+func VecClip(a *mat.VecDense, min, max float64) {
+	for i := 0; i < a.Len(); i++ {
+		value := a.AtVec(i)
+
+		if value < min {
+			a.SetVec(i, min)
+		} else if value > max {
+			a.SetVec(i, max)
+		}
+	}
+}
+
+// VecFloor performs an element-wise floor division of a vector by some
+// constant b
+func VecFloor(a *mat.VecDense, b float64) {
+	for i := 0; i < a.Len(); i++ {
+		mod := math.Floor(a.AtVec(i) / b)
+		a.SetVec(i, mod)
+	}
+}
+
+// VecOnes returns a vector of 1.0's
+func VecOnes(length int) *mat.VecDense {
+	oneSlice := make([]float64, length)
+	for i := 0; i < length; i++ {
+		oneSlice[i] = 1.0
+	}
+	return mat.NewVecDense(length, oneSlice)
 }
