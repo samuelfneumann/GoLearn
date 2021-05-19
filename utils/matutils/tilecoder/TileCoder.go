@@ -56,7 +56,7 @@ type TileCoder struct {
 // how many tiles are placed (per tilings) along each dimension and
 // should have the same number of elements as the minDims and maxDims
 // arguments.
-func NewTileCoder(numTilings int, minDims, maxDims mat.Vector, bins []int,
+func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
 	seed uint64) TileCoder {
 	// Calculate the length of bins and the tiling offset bounds
 	var bounds []r1.Interval
