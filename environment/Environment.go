@@ -35,7 +35,8 @@ type Task interface {
 }
 
 // Environment implements a simualted environment, which includes a Task to
-// complete
+// complete. When using an environment constructor, the constructor should
+// return both the environment and the first timestep, ready to train on.
 type Environment interface {
 	Task
 	// fmt.Stringer
