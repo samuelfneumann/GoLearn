@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
@@ -201,8 +202,24 @@ func main() {
 	fmt.Println(matutils.Format(tc.Encode(v2).T()))
 	fmt.Println(matutils.Format(tc.EncodeBatch(b).T()))
 
-	tm := wrappers.NewTileCoding(m, 3, []int{2, 2}, seed)
+	tm, t := wrappers.NewTileCoding(m, 3, []int{2, 2}, seed)
 	fmt.Println(tm)
-	t, _ = tm.Step(mat.NewVecDense(1, []float64{1.0}))
-	fmt.Println(t.Observation)
+	for i := 0; i < 110; i++ {
+		action := 2.0
+		if t.Observation.AtVec(1) < 0 {
+			action = 0.0
+		}
+		a := mat.NewVecDense(1, []float64{action})
+		t, _ = tm.Step(a)
+		fmt.Println(tm)
+		fmt.Println(t.Observation)
+		fmt.Println()
+		// m.Render()
+		time.Sleep(50000000)
+
+		if t.Last() {
+			fmt.Println("=== === Last TimeStep, Resetting === ===")
+			t = m.Reset()
+		}
+	}
 }

@@ -1,8 +1,6 @@
 package mountaincar
 
 import (
-	"fmt"
-
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
@@ -44,7 +42,6 @@ func (g *Goal) GetReward(state mat.Vector, _ mat.Vector,
 	nextState mat.Vector) float64 {
 	xPosition := nextState.AtVec(0)
 
-	fmt.Println(xPosition)
 	if xPosition >= g.goalX {
 		return 0.0
 	}
