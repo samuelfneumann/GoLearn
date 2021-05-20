@@ -21,28 +21,9 @@ type Goal struct {
 	goalReward     float64
 }
 
-// GetReward returns the reward for the current state and action
-func (g *Goal) GetReward(state mat.Vector, a mat.Vector,
-	nextState mat.Vector) float64 {
-	nextX, nextY := vToC(nextState, g.r, g.c)
-
-	// Get the current coordinates
-	numGoals, _ := g.goals.Dims()
-
-	for i := 0; i < numGoals; i++ {
-		ind := g.goals.RowView(i)
-		goalX := int(ind.AtVec(0))
-		goalY := int(ind.AtVec(1))
-		if nextX == goalX && nextY == goalY {
-			return g.goalReward
-		}
-	}
-
-	return g.timeStepReward
-}
-
-// NewGoal creates and returns a new goal at position (x, y), given that the
-// gridworld has r rows and c columns
+// NewGoal creates and returns a new goal at position (x, y), given that
+// the gridworld has r rows and c columns. The parameters tr and gr
+// determine the timestep rewards and goal rewards respectively
 func NewGoal(s environment.Starter, x, y []int, r, c int,
 	tr, gr float64) (*Goal, error) {
 	if len(x) != len(y) {
@@ -69,6 +50,26 @@ func NewGoal(s environment.Starter, x, y []int, r, c int,
 	}
 
 	return &Goal{s, goalCoords, r, c, tr, gr}, nil
+}
+
+// GetReward returns the reward for the current state and action
+func (g *Goal) GetReward(state mat.Vector, a mat.Vector,
+	nextState mat.Vector) float64 {
+	nextX, nextY := vToC(nextState, g.r, g.c)
+
+	// Get the current coordinates
+	numGoals, _ := g.goals.Dims()
+
+	for i := 0; i < numGoals; i++ {
+		ind := g.goals.RowView(i)
+		goalX := int(ind.AtVec(0))
+		goalY := int(ind.AtVec(1))
+		if nextX == goalX && nextY == goalY {
+			return g.goalReward
+		}
+	}
+
+	return g.timeStepReward
 }
 
 // String returns the Goal as a string
