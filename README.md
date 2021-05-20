@@ -16,11 +16,13 @@ return any reward for actions. An environment has a state, and actions
 can be taken in an environment that affect the environment's state, but
 no rewards are given for any actions in an environment. The currently
 implemented environments are in the following packages:
+```
 - gridworld: Implements gridworld environments and their tasks
 - classiccontrol/pendulum: Implements the classic control problem
 Pendulum and its tasks
 - classiccontrol/mountaincar: Implements the classic control problem
 Mountain Car and its tasks
+```
 
 Although an environment has no concept of rewards, an environment does
 have a Task, which determines the rewards taken for actions in the
@@ -40,7 +42,9 @@ A NoiseMaker might inject noise into the environmental observations. A
 TileCoder might return tile-coded representations of environmental states.
 
 So far, the following environment wrappers are implemented:
+```
 - TileCoding: Tile codes environmental observations
+```
 
 It is easy to implement your own environment wrapper. All you need to do
 is create a struct that stores another environment, and have your
