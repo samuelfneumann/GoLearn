@@ -4,7 +4,16 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/spatial/r1"
+	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
+	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
+	"sfneuman.com/golearn/environment/wrappers"
+	"sfneuman.com/golearn/experiment"
+	"sfneuman.com/golearn/experiment/savers"
+	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/utils/matutils"
+	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 	"sfneuman.com/golearn/utils/matutils/tilecoder"
 )
 
@@ -40,7 +49,7 @@ func main() {
 	// fmt.Println(g)
 
 	// // Create the QLearning spec
-	// args := spec.QLearning{E: 0.1, LearningRate: 0.5}
+	args := spec.QLearning{E: 0.25, LearningRate: 0.01}
 	// // args := spec.ESarsa{TargetE: 0.0, BehaviourE: 0.1, LearningRate: 0.1}
 
 	// // Zero RNG
@@ -150,16 +159,14 @@ func main() {
 
 	// // === === === === === === === === === === === === === === === ===
 	// // Mountain Car
-	// positionBounds := r1.Interval{Min: mountaincar.MinPosition,
-	// 	Max: mountaincar.MaxPosition}
-	// speedBounds := r1.Interval{Min: -mountaincar.MaxSpeed,
-	// 	Max: mountaincar.MaxSpeed}
+	positionBounds := r1.Interval{Min: -0.2, Max: 0.2}
+	speedBounds := r1.Interval{Min: -0.005, Max: 0.005}
 
-	// s := environment.NewUniformStarter([]r1.Interval{positionBounds, speedBounds}, seed)
-	// task := mountaincar.NewGoal(s, 250, 0.45)
-	// m, t := mountaincar.New(task, 1.0)
-	// fmt.Println(t)
-	// fmt.Println(m)
+	s := environment.NewUniformStarter([]r1.Interval{positionBounds, speedBounds}, seed)
+	task := mountaincar.NewGoal(s, 1000, 0.45)
+	m, t := mountaincar.New(task, 1.0)
+	fmt.Println(t)
+	fmt.Println(m)
 
 	// for i := 0; i < 110; i++ {
 	// 	action := 2.0
@@ -197,17 +204,17 @@ func main() {
 	fmt.Println(matutils.Format(tc.Encode(v2).T()))
 	fmt.Println(matutils.Format(tc.EncodeBatch(b).T()))
 
-	// tm, t := wrappers.NewTileCoding(m, 3, []int{2, 2}, seed)
+	tm, t := wrappers.NewTileCoding(m, 10, []int{5, 5}, seed)
 	// fmt.Println(tm)
 	// for i := 0; i < 110; i++ {
 	// 	action := 2.0
-	// 	if t.Observation.AtVec(1) < 0 {
+	// 	if m.LastStep().Observation.AtVec(1) < 0 {
 	// 		action = 0.0
 	// 	}
 	// 	a := mat.NewVecDense(1, []float64{action})
 	// 	t, _ = tm.Step(a)
 	// 	fmt.Println(tm)
-	// 	fmt.Println(t.Observation)
+	// 	fmt.Println(t)
 	// 	fmt.Println()
 	// 	// m.Render()
 	// 	time.Sleep(50000000)
@@ -217,4 +224,25 @@ func main() {
 	// 		t = m.Reset()
 	// 	}
 	// }
+
+	// Zero RNG
+	weightSize := make([]float64, tm.ObservationSpec().Shape.Len())
+	rand := weights.NewZero(weightSize)
+
+	// Create the weight initializer with the RNG
+	init := weights.NewLinear(rand)
+
+	// Create the learning algorithm
+	q := qlearning.New(tm, args, init, seed)
+	// q := esarsa.New(g, args, init, seed)
+	q.ObserveFirst(t)
+
+	// Experiment
+	saver := savers.NewReturn("./data.bin")
+	e := experiment.NewOnline(tm, q, 1_00_000, saver)
+	e.Run()
+	e.Save()
+
+	data := savers.LoadData("./data.bin")
+	fmt.Println(data)
 }
