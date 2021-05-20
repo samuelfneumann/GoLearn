@@ -17,7 +17,7 @@ import (
 func QlearningMountainCar() {
 	var seed uint64 = 1923812
 
-	// Create the QLearning spec
+	// Create the QLearning config
 	args := spec.QLearning{E: 0.25, LearningRate: 0.01}
 
 	// Generate the starting state distribution
