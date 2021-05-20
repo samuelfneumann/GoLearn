@@ -172,7 +172,7 @@ func (m *MountainCar) Step(a mat.Vector) (ts.TimeStep, bool) {
 }
 
 // calculateRow calculates what to draw for a single row of text-based
-// rendering
+// rendering of the hill in Mountain Car
 func calculateRow(xIndices, width int) string {
 	var builder strings.Builder
 
