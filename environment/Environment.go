@@ -24,7 +24,6 @@ type Ender interface {
 
 // Task implements the reward scheme for taking actions in some environment
 type Task interface {
-	// fmt.Stringer
 	Starter
 	Ender
 	GetReward(state mat.Vector, a mat.Vector, nextState mat.Vector) float64
@@ -39,7 +38,6 @@ type Task interface {
 // return both the environment and the first timestep, ready to train on.
 type Environment interface {
 	Task
-	// fmt.Stringer
 	Reset() timestep.TimeStep // Resets between episodes
 	Step(action mat.Vector) (timestep.TimeStep, bool)
 	DiscountSpec() spec.Environment
