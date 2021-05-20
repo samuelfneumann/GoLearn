@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/environment"
@@ -12,9 +11,7 @@ import (
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/savers"
 	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/utils/matutils"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
-	"sfneuman.com/golearn/utils/matutils/tilecoder"
 )
 
 // "golang.org/x/exp/rand"
@@ -189,22 +186,30 @@ func main() {
 
 	// === === === === === === === === === === === === === === === ===
 	// Tile Coding
-	minDims := mat.NewVecDense(2, []float64{-2.0, -4})
-	maxDims := mat.NewVecDense(2, []float64{2.0, 4})
-	bins := []int{2, 8}
+	// minDims := mat.NewVecDense(2, []float64{-2.0, -4})
+	// maxDims := mat.NewVecDense(2, []float64{2.0, 4})
+	// bins := [][]int{{2, 2}, {2, 4}}
 
-	v := mat.NewVecDense(2, []float64{0.99, 0.0})
-	v2 := mat.NewVecDense(2, []float64{0.0, 0.0})
+	// v := mat.NewVecDense(2, []float64{0.99, 0.0})
+	// v2 := mat.NewVecDense(2, []float64{2.0, -1.0})
 
-	tc := tilecoder.New(2, minDims, maxDims, bins, seed, true)
+	// tc := tilecoder.New(minDims, maxDims, bins, seed, true)
 
-	b := mat.NewDense(2, 2, []float64{0.99, 0.0, 0.0, 0.0})
+	// b := mat.NewDense(2, 2, []float64{0.99, 2.0, 0.0, -1.0})
 
-	fmt.Println(matutils.Format(tc.Encode(v).T()))
-	fmt.Println(matutils.Format(tc.Encode(v2).T()))
-	fmt.Println(matutils.Format(tc.EncodeBatch(b).T()))
+	// fmt.Println(matutils.Format(tc.Encode(v).T()))
+	// fmt.Println(matutils.Format(tc.Encode(v2).T()))
+	// fmt.Println(tc.Encode(v2).Len())
+	// fmt.Println(matutils.Format(tc.EncodeBatch(b).T()))
 
-	tm, t := wrappers.NewTileCoding(m, 10, []int{5, 5}, seed)
+	tilings := make([][]int, 10)
+	for i := 0; i < len(tilings)/2; i++ {
+		tilings[i] = []int{5, 5}
+	}
+	for i := len(tilings) / 2; i < len(tilings); i++ {
+		tilings[i] = []int{3, 3}
+	}
+	tm, t := wrappers.NewTileCoding(m, tilings, seed)
 	// fmt.Println(tm)
 	// for i := 0; i < 110; i++ {
 	// 	action := 2.0
@@ -239,7 +244,7 @@ func main() {
 
 	// Experiment
 	saver := savers.NewReturn("./data.bin")
-	e := experiment.NewOnline(tm, q, 1_00_000, saver)
+	e := experiment.NewOnline(tm, q, 100_000, saver)
 	e.Run()
 	e.Save()
 

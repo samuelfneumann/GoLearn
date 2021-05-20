@@ -22,14 +22,22 @@ type TileCoding struct {
 	coder *tilecoder.TileCoder
 }
 
-// NewTileCoding creates and returns a new TileCoding environment
-func NewTileCoding(env environment.Environment, numTilings int, bins []int,
+// NewTileCoding creates and returns a new TileCoding environment,
+// given an existing environment to wrap.
+//
+// The bins parameter specifies both how many tilings to use as well
+// as the number of tiles per tiling. The length of the outer-slice is
+// the number of tilings. The lengths of the inner-slices are the
+// number of bins per dimension for that tiling.
+//
+// See tilecoder.TileCoder for more details.
+func NewTileCoding(env environment.Environment, bins [][]int,
 	seed uint64) (*TileCoding, ts.TimeStep) {
 	envSpec := env.ObservationSpec()
 	minDims := envSpec.LowerBound
 	maxDims := envSpec.UpperBound
 
-	coder := tilecoder.New(numTilings, minDims, maxDims, bins, seed, true)
+	coder := tilecoder.New(minDims, maxDims, bins, seed, true)
 
 	// Reset the tile-coded environment
 	step := env.Reset()

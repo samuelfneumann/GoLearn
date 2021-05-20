@@ -41,36 +41,68 @@ const OffsetDiv float64 = 1.5
 // uses multiple tilings, each of which consist of the name number
 // of tiles per tiling.
 type TileCoder struct {
-	numTilings        int
-	minDims           mat.Vector
-	offsets           []*mat.Dense
-	bins              []int
-	binLengths        []float64
-	seed              uint64
-	featuresPerTiling int
-	includeBias       bool
+	numTilings  int
+	minDims     mat.Vector
+	offsets     []*mat.Dense
+	bins        [][]int
+	binLengths  [][]float64
+	seed        uint64
+	includeBias bool
 }
 
 // NewTileCoder creates and returns a new TileCoder struct. The minDims
 // and maxDims arguments are the bounds on each dimension between which
 // tilings will be placed. These arguments should have the same shape
-// as vectors which will be tile coded. The bins argument determines
-// how many tiles are placed (per tilings) along each dimension and
-// should have the same number of elements as the minDims and maxDims
-// arguments. The parameter includeBias determines whether or not a
+// as vectors which will be tile coded.
+//
+// The bins argument determines both the number of tilings to use and
+// the number of tiles per each tiling. This parameter is a [][]int.
+// The number of elements in the outer slice determines the number of
+// tilings to use. The sub-slices determine how many tiles are placed
+// along each dimension for the respective tiling. For example, if
+// bins = [][]int{{2, 2}, {4, 3}}, then the TileCoder uses two tilings.
+// The first tiling is a 2x2 tiling, while the second is a 4x3 tiling.
+// The number of bins along each dimension should equal the length of
+// the minDims and maxDims parameters.
+//
+//The parameter includeBias determines whether or not a
 // bias unit is kept as the first unit in the tile coded representation.
-func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
+func New(minDims, maxDims mat.Vector, bins [][]int,
 	seed uint64, includeBias bool) *TileCoder {
+	// Error checking
+	if minDims.Len() != maxDims.Len() {
+		msg := fmt.Sprintf("cannot specify minimum with fewer dimensions "+
+			"than maximum: %d != %d", minDims.Len(), maxDims.Len())
+		panic(msg)
+	}
+	if len(bins) == 0 {
+		panic("cannot have less than 1 bin per dimension")
+	}
+	if len(bins[0]) != minDims.Len() {
+		msg := fmt.Sprintf("there should be a single number of bins for "+
+			"each dimension: \n\thave(%d) \n\twant (%d)", len(bins[0]),
+			minDims.Len())
+		panic(msg)
+	}
+
 	// Calculate the length of bins and the tiling offset bounds
 	var bounds []r1.Interval
-	binLengths := make([]float64, len(bins))
-	for i := 0; i < minDims.Len(); i++ {
-		// Calculate the length of bins
-		binLength := (maxDims.AtVec(i) - minDims.AtVec(i)) / float64(bins[i])
-		bound := binLength / OffsetDiv // Bounds tiling offsets
+	numTilings := len(bins)
+	binLengths := make([][]float64, numTilings)
 
-		binLengths[i] = binLength
-		bounds = append(bounds, r1.Interval{Min: -bound, Max: bound})
+	for j := 0; j < numTilings; j++ {
+		tilingBinLengths := make([]float64, minDims.Len())
+		binLengths[j] = tilingBinLengths
+
+		for i := 0; i < minDims.Len(); i++ {
+			// Calculate the length of bins
+			binLength := (maxDims.AtVec(i) - minDims.AtVec(i))
+			binLength /= float64(bins[j][i])
+			bound := binLength / OffsetDiv // Bounds tiling offsets
+
+			binLengths[j][i] = binLength
+			bounds = append(bounds, r1.Interval{Min: -bound, Max: bound})
+		}
 	}
 
 	// Create RNG for uniform sampling of tiling offsets
@@ -87,11 +119,18 @@ func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
 		offsets = append(offsets, samples)
 	}
 
-	// Number of features in each tiling
-	featuresPerTiling := prod(bins)
-
 	return &TileCoder{numTilings, minDims, offsets, bins, binLengths, seed,
-		featuresPerTiling, includeBias}
+		includeBias}
+}
+
+// Calculates how many features exist in the tile-coded representation
+// before tiling number i
+func (t *TileCoder) featuresBeforeTiling(i int) int {
+	features := 0
+	for j := 0; j < i; j++ {
+		features += prod(t.bins[j])
+	}
+	return features
 }
 
 // EncodeBatch encodes a batch of vectors held in a Dense matrix. In
@@ -121,13 +160,13 @@ func (t *TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 	for j := 0; j < t.numTilings; j++ {
 		// indexOffset is the index into the tile-coded vector at which
 		// the current tiling will start
-		indexOffset := j * t.featuresPerTiling
+		indexOffset := t.featuresBeforeTiling(j)
 		index := mat.NewVecDense(rows, nil)
 
 		// Tile code the batch based on the current tiling
 		// We loop through each feature to calculate the tile index to
 		// set to 1.0
-		for i := len(t.bins) - 1; i > -1; i-- {
+		for i := len(t.bins[j]) - 1; i > -1; i-- {
 			// Clone the next batch of features into the data vector
 			data.CloneFromVec(b.RowView(i))
 
@@ -145,17 +184,17 @@ func (t *TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 			// = ((data - min) / (max - min)) * binLength = IND
 			// int(IND) == index into tiling along current dimension
 			data.AddScaledVec(data, -t.minDims.AtVec(i), ones)
-			matutils.VecFloor(data, t.binLengths[i])
+			matutils.VecFloor(data, t.binLengths[j][i])
 
 			// If out-of-bounds, use the last tile
-			matutils.VecClip(data, 0.0, float64(t.bins[i]-1))
+			matutils.VecClip(data, 0.0, float64(t.bins[j][i]-1))
 
 			// Calculate the index into the tile-coded representation
 			// that should be 1.0 for this tiling
-			if i == len(t.bins)-1 {
+			if i == len(t.bins[j])-1 {
 				index.AddVec(index, data)
 			} else {
-				index.AddScaledVec(index, float64(t.bins[i+1]), data)
+				index.AddScaledVec(index, float64(t.bins[j][i+1]), data)
 			}
 		}
 
@@ -191,31 +230,31 @@ func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 	for j := 0; j < t.numTilings; j++ {
 		// indexOffset is the index into the tile-coded vector at which
 		// the current tiling will start
-		indexOffset := j * t.featuresPerTiling
+		indexOffset := t.featuresBeforeTiling(j)
 		index := 0
 
 		// Tile code the vector based on the current tiling
 		// We loop through each feature to calculate the tile index to
 		// set to 1.0 along this feature dimension
-		for i := len(t.bins) - 1; i > -1; i-- {
+		for i := len(t.bins[j]) - 1; i > -1; i-- {
 			// Offset the tiling
 			data := v.AtVec(i) + t.offsets[j].At(0, i)
 
 			// Calculate the index of the tile along the current feature
 			// dimension in which the feature falls
-			tile := math.Floor((data - t.minDims.AtVec(i)) / t.binLengths[i])
+			tile := math.Floor((data - t.minDims.AtVec(i)) / t.binLengths[j][i])
 
 			// Clip tile to within tiling bounds
-			tile = math.Min(tile, float64(t.bins[i]-1))
+			tile = math.Min(tile, float64(t.bins[j][i]-1))
 			tile = math.Max(tile, 0)
 
 			// Calculate the index into the tile-coded representation
 			// that should be 1.0 for this tiling
 			tileIndex := int(tile)
-			if i == len(t.bins)-1 {
+			if i == len(t.bins[j])-1 {
 				index += tileIndex
 			} else {
-				index += tileIndex * t.bins[i+1]
+				index += tileIndex * t.bins[j][i+1]
 			}
 		}
 		// Offset the 1.0 based on which tiling was used for the previous
@@ -235,10 +274,14 @@ func (t *TileCoder) String() string {
 
 // VecLength returns the number of features in a tile-coded vector
 func (t *TileCoder) VecLength() int {
-	if t.includeBias {
-		return t.numTilings*t.featuresPerTiling + 1
+	baseVec := 0
+	for i := 0; i < t.numTilings; i++ {
+		baseVec += prod(t.bins[i])
 	}
-	return t.numTilings * t.featuresPerTiling
+	if t.includeBias {
+		return baseVec + 1
+	}
+	return baseVec
 }
 
 // prod calculates the product of all integers in a []int
