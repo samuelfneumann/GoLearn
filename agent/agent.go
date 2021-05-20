@@ -3,10 +3,7 @@ package agent
 
 import (
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
 // Agent determines the implementation details of an agent or algorithm
@@ -17,8 +14,6 @@ import (
 type Agent interface {
 	Learner
 	Policy
-	New(env environment.Environment, agent spec.Agent,
-		init weights.Initializer, seed uint64)
 }
 
 // Learner implements a learning algorithm that defines how weights are

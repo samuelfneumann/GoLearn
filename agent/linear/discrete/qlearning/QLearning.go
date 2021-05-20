@@ -7,6 +7,7 @@
 package qlearning
 
 import (
+	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/policy"
 	"sfneuman.com/golearn/environment"
@@ -22,6 +23,20 @@ type QLearning struct {
 	agent.Policy // Behaviour
 	Target       agent.Policy
 	seed         uint64
+}
+
+// SetWeights sets the weights of the QLearning Learner and Policies
+func (q *QLearning) SetWeights(weights map[string]*mat.Dense) error {
+	// Learner and Policies share weights, so it is sufficient to call
+	// SetWeights() on only one of these fields
+	return q.Learner.SetWeights(weights)
+}
+
+// Weights gets the weights of the QLearning Learner and Policies
+func (q *QLearning) Weights() map[string]*mat.Dense {
+	// Learner and Policies share weights, so it is sufficient to call
+	// Weights() on only one of these fields
+	return q.Learner.Weights()
 }
 
 // New creates a new QLearning struct. The agent spec agent should be
