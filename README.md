@@ -125,6 +125,19 @@ the length of sub-slices should be equal to the environmental
 observation vector's lengths. In the example above, we would expect the
 embedded `Environment` to return `2D` vector observations.
 
+Tile coding requires bounding the ranges of each feature dimension. The
+`TileCoding Environment` takes care of this itself, and creates the tilings
+automatically over these poritons of state feature space.
+
+Tile coding also requires that tilings be offset from one another. Each
+tiling is offset from the origin by uniformly randomly sampling an
+offset between `[-tileWidth / OffsetDiv, tileWidth / OffsetDiv]` *for
+each feature dimension*, where 'tilecoder.OffsetDiv` is a global constant
+that determines the degree to which tiles are offset from the origin.
+Note that tilings are offset for *each state feature dimension*, meaning
+that the tiling needs to be offset in each dimension that is tile coded.
+If state features are `n-D`, then the offset of the tilings is also `n-D`.
+
 # Experiments
 ## Savers
 `Savers` define what data an `Experiment` will save to disk. For example,
