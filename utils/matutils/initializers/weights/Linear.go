@@ -5,7 +5,7 @@ import (
 	"gonum.org/v1/gonum/stat/distmv"
 )
 
-// Linear initializes a single linear layer or matrix
+// Linear initializes a single linear layer or matrix.
 type Linear struct {
 	rand distmv.Rander
 }
