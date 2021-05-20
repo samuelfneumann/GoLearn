@@ -19,7 +19,7 @@ func NewLinear(rand distmv.Rander) Linear {
 	return Linear{rand}
 }
 
-// Initialize initializes a layer of weights
+// Initialize initializes a linear layer of weights
 func (l Linear) Initialize(weights *mat.Dense) {
 	if weights == nil {
 		panic("cannot pass nil weights")

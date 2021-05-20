@@ -109,7 +109,7 @@ func (t *TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 	}
 
 	rows, cols := b.Dims()
-	tileCoded := mat.NewDense(t.VecLength()+bias, cols, nil)
+	tileCoded := mat.NewDense(t.VecLength(), cols, nil)
 
 	// A vector of 1.0's will be needed for calculations later
 	ones := matutils.VecOnes(rows)
@@ -185,7 +185,7 @@ func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 		bias = 1
 	}
 
-	tileCoded := mat.NewVecDense(t.VecLength()+bias, nil)
+	tileCoded := mat.NewVecDense(t.VecLength(), nil)
 
 	// Tile code for each sequential tiling
 	for j := 0; j < t.numTilings; j++ {
@@ -235,6 +235,9 @@ func (t *TileCoder) String() string {
 
 // VecLength returns the number of features in a tile-coded vector
 func (t *TileCoder) VecLength() int {
+	if t.includeBias {
+		return t.numTilings*t.featuresPerTiling + 1
+	}
 	return t.numTilings * t.featuresPerTiling
 }
 
