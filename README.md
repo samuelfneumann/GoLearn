@@ -14,7 +14,31 @@ action.
 ## Starter Interface
 ## Ender Interface
 ## Environment Wrappers
-### Tile-Coding
+### wrappers.TileCoding
+A TileCoding is an environment wrapper, itself being an environment.
+The TileCoding struct will tile-code all observations before passing
+them to an agent. The TileCoding struct has the constructor:
+```
+func NewTileCoding(env environment.Environment, bins [][]int,
+	seed uint64) (*TileCoding, ts.TimeStep)
+```
+The `env` parameter is an environment to wrap. The `bins` parameter
+determins both the number of tilings to use and the bins per each
+dimension, per tiling. The length of the outer slice is the number of
+tilings for the TileCoding environment to use. The sub-slices determine
+the number of tiles per dimension to use in each respective tiling.
+For example, if we had:
+```
+bins := [][]int{{2, 3}, {16, 21}, {5, 6}}
+```
+Then the TileCoding environment would tile code all environmental
+observations using `3` tilings before passing the observations back to
+the agent. The first tiling has shape `2x3` tiles. The second tiling
+will have shape `16x21` tiles. The third tiling will have 5 tiles
+along the first dimension and 6 along the second dimension. Note that
+the length of sub-slices should be equal to the environmental
+observation vector's lengths. In the example above, we would expect the
+environment to return `2D` vector observations.
 
 # Experiments
 ## Savers

@@ -60,10 +60,12 @@ type TileCoder struct {
 // The number of elements in the outer slice determines the number of
 // tilings to use. The sub-slices determine how many tiles are placed
 // along each dimension for the respective tiling. For example, if
-// bins = [][]int{{2, 2}, {4, 3}}, then the TileCoder uses two tilings.
-// The first tiling is a 2x2 tiling, while the second is a 4x3 tiling.
-// The number of bins along each dimension should equal the length of
-// the minDims and maxDims parameters.
+// bins := [][]int{{2, 2}, {4, 3}}, then the TileCoder uses two tilings.
+// The first tiling is a 2x2 tiling. The second tiling uses 4 tiles
+// along the first dimension and 3 tiles along the second dimension.
+// The number of tiles along each dimension should equal the length of
+// the minDims and maxDims parameters. That is, len(bins[i]) ==
+// minDims.Len() == maxDims.Len() for any i in [0, len(bins)-1].
 //
 //The parameter includeBias determines whether or not a
 // bias unit is kept as the first unit in the tile coded representation.
