@@ -132,7 +132,7 @@ automatically over these poritons of state feature space.
 Tile coding also requires that tilings be offset from one another. Each
 tiling is offset from the origin by uniformly randomly sampling an
 offset between `[-tileWidth / OffsetDiv, tileWidth / OffsetDiv]` *for
-each feature dimension*, where 'tilecoder.OffsetDiv` is a global constant
+each feature dimension*, where `tilecoder.OffsetDiv` is a global constant
 that determines the degree to which tiles are offset from the origin.
 Note that tilings are offset for *each state feature dimension*, meaning
 that the tiling needs to be offset in each dimension that is tile coded.
