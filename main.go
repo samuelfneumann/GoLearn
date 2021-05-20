@@ -202,11 +202,12 @@ func main() {
 	// fmt.Println(tc.Encode(v2).Len())
 	// fmt.Println(matutils.Format(tc.EncodeBatch(b).T()))
 
-	tilings := make([][]int, 10)
-	for i := 0; i < len(tilings)/2; i++ {
+	numTilings := 15
+	tilings := make([][]int, numTilings)
+	for i := 0; i < len(tilings)/3; i++ {
 		tilings[i] = []int{5, 5}
 	}
-	for i := len(tilings) / 2; i < len(tilings); i++ {
+	for i := len(tilings) / 3; i < len(tilings); i++ {
 		tilings[i] = []int{3, 3}
 	}
 	tm, t := wrappers.NewTileCoding(m, tilings, seed)
