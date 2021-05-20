@@ -24,7 +24,7 @@ type Experiment interface {
 	Save()             // Save all tracked data
 }
 
-// Online is an Experiment runs an agent online only. No offline
+// Online is an Experiment that runs an agent online only. No offline
 // evaluation is performed.
 type Online struct {
 	env.Environment
