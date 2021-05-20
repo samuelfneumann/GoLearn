@@ -48,6 +48,7 @@ type TileCoder struct {
 	binLengths        []float64
 	seed              uint64
 	featuresPerTiling int
+	includeBias       bool
 }
 
 // NewTileCoder creates and returns a new TileCoder struct. The minDims
@@ -56,9 +57,10 @@ type TileCoder struct {
 // as vectors which will be tile coded. The bins argument determines
 // how many tiles are placed (per tilings) along each dimension and
 // should have the same number of elements as the minDims and maxDims
-// arguments.
+// arguments. The parameter includeBias determines whether or not a
+// bias unit is kept as the first unit in the tile coded representation.
 func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
-	seed uint64) *TileCoder {
+	seed uint64, includeBias bool) *TileCoder {
 	// Calculate the length of bins and the tiling offset bounds
 	var bounds []r1.Interval
 	binLengths := make([]float64, len(bins))
@@ -89,7 +91,7 @@ func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
 	featuresPerTiling := prod(bins)
 
 	return &TileCoder{numTilings, minDims, offsets, bins, binLengths, seed,
-		featuresPerTiling}
+		featuresPerTiling, includeBias}
 }
 
 // EncodeBatch encodes a batch of vectors held in a Dense matrix. In
@@ -101,8 +103,13 @@ func New(numTilings int, minDims, maxDims mat.Vector, bins []int,
 // representation and c is the number of samples in the batch (the
 // number of columns in the input matrix)
 func (t *TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
+	bias := 0
+	if t.includeBias {
+		bias = 1
+	}
+
 	rows, cols := b.Dims()
-	tileCoded := mat.NewDense(t.VecLength(), cols, nil)
+	tileCoded := mat.NewDense(t.VecLength()+bias, cols, nil)
 
 	// A vector of 1.0's will be needed for calculations later
 	ones := matutils.VecOnes(rows)
@@ -156,17 +163,29 @@ func (t *TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 		for i := 0; i < index.Len(); i++ {
 			// Offset the 1.0 based on which tiling was used for the previous
 			// iteration of coding
-			row := indexOffset + int(index.AtVec(i))
+			row := indexOffset + int(index.AtVec(i)) + bias
 
 			tileCoded.Set(row, i, 1.0)
 		}
+	}
+	if t.includeBias {
+		biasUnits := make([]float64, cols)
+		for i := 0; i < cols; i++ {
+			biasUnits[i] = 1.0
+		}
+		tileCoded.SetRow(0, biasUnits)
 	}
 	return tileCoded
 }
 
 // Encode encodes a single vector as a tile-coded vector
 func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
-	tileCoded := mat.NewVecDense(t.VecLength(), nil)
+	bias := 0
+	if t.includeBias {
+		bias = 1
+	}
+
+	tileCoded := mat.NewVecDense(t.VecLength()+bias, nil)
 
 	// Tile code for each sequential tiling
 	for j := 0; j < t.numTilings; j++ {
@@ -201,7 +220,10 @@ func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 		}
 		// Offset the 1.0 based on which tiling was used for the previous
 		// iteration of coding
-		tileCoded.SetVec(indexOffset+index, 1.0)
+		tileCoded.SetVec(indexOffset+index+bias, 1.0)
+	}
+	if t.includeBias {
+		tileCoded.SetVec(0, 1.0)
 	}
 	return tileCoded
 }

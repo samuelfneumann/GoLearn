@@ -15,7 +15,8 @@ import (
 // TileCoding wraps an environment and returns tile-coded observations
 // of the environment states. TileCoding itself implements the
 // environment.Environment interface and is therefore itself an
-// environment
+// environment. All tile-coded representations will contain a bias unit
+// as the first feature in the tile-coded representation.
 type TileCoding struct {
 	environment.Environment
 	coder *tilecoder.TileCoder
@@ -28,7 +29,7 @@ func NewTileCoding(env environment.Environment, numTilings int, bins []int,
 	minDims := envSpec.LowerBound
 	maxDims := envSpec.UpperBound
 
-	coder := tilecoder.New(numTilings, minDims, maxDims, bins, seed)
+	coder := tilecoder.New(numTilings, minDims, maxDims, bins, seed, true)
 
 	// Reset the tile-coded environment
 	step := env.Reset()
