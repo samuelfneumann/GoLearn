@@ -39,10 +39,19 @@ func QlearningMountainCar() {
 	// To use Linear Q-learning, we need to tile code the environment
 	// states. Tile coding requires that each state observation
 	// dimension be bounded. The wrappers.TileCoding struct will take
-	// care of bounding the state dimensions for us
-	tilings := 10
-	bins := []int{5, 5} // Use 5 x 5 tilings
-	tm, _ := wrappers.NewTileCoding(env, tilings, bins, seed)
+	// care of bounding the state dimensions for us, we just have to
+	// choose the number of tilings and the tiles for each dimension
+	// per tiling. Here, we create 5 tilings of size 5x5 tiles and
+	// 5 tilings of size 3x3 tiles for our TileCoder.
+	numTilings := 10
+	tilings := make([][]int, numTilings)
+	for i := 0; i < len(tilings)/2; i++ {
+		tilings[i] = []int{5, 5}
+	}
+	for i := len(tilings) / 2; i < len(tilings); i++ {
+		tilings[i] = []int{3, 3}
+	}
+	tm, _ := wrappers.NewTileCoding(env, tilings, seed)
 
 	// Create the Q-learning algorithm. First, we defined an initialization
 	// method for the Linear Q-learning algorithm's weights.
