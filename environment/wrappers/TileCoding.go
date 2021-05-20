@@ -38,6 +38,17 @@ func NewTileCoding(env environment.Environment, numTilings int, bins []int,
 	return &TileCoding{env, coder}, step
 }
 
+// Reset resets the environment to some starting state
+func (t *TileCoding) Reset() ts.TimeStep {
+	step := t.Environment.Reset()
+
+	// Tile code first observation
+	obs := t.coder.Encode(step.Observation)
+	step.Observation = obs
+
+	return step
+}
+
 // Step takes one environmental step given action a and returns the next
 // state as a timestep.TimeStep and a bool indicating whether or not the
 // episode has ended

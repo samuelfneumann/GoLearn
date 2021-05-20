@@ -1,6 +1,8 @@
 package mountaincar
 
-import "sfneuman.com/golearn/timestep"
+import (
+	"sfneuman.com/golearn/timestep"
+)
 
 // GoalEnder implements functionality for ending an episode of the
 // MountainCar environment once a goal position has been reached
