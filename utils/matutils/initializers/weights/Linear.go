@@ -5,29 +5,45 @@ import (
 	"gonum.org/v1/gonum/stat/distmv"
 )
 
-// Linear initializes a single linear layer or matrix.
-type Linear struct {
-	rand distmv.Rander
+// LinearMV initializes a single linear layer or matrix using weights
+// drawn from a multivariate distribution. The distribution should have
+// as many dimensions as there are columns in the matrix. The
+// initializer then initializes all columns of a single row of the
+// matrix by  sampling from the distribution. This is repeated for each
+// row.
+//
+// This function assumes that each column corresponds to weights that
+// are multiplied by by a single feature. Each row is a new sample of
+// weights. For example, if we had 10 features and 4 actions for a
+// Q-learning agent, then the weight matrix should be (4 x 10), and
+// this function will initialize all 10 weights on a row-by-row basis.
+// For a given row, each column will be initialized from some
+// distribution which may be different from distributions for
+// initialization of subsequent columns in the same row. For a given
+// column, all weights in all rows will be initialized from the same
+// distribution.
+type LinearMV struct {
+	distmv.Rander
 }
 
 // NewLinear returns a new Linear Initializer, with weights drawn from
 // the distribution defined by rand
-func NewLinear(rand distmv.Rander) Linear {
+func NewLinearMV(rand distmv.Rander) LinearMV {
 	if rand == nil {
 		panic("rand cannot be nil")
 	}
-	return Linear{rand}
+	return LinearMV{rand}
 }
 
 // Initialize initializes a linear layer of weights
-func (l Linear) Initialize(weights *mat.Dense) {
+func (l LinearMV) Initialize(weights *mat.Dense) {
 	if weights == nil {
 		panic("cannot pass nil weights")
 	}
 	r, _ := weights.Dims()
 
 	for i := 0; i < r; i++ {
-		row := l.rand.Rand(nil)
+		row := l.Rand(nil)
 		weights.SetRow(i, row)
 	}
 }

@@ -51,7 +51,7 @@ func Gridworld() {
 	rand := weights.NewZero(weightSize)
 
 	// Create the weight initializer previously crated RNG
-	init := weights.NewLinear(rand)
+	init := weights.NewLinearMV(rand)
 
 	// Create the learning algorithm
 	q := qlearning.New(g, args, init, seed)

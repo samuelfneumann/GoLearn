@@ -51,7 +51,7 @@ func QlearningMountainCar() {
 	rand := weights.NewZero(weightSize) // Zero RNG
 
 	// Create the weight initializer with the RNG
-	init := weights.NewLinear(rand)
+	init := weights.NewLinearMV(rand)
 
 	// Create the Q-learning algorithm
 	q := qlearning.New(tm, args, init, seed)
