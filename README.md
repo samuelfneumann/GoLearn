@@ -43,11 +43,3 @@ type Saver interface {
 ```
 Savers follow the observer-observable design pattern to track data
 generated from an experiment and save it later.
-
-# To Do
-- [  ] Environments should deal with Starters gracefully. If given a starter that starts out-of-bounds, then clip/normalize so that the starting state is within bounds if possible.
--[  ] Rename Agent Spec struct to Config. Spec should describe something, config should determine a configuration of something.
--[  ] Add environment rendering
--[  ] Agent Spec/Config structs should work as the following
--[  ] Config structs should use JSON
--[  ] For now, env animations can just generate and save PNGs, but later we should do this with OpenGL
