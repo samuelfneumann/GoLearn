@@ -9,7 +9,10 @@ import (
 )
 
 // EpisodeLength tracks and saves the lengths of episodes in an
-// experiment
+// experiment.
+// Note that an episode must finish for this Saver to save its data.
+// If the last episode in an experiment does not finish, that episode's
+// length will not be saved.
 type EpisodeLength struct {
 	episodeLengths []int
 	filename       string

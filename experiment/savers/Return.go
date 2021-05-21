@@ -9,7 +9,10 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
-// Return tracks and saves the episodic return in an experiment
+// Return tracks and saves the episodic return in an experiment.
+// Note that an episode must finish for this Saver to save its data.
+// If the last episode in an experiment does not finish, that episode's
+// return will not be saved.
 type Return struct {
 	lastTimeStep   int
 	currentReturn  float64
