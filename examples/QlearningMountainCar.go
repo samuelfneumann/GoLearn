@@ -33,7 +33,7 @@ func QlearningMountainCar() {
 
 	// Create the Mountain Car environment
 	discount := 1.0
-	env, _ := mountaincar.New(task, discount)
+	env, _ := mountaincar.NewDiscrete(task, discount)
 	fmt.Println(env)
 
 	// To use Linear Q-learning, we need to tile code the environment
