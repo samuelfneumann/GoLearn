@@ -1,10 +1,7 @@
-// Package mountaincar implements the discrete action classic control
-// environment "Mountain Car"
 package mountaincar
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"strings"
 
@@ -15,35 +12,18 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
-const (
-	MinPosition float64 = -1.2
-	MaxPosition float64 = 0.6
-	MaxSpeed    float64 = 0.07
-	Force       float64 = 0.001
-	Gravity     float64 = 0.0025
-)
-
-// Mountain Car in a classic control environment where an agent must
-// learn to drive an underpowered car up a hill. Actions are discrete in
-// (0, 1, 2) where:
+// base implements the underlying Mountain Car environment. It tracks
+// all the needed physical and environmental variables, but does not
+// compute next states given actions. The Discrete and Continuous
+// structs each embed a base environment and calculate the next states
+// from actions. This class is only used to track the Task and current state.
 //
-//	Action	Meaning
-//	  0		Accelerate left
-//	  1		Do nothing
-//	  2		Accelerate right
-//
-//  Actions other than 0, 1, or 2 result in a panic
-//
-// When designing a starter for this environment, care should be taken to
-// ensure that the starting states are chosen within the environmental
-// bounds. If the starter produces a state outside of the position and
-// speed bounds, the environment will panic. This may happen near the
-// end of training, resulting in significant data loss.
-//
-// Any taks may be used with the MountainCar environment, but the
-// classic control task is defined in the Goal struct, where the agent
-// must learn to reach the goal at the top of the hill.
-type MountainCar struct {
+// Note that this struct does not implement the environment.Environment
+// interface and is used only to unify the Discrete and Continuous
+// action versions of Mountain Car by storing and updating variables
+// that are common to both environment. This reduces code duplication
+// between the two environments.
+type base struct {
 	env.Task
 	positionBounds r1.Interval
 	speedBounds    r1.Interval
@@ -53,8 +33,8 @@ type MountainCar struct {
 	gravity        float64
 }
 
-// New creates a new MountainCar environment with the argument task
-func New(t env.Task, discount float64) (*MountainCar, ts.TimeStep) {
+// newBase creates a new base environment with the argument task
+func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 	positionBounds := r1.Interval{Min: MinPosition, Max: MaxPosition}
 	speedBounds := r1.Interval{Min: -MaxSpeed, Max: MaxSpeed}
 
@@ -63,7 +43,7 @@ func New(t env.Task, discount float64) (*MountainCar, ts.TimeStep) {
 
 	firstStep := ts.New(ts.First, 0.0, discount, state, 0)
 
-	mountainCar := MountainCar{t, positionBounds, speedBounds, firstStep,
+	mountainCar := base{t, positionBounds, speedBounds, firstStep,
 		discount, Force, Gravity}
 
 	return &mountainCar, firstStep
@@ -72,7 +52,7 @@ func New(t env.Task, discount float64) (*MountainCar, ts.TimeStep) {
 
 // ObservationSpec returns the observation specification of the
 // environment
-func (m *MountainCar) ObservationSpec() spec.Environment {
+func (m *base) ObservationSpec() spec.Environment {
 	shape := mat.NewVecDense(2, nil)
 	lowerBound := mat.NewVecDense(2, []float64{m.positionBounds.Min,
 		m.speedBounds.Min})
@@ -84,19 +64,8 @@ func (m *MountainCar) ObservationSpec() spec.Environment {
 
 }
 
-// ActionSpec returns the action specification of the environment
-func (m *MountainCar) ActionSpec() spec.Environment {
-	shape := mat.NewVecDense(1, nil)
-	lowerBound := mat.NewVecDense(1, []float64{0})
-	upperBound := mat.NewVecDense(1, []float64{2})
-
-	return spec.NewEnvironment(shape, spec.Action, lowerBound,
-		upperBound, spec.Discrete)
-
-}
-
 // DiscountSpec returns the discounting specification of the environment
-func (m *MountainCar) DiscountSpec() spec.Environment {
+func (m *base) DiscountSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{m.discount})
 	upperBound := mat.NewVecDense(1, []float64{m.discount})
@@ -108,7 +77,7 @@ func (m *MountainCar) DiscountSpec() spec.Environment {
 
 // Reset resets the environment and returns a starting state drawn from
 // the environment Starter
-func (m *MountainCar) Reset() ts.TimeStep {
+func (m *base) Reset() ts.TimeStep {
 	state := m.Start()
 	validateState(state, m.positionBounds, m.speedBounds)
 	startStep := ts.New(ts.First, 0, m.discount, state, 0)
@@ -117,48 +86,18 @@ func (m *MountainCar) Reset() ts.TimeStep {
 	return startStep
 }
 
-// NextState calculates the next state in the environment given action a
-func (m *MountainCar) NextState(a mat.Vector) mat.Vector {
-	action := a.AtVec(0)
-
-	// Ensure a legal action was selected
-	intAction := int(action)
-	if intAction != 0 && intAction != 1 && intAction != 2 {
-		panic(fmt.Sprintf("illegal action %v \u2209 (0, 1, 2)", intAction))
-	}
-
-	// Get the current state
-	state := m.lastStep.Observation
-	position, velocity := state.AtVec(0), state.AtVec(1)
-
-	// Update the velocity
-	velocity += (action-1.0)*m.force + math.Cos(3*position)*(-m.gravity)
-	velocity = math.Min(velocity, m.speedBounds.Max)
-	velocity = math.Max(velocity, m.speedBounds.Min)
-
-	// Update the position
-	position += velocity
-	position = math.Min(position, m.positionBounds.Max)
-	position = math.Max(position, m.positionBounds.Min)
-
-	// Ensure position stays within bounds
-	if position <= m.positionBounds.Min && velocity < 0 {
-		velocity = 0
-	}
-
+// update updates the base environment to change the last state to newState.
+// This function also checks whether or not a TimeStep is the last in the
+// episode, adjusting it accordingly. This funciton also calculates the
+// reward for the previous state and given action as defined by the
+// Task. This function returns the next TimeStep and whether or not this
+// TimeStep is the last in the episode.
+//
+// This function updates the underlying variables which are common to
+// both the Discrete and Continuous action versions of Mountain Car.
+func (m *base) update(action, newState mat.Vector) (ts.TimeStep, bool) {
 	// Create the new timestep
-	newState := mat.NewVecDense(2, []float64{position, velocity})
-	return newState
-
-}
-
-// Step takes one environmental step given action a and returns the next
-// state as a timestep.TimeStep and a bool indicating whether or not the
-// episode has ended
-func (m *MountainCar) Step(a mat.Vector) (ts.TimeStep, bool) {
-	// Create the new timestep
-	newState := m.NextState(a)
-	reward := m.GetReward(m.lastStep.Observation, a, newState)
+	reward := m.GetReward(m.lastStep.Observation, action, newState)
 	nextStep := ts.New(ts.Mid, reward, m.discount, newState,
 		m.lastStep.Number+1)
 
@@ -171,30 +110,8 @@ func (m *MountainCar) Step(a mat.Vector) (ts.TimeStep, bool) {
 
 }
 
-// calculateRow calculates what to draw for a single row of text-based
-// rendering of the hill in Mountain Car
-func calculateRow(xIndices, width int) string {
-	var builder strings.Builder
-
-	// Starting "=" signs
-	for i := 0; i < width; i++ {
-		fmt.Fprintf(&builder, "=")
-	}
-
-	// Spaces
-	for i := 0; i < xIndices-(2*width); i++ {
-		fmt.Fprintf(&builder, " ")
-	}
-
-	// Ending "="
-	for i := 0; i < width; i++ {
-		fmt.Fprintf(&builder, "=")
-	}
-	return builder.String()
-}
-
 // Render renders a text-based version of the environment
-func (m *MountainCar) Render() {
+func (m *base) Render() {
 	xIndices := 16
 
 	// Print the hill
@@ -233,10 +150,32 @@ func (m *MountainCar) Render() {
 }
 
 // String returns a string representation of the environment
-func (m *MountainCar) String() string {
+func (m *base) String() string {
 	str := "Mountain Car  |  Position: %v  |  Speed: %v"
 	state := m.lastStep.Observation
 	return fmt.Sprintf(str, state.AtVec(0), state.AtVec(1))
+}
+
+// calculateRow calculates what to draw for a single row of text-based
+// rendering of the hill in Mountain Car
+func calculateRow(xIndices, width int) string {
+	var builder strings.Builder
+
+	// Starting "=" signs
+	for i := 0; i < width; i++ {
+		fmt.Fprintf(&builder, "=")
+	}
+
+	// Spaces
+	for i := 0; i < xIndices-(2*width); i++ {
+		fmt.Fprintf(&builder, " ")
+	}
+
+	// Ending "="
+	for i := 0; i < width; i++ {
+		fmt.Fprintf(&builder, "=")
+	}
+	return builder.String()
 }
 
 // validateState validates the state to ensure the position and speed

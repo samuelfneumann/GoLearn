@@ -17,7 +17,7 @@ type Starter interface {
 // Ender determines when the agent-environment interaction ends an episode
 type Ender interface {
 	// End takes the next timestep and checks if it is the last in the episode
-	// If it is the last timestep, End adjusts the StepType
+	// If it is the last timestep, End adjusts the StepType.
 	// Returns whether or not the episode has ended
 	End(*timestep.TimeStep) bool
 }
