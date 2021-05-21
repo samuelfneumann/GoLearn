@@ -37,7 +37,7 @@ of an agent-environment interaction.
 ## Task Interface
 
 ### Starter Interface
-The `Starter` interface determines how a task starts in an environment:
+The `Starter` interface determines how a `Task` starts in an `Environment`:
 ```
 type Starter interface {
 	Start() mat.Vector
@@ -65,6 +65,26 @@ uniformly, where `x ∈ [-0.6, 0.2]` and `y ∈ [-0.02, 0.02]`.
 
 
 ### Ender Interface
+The `Ender` interface determines how a `Task` ends in an `Environment`:
+```
+type Ender interface {
+	End(*timestep.TimeStep) bool
+}
+```
+The `End()` method takes in a pointer to a `TimeStep`. The function checks
+whether this `TimeStep` is the last in the episode. If so, the function
+first changest the `TimeStep.StepType` field to `timestep.Last` and returns
+`true`. If not, the function leaves the `TimeStep.StepType` field as
+`timestep.Mid` and returns `false`.
+
+The `environment` package implements global `Ender`s which can be used
+with any `Environment`. Sub-packages of the `environment` package (such
+as `environment/classiccontrol/mountaincar`) implement `Ender`s which
+may be used for `Environment`s within that package. The global
+`Ender`s are:
+
+* `StepLimit`: ends episodes at a specific timestep limit.
+
 ## Environment Wrappers
 `Environment` wrappers can be founds in the `environment/wrappers` package.
 
@@ -168,5 +188,6 @@ type Saver interface {
 	Save()
 }
 ```
+
 `Savers` follow the `observer-observable` design pattern to track data
 generated from an experiment and save it later.
