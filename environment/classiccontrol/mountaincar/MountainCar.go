@@ -2,6 +2,7 @@ package mountaincar
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -10,6 +11,23 @@ import (
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
 	ts "sfneuman.com/golearn/timestep"
+	"sfneuman.com/golearn/utils/floatutils"
+)
+
+const (
+	MinPosition float64 = -1.2
+	MaxPosition float64 = 0.6
+	MaxSpeed    float64 = 0.07
+	Power       float64 = 0.0015 // Engine power
+	Gravity     float64 = 0.0025
+
+	// Discrete Actions Env
+	MinDiscreteAction float64 = 0.0
+	MaxDiscreteAction float64 = 2.0
+
+	// Continuous Actions Env
+	MinContinuousAction float64 = -1.0
+	MaxContinuousAction float64 = 1.0
 )
 
 // base implements the underlying Mountain Car environment. It tracks
@@ -29,7 +47,7 @@ type base struct {
 	speedBounds    r1.Interval
 	lastStep       ts.TimeStep
 	discount       float64
-	force          float64
+	power          float64
 	gravity        float64
 }
 
@@ -44,7 +62,7 @@ func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 	firstStep := ts.New(ts.First, 0.0, discount, state, 0)
 
 	mountainCar := base{t, positionBounds, speedBounds, firstStep,
-		discount, Force, Gravity}
+		discount, Power, Gravity}
 
 	return &mountainCar, firstStep
 
@@ -84,6 +102,32 @@ func (m *base) Reset() ts.TimeStep {
 	m.lastStep = startStep
 
 	return startStep
+}
+
+// NextState calculates the next state in the environment given action a
+func (m *base) nextState(force float64) mat.Vector {
+	// Get the current state
+	state := m.lastStep.Observation
+	position, velocity := state.AtVec(0), state.AtVec(1)
+
+	// Update the velocity
+	velocity += force*m.power - m.gravity*math.Cos(3*position)
+	velocity = floatutils.Clip(velocity, m.speedBounds.Min, m.speedBounds.Max)
+
+	// Update the position
+	position += velocity
+	position = floatutils.Clip(position, m.positionBounds.Min,
+		m.positionBounds.Max)
+
+	// Ensure position stays within bounds
+	if position <= m.positionBounds.Min && velocity < 0 {
+		velocity = 0
+	}
+
+	// Create the new timestep
+	newState := mat.NewVecDense(2, []float64{position, velocity})
+	return newState
+
 }
 
 // update updates the base environment to change the last state to newState.
