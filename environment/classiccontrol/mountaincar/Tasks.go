@@ -15,8 +15,6 @@ type Goal struct {
 	goalEnder environment.Ender
 	stepEnder environment.Ender
 	goalX     float64 // x position of goal
-	Force     float64
-	Gravity   float64
 }
 
 // NewGoal creates and returns a new Goal struct given a Starter, which
@@ -25,7 +23,7 @@ type Goal struct {
 func NewGoal(s environment.Starter, episodeSteps int, goalX float64) *Goal {
 	stepEnder := environment.NewStepLimit(episodeSteps)
 	goalEnder := NewGoalEnder(goalX)
-	return &Goal{s, goalEnder, stepEnder, goalX, Force, Gravity}
+	return &Goal{s, goalEnder, stepEnder, goalX}
 }
 
 // AtGoal returns a boolean indicating whether or not the argument state
