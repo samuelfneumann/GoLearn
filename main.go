@@ -161,14 +161,14 @@ func main() {
 
 	s := environment.NewUniformStarter([]r1.Interval{positionBounds, speedBounds}, seed)
 	task := mountaincar.NewGoal(s, 1000, 0.45)
-	m, t := mountaincar.New(task, 1.0)
-	fmt.Println(t)
-	fmt.Println(m)
+	m, t := mountaincar.NewDiscrete(task, 1.0)
+	// fmt.Println(t)
+	// fmt.Println(m)
 
 	// for i := 0; i < 110; i++ {
-	// 	action := 2.0
+	// 	action := 1.0
 	// 	if t.Observation.AtVec(1) < 0 {
-	// 		action = 0.0
+	// 		action = -1.0
 	// 	}
 	// 	a := mat.NewVecDense(1, []float64{action})
 	// 	t, _ = m.Step(a)
@@ -245,7 +245,7 @@ func main() {
 
 	// Experiment
 	saver := savers.NewReturn("./data.bin")
-	e := experiment.NewOnline(tm, q, 100_000, saver)
+	e := experiment.NewOnline(tm, q, 1000, saver)
 	e.Run()
 	e.Save()
 
