@@ -3,6 +3,9 @@
 package environment
 
 import (
+	"image"
+
+	"github.com/fogleman/gg"
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
@@ -43,4 +46,11 @@ type Environment interface {
 	DiscountSpec() spec.Environment
 	ObservationSpec() spec.Environment
 	ActionSpec() spec.Environment
+}
+
+// PixelEnvironment describes an environment that can represent its
+// current state as an image
+type PixelEnvironment interface {
+	Environment
+	Pixels(scale float64, dc gg.Context, save bool) image.Image
 }
