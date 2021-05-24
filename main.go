@@ -6,7 +6,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r1"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
+	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
 	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/savers"
@@ -156,12 +156,16 @@ func main() {
 
 	// // === === === === === === === === === === === === === === === ===
 	// // Mountain Car
-	positionBounds := r1.Interval{Min: -0.2, Max: 0.2}
-	speedBounds := r1.Interval{Min: -0.005, Max: 0.005}
+	// positionBounds := r1.Interval{Min: -0.2, Max: 0.2}
+	// speedBounds := r1.Interval{Min: -0.005, Max: 0.005}
 
-	s := environment.NewUniformStarter([]r1.Interval{positionBounds, speedBounds}, seed)
-	task := mountaincar.NewGoal(s, 1000, 0.45)
-	m, t := mountaincar.NewDiscrete(task, 1.0)
+	bounds := r1.Interval{Min: -0.01, Max: 0.01}
+
+	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds, bounds, bounds}, seed)
+
+	task := cartpole.NewBalance(s, 1000, cartpole.FailAngle)
+	m, t := cartpole.New(task, 1.0)
+
 	// fmt.Println(t)
 	// fmt.Println(m)
 
@@ -204,13 +208,15 @@ func main() {
 
 	numTilings := 15
 	tilings := make([][]int, numTilings)
+
 	for i := 0; i < len(tilings)/3; i++ {
-		tilings[i] = []int{5, 5}
+		tilings[i] = []int{5, 5, 5, 5}
 	}
 	for i := len(tilings) / 3; i < len(tilings); i++ {
-		tilings[i] = []int{3, 3}
+		tilings[i] = []int{3, 3, 3, 3}
 	}
 	tm, t := wrappers.NewTileCoding(m, tilings, seed)
+
 	// fmt.Println(tm)
 	// for i := 0; i < 110; i++ {
 	// 	action := 2.0
@@ -245,10 +251,10 @@ func main() {
 
 	// Experiment
 	saver := savers.NewReturn("./data.bin")
-	e := experiment.NewOnline(tm, q, 100_000, saver)
+	e := experiment.NewOnline(tm, q, 1_000_000, saver)
 	e.Run()
 	e.Save()
 
 	data := savers.LoadData("./data.bin")
-	fmt.Println(data)
+	fmt.Println(data[len(data)-10:])
 }

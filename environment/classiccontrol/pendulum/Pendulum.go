@@ -28,6 +28,8 @@ const (
 // Pendulum is an classic control environment where an agent must learn to
 // swing a pendulum up and hold it in an upright position. Actions are continuous
 // and 1D, consisting of the torque applied to the pendulum's fixed base.
+// The state feaures consist of the pendulum's angle, measured from the
+// positive y-axis, and the angular velocity of the pendulum.
 // Angles, angular velocity, and torque are all bounded by the respective
 // constants defined in this file. In particular:
 //
@@ -247,7 +249,7 @@ func (p *Pendulum) Render() {
 // normalizeAngle normalizes the pendulum angle to the appropriate limits
 func normalizeAngle(th float64, angleBounds r1.Interval) float64 {
 	if angleBounds.Max != -angleBounds.Min {
-		panic("angle bounds should be centered aroudn 0")
+		panic("angle bounds should be centered around 0")
 	}
 
 	if th > angleBounds.Max {

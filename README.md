@@ -191,3 +191,14 @@ type Saver interface {
 
 `Savers` follow the `observer-observable` design pattern to track data
 generated from an experiment and save it later.
+
+
+# ToDo
+-[ ] Documentation for all environments should be consistent and
+describe the same things in the same order
+
+-[ ] Cartpole needs documentation finished
+-[ ] Cartpole tasks need documentation finished
+-[ ] Cartpole needs Render() method
+-[x] Find out why Cartpole is giving negative reward per episode...
+-[ ] Cartpole balance should have a position limiter
