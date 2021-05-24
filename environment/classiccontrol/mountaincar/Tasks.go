@@ -12,8 +12,8 @@ import (
 // episode ends. This task is an episodic, cost-to-goal task.
 type Goal struct {
 	environment.Starter
-	goalEnder environment.Ender
-	stepEnder environment.Ender
+	goalEnder *GoalEnder
+	stepEnder *environment.StepLimit
 	goalX     float64 // x position of goal
 }
 
