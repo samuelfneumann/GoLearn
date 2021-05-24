@@ -22,8 +22,8 @@ const (
 	Gravity     float64 = 0.0025
 
 	// Discrete Actions Env
-	MinDiscreteAction float64 = 0.0
-	MaxDiscreteAction float64 = 2.0
+	MinDiscreteAction int = 0
+	MaxDiscreteAction int = 2
 
 	// Continuous Actions Env
 	MinContinuousAction float64 = -1.0
@@ -41,6 +41,10 @@ const (
 // action versions of Mountain Car by storing and updating variables
 // that are common to both environment. This reduces code duplication
 // between the two environments.
+//
+// In Mountain Car, the environment state is continuous and consists of
+// the car's x position and velocity. The x position and velocity are
+// bounded by the constants defined in this package.
 type base struct {
 	env.Task
 	positionBounds r1.Interval
@@ -79,7 +83,6 @@ func (m *base) ObservationSpec() spec.Environment {
 
 	return spec.NewEnvironment(shape, spec.Observation, lowerBound,
 		upperBound, spec.Continuous)
-
 }
 
 // DiscountSpec returns the discounting specification of the environment
@@ -90,7 +93,6 @@ func (m *base) DiscountSpec() spec.Environment {
 
 	return spec.NewEnvironment(shape, spec.Discount, lowerBound,
 		upperBound, spec.Continuous)
-
 }
 
 // Reset resets the environment and returns a starting state drawn from

@@ -50,8 +50,8 @@ func NewDiscrete(t env.Task, discount float64) (*Discrete, ts.TimeStep) {
 // ActionSpec returns the action specification of the environment
 func (m *Discrete) ActionSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)
-	lowerBound := mat.NewVecDense(1, []float64{MinDiscreteAction})
-	upperBound := mat.NewVecDense(1, []float64{MaxDiscreteAction})
+	lowerBound := mat.NewVecDense(1, []float64{float64(MinDiscreteAction)})
+	upperBound := mat.NewVecDense(1, []float64{float64(MaxDiscreteAction)})
 
 	return spec.NewEnvironment(shape, spec.Action, lowerBound,
 		upperBound, spec.Discrete)
@@ -67,7 +67,7 @@ func (m *Discrete) Step(a mat.Vector) (ts.TimeStep, bool) {
 
 	// Ensure a legal action was selected
 	intAction := int(action)
-	if intAction != 0 && intAction != 1 && intAction != 2 {
+	if intAction > MaxDiscreteAction || intAction < MinDiscreteAction {
 		panic(fmt.Sprintf("illegal action %v \u2209 (0, 1, 2)", intAction))
 	}
 

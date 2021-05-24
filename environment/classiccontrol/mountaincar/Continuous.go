@@ -10,7 +10,9 @@ import (
 
 // mountaincar.Continuous in a classic control environment where an agent must
 // learn to drive an underpowered car up a hill. Actions are continuous in
-// [-1.0, 1.0]. Actions outside of this range are clipped to within this range.
+// [-1.0, 1.0], representing the acceleration and direction of
+// acceleration to be applied to the var. Actions outside of this range
+// are clipped to within this range.
 //
 //For more information on the Mountain Car environment, see
 // mountaincar.Discrete.
