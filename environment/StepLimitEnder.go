@@ -9,15 +9,15 @@ type StepLimit struct {
 }
 
 // NewStepLimit creates and returns a new step limit
-func NewStepLimit(episodeSteps int) StepLimit {
-	return StepLimit{episodeSteps}
+func NewStepLimit(episodeSteps int) *StepLimit {
+	return &StepLimit{episodeSteps}
 }
 
 // End determines whether or not the current episode should be ended,
 // returning a boolean to indicate episode temrination. If the episode
 // should be ended End() will modify the timestep so that its StepType
 // field is timestep.Last
-func (s StepLimit) End(t *timestep.TimeStep) bool {
+func (s *StepLimit) End(t *timestep.TimeStep) bool {
 	if t.Number >= s.episodeSteps {
 		t.StepType = timestep.Last
 		return true
