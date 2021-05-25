@@ -32,6 +32,10 @@ const (
 	// Discrete Actions
 	MinDiscreteAction int = 0
 	MaxDiscreteAction int = 2
+
+	// Continuous Actions
+	MaxContinuousAction float64 = 1.0
+	MinContinuousAction float64 = -MaxContinuousAction
 )
 
 // Cartpole implements the classic control environment Cartpole. In
@@ -56,7 +60,7 @@ const (
 //
 // For discrete actions, the force applied to the cart is (action - 1) *
 // ForceMag.
-type Cartpole struct {
+type base struct {
 	env.Task
 	lastStep              ts.TimeStep
 	discount              float64
@@ -73,7 +77,7 @@ type Cartpole struct {
 }
 
 // New constructs a new Cartpole environment
-func New(t env.Task, discount float64) (*Cartpole, ts.TimeStep) {
+func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 	positionBounds := r1.Interval{Min: -PositionBounds, Max: PositionBounds}
 	speedBounds := r1.Interval{Min: -SpeedBounds, Max: SpeedBounds}
 	angleBounds := r1.Interval{Min: -AngleBounds, Max: AngleBounds}
@@ -88,7 +92,7 @@ func New(t env.Task, discount float64) (*Cartpole, ts.TimeStep) {
 	// Construct first timestep
 	firstStep := ts.New(ts.First, 0.0, discount, state, 0)
 
-	cartpole := Cartpole{t, firstStep, discount, Gravity, ForceMag, PoleMass,
+	cartpole := base{t, firstStep, discount, Gravity, ForceMag, PoleMass,
 		HalfPoleLength, CartMass, Dt, positionBounds, speedBounds, angleBounds,
 		angularVelocityBounds}
 
@@ -97,7 +101,7 @@ func New(t env.Task, discount float64) (*Cartpole, ts.TimeStep) {
 
 // Reset resets the environment and returns a starting state drawn from
 // the environment Starter
-func (c *Cartpole) Reset() ts.TimeStep {
+func (c *base) Reset() ts.TimeStep {
 	state := c.Start()
 	validateState(state, c.positionBounds, c.speedBounds, c.angleBounds,
 		c.angularVelocityBounds)
@@ -110,7 +114,7 @@ func (c *Cartpole) Reset() ts.TimeStep {
 }
 
 // ActionSpec returns the action specification of the environment
-func (c *Cartpole) ActionSpec() spec.Environment {
+func (c *base) ActionSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{float64(MinDiscreteAction)})
 	upperBound := mat.NewVecDense(1, []float64{float64(MaxDiscreteAction)})
@@ -121,7 +125,7 @@ func (c *Cartpole) ActionSpec() spec.Environment {
 
 // ObservationSpec returns the observation specification of the
 // environment
-func (c *Cartpole) ObservationSpec() spec.Environment {
+func (c *base) ObservationSpec() spec.Environment {
 	shape := mat.NewVecDense(4, nil)
 
 	lower := []float64{c.positionBounds.Min, c.speedBounds.Min,
@@ -137,7 +141,7 @@ func (c *Cartpole) ObservationSpec() spec.Environment {
 }
 
 // DiscountSpec returns the discounting specification of the environment
-func (c *Cartpole) DiscountSpec() spec.Environment {
+func (c *base) DiscountSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{c.discount})
 	upperBound := mat.NewVecDense(1, []float64{c.discount})
@@ -146,26 +150,11 @@ func (c *Cartpole) DiscountSpec() spec.Environment {
 		upperBound, spec.Continuous)
 }
 
-// Step takes one environmental step given action a and returns the next
-// state as a timestep.TimeStep and a bool indicating whether or not the
-// episode has ended
-func (c *Cartpole) Step(a mat.Vector) (ts.TimeStep, bool) {
-	// Discrete action in {0, 1, 2}
-	action := a.AtVec(0)
-
-	// Ensure a legal action was selected
-	intAction := int(action)
-	if intAction < MinDiscreteAction || intAction > MaxDiscreteAction {
-		panic(fmt.Sprintf("illegal action %v \u2209 (0, 1, 2)", intAction))
-	}
-
+func (c *base) nextState(force float64) mat.Vector {
 	// Get state variables
 	state := c.lastStep.Observation
 	x, xDot := state.AtVec(0), state.AtVec(1)
 	th, thDot := state.AtVec(2), state.AtVec(3)
-
-	// Magnify the action force in the appropriate direction
-	force := (action - 1.0) * c.forceMag
 
 	// Calculate physical variables to determine next state
 	cosTheta := math.Cos(th)
@@ -200,8 +189,12 @@ func (c *Cartpole) Step(a mat.Vector) (ts.TimeStep, bool) {
 	thDot += (c.dt * thAcc)
 	thDot = floatutils.ClipInterval(thDot, c.angularVelocityBounds)
 
-	// Create the new timestep
-	newState := mat.NewVecDense(4, []float64{x, xDot, th, thDot})
+	// Create the next state
+	return mat.NewVecDense(4, []float64{x, xDot, th, thDot})
+
+}
+
+func (c *base) update(a, newState mat.Vector) (ts.TimeStep, bool) {
 	reward := c.GetReward(c.lastStep.Observation, a, newState)
 	nextStep := ts.New(ts.Mid, reward, c.discount, newState,
 		c.lastStep.Number+1)
@@ -249,7 +242,7 @@ func validateState(obs mat.Vector, positionBounds, speedBounds, angleBounds,
 
 }
 
-func (c *Cartpole) String() string {
+func (c *base) String() string {
 	msg := "Cartpole  |  Position: %v  | Speed: %v  |  Angle: %v" +
 		"  |  Angular Velocity: %v"
 
