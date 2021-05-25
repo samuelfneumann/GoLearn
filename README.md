@@ -200,3 +200,6 @@ describe the same things in the same order
 -[ ] Cartpole needs documentation finished
 -[ ] Cartpole tasks need documentation finished
 -[ ] Cartpole needs Render() method
+
+-[ ] Change mountaincar.Goal's GoalEnder to use the
+environment.IntervalEnder to just check if the goal position was reached.

@@ -1,7 +1,10 @@
 package mountaincar
 
 import (
+	"math"
+
 	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/spatial/r1"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
@@ -12,7 +15,7 @@ import (
 // episode ends. This task is an episodic, cost-to-goal task.
 type Goal struct {
 	environment.Starter
-	goalEnder *GoalEnder
+	goalEnder *environment.IntervalLimit
 	stepEnder *environment.StepLimit
 	goalX     float64 // x position of goal
 }
@@ -22,7 +25,10 @@ type Goal struct {
 // steps; and the goal x position.
 func NewGoal(s environment.Starter, episodeSteps int, goalX float64) *Goal {
 	stepEnder := environment.NewStepLimit(episodeSteps)
-	goalEnder := NewGoalEnder(goalX)
+
+	interval := []r1.Interval{{Min: -math.MaxFloat64, Max: goalX}}
+	positionIndex := []int{0}
+	goalEnder := environment.NewIntervalLimit(interval, positionIndex)
 	return &Goal{s, goalEnder, stepEnder, goalX}
 }
 
