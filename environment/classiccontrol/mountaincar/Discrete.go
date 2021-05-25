@@ -78,8 +78,5 @@ func (m *Discrete) Step(a mat.Vector) (ts.TimeStep, bool) {
 	newState := m.nextState(force)
 
 	// Update embedded base Mountain Car environment
-	nextStep, last := m.update(a, newState)
-
-	return nextStep, last
-
+	return m.update(a, newState)
 }
