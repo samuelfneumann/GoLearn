@@ -10,6 +10,11 @@ import (
 	"sfneuman.com/golearn/timestep"
 )
 
+const (
+	// Commonly used goal position
+	GoalPosition float64 = 0.45
+)
+
 // Goal implements a goal state in the MountainCar environment. The
 // agent must learn to reach the goal, and upon reaching the goal, the
 // episode ends. This task is an episodic, cost-to-goal task.
@@ -26,7 +31,7 @@ type Goal struct {
 func NewGoal(s environment.Starter, episodeSteps int, goalX float64) *Goal {
 	stepEnder := environment.NewStepLimit(episodeSteps)
 
-	interval := []r1.Interval{{Min: -math.MaxFloat64, Max: goalX}}
+	interval := []r1.Interval{{Min: math.Inf(-1), Max: goalX}}
 	positionIndex := []int{0}
 	goalEnder := environment.NewIntervalLimit(interval, positionIndex)
 	return &Goal{s, goalEnder, stepEnder, goalX}
