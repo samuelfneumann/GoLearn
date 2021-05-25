@@ -200,5 +200,3 @@ describe the same things in the same order
 -[ ] Cartpole needs documentation finished
 -[ ] Cartpole tasks need documentation finished
 -[ ] Cartpole needs Render() method
--[x] Find out why Cartpole is giving negative reward per episode...
--[ ] Cartpole balance should have a position limiter

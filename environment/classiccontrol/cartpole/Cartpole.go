@@ -25,9 +25,9 @@ const (
 
 	// Bounds (+/-) on state variabels
 	PositionBounds        float64 = 4.8
-	SpeedBounds           float64 = math.MaxFloat64
+	SpeedBounds           float64 = 2
 	AngleBounds           float64 = math.Pi
-	AngularVelocityBounds float64 = math.MaxFloat64
+	AngularVelocityBounds float64 = 2
 
 	// Discrete Actions
 	MinDiscreteAction int = 0
@@ -42,7 +42,10 @@ const (
 // The state features are continuous and consist of the cart's x
 // position and speed, as well as the pole's angle from the positive
 // y-axis and the pole's angular velocity. All state features are
-// bounded by the constants defined in this file.
+// bounded by the constants defined in this file. For the position,
+// speed, and angular velocity features, extreme values are clipped to
+// within the legal ranges. For the pole's angle feature, extreme values
+// are normalized so that all angles stay in the range (-π, π].
 //
 // Actions are discrete and consist of the force applied to the cart:
 //
@@ -50,6 +53,9 @@ const (
 //	  0		Accelerate left
 //	  1		Do nothing
 //	  2		Accelerate right
+//
+// For discrete actions, the force applied to the cart is (action - 1) *
+// ForceMag.
 type Cartpole struct {
 	env.Task
 	lastStep              ts.TimeStep
@@ -159,14 +165,7 @@ func (c *Cartpole) Step(a mat.Vector) (ts.TimeStep, bool) {
 	th, thDot := state.AtVec(2), state.AtVec(3)
 
 	// Magnify the action force in the appropriate direction
-	var force float64
-	if action == 0 {
-		force = -c.forceMag
-	} else if action == 2 {
-		force = c.forceMag
-	} else {
-		force = 0.0 // No action taken
-	}
+	force := (action - 1.0) * c.forceMag
 
 	// Calculate physical variables to determine next state
 	cosTheta := math.Cos(th)
@@ -181,15 +180,25 @@ func (c *Cartpole) Step(a mat.Vector) (ts.TimeStep, bool) {
 	xAcc := temp - poleMassOverLength*thAcc*cosTheta/totalMass
 
 	// Update state variables using Euler kinematic integration
+	// Update cart position
 	x += (c.dt * xDot)
-	x = floatutils.Clip(x, c.positionBounds.Min, c.positionBounds.Max)
+	x = floatutils.ClipInterval(x, c.positionBounds)
 
+	// Update cart velocity
 	xDot += (c.dt * xAcc)
+	if x <= c.positionBounds.Min || x >= c.positionBounds.Max {
+		// Cart hits the position boundaries, so velocity -> 0
+		xDot = 0.0
+	}
+	xDot = floatutils.ClipInterval(xDot, c.speedBounds)
 
+	// Update pole angle
 	th += (c.dt * thDot)
 	th = normalizeAngle(th, c.angleBounds)
 
+	// Update pole angle velocity
 	thDot += (c.dt * thAcc)
+	thDot = floatutils.ClipInterval(thDot, c.angularVelocityBounds)
 
 	// Create the new timestep
 	newState := mat.NewVecDense(4, []float64{x, xDot, th, thDot})

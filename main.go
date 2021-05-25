@@ -19,7 +19,7 @@ import (
 // "sfneuman.com/golearn/utils/matutils"
 
 func main() {
-	var seed uint64 = 1923812 // 1923
+	var seed uint64 = 192382
 	// // === === === === === === === === === === === === === === === ===
 	// // GridWorld
 	// r, c := 5, 5
@@ -46,7 +46,7 @@ func main() {
 	// fmt.Println(g)
 
 	// // Create the QLearning spec
-	args := spec.QLearning{E: 0.25, LearningRate: 0.01}
+	args := spec.QLearning{E: 0.1, LearningRate: 0.1}
 	// // args := spec.ESarsa{TargetE: 0.0, BehaviourE: 0.1, LearningRate: 0.1}
 
 	// // Zero RNG
@@ -163,30 +163,34 @@ func main() {
 
 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds, bounds, bounds}, seed)
 
-	task := cartpole.NewBalance(s, 1000, cartpole.FailAngle)
-	m, t := cartpole.New(task, 1.0)
+	task := cartpole.NewBalance(s, 250, cartpole.FailAngle)
+	m, _ := cartpole.New(task, 1.0)
 
 	// fmt.Println(t)
 	// fmt.Println(m)
+	// r := 0.0
 
 	// for i := 0; i < 110; i++ {
-	// 	action := 1.0
-	// 	if t.Observation.AtVec(1) < 0 {
-	// 		action = -1.0
+	// 	action := 2.0
+	// 	if t.Observation.AtVec(2) < 0 {
+	// 		action = 0.0
 	// 	}
 	// 	a := mat.NewVecDense(1, []float64{action})
 	// 	t, _ = m.Step(a)
+	// 	r += t.Reward
 	// 	fmt.Println(m)
 	// 	fmt.Println(t)
 	// 	fmt.Println()
-	// 	m.Render()
+	// 	// m.Render()
 	// 	time.Sleep(50000000)
 
 	// 	if t.Last() {
 	// 		fmt.Println("=== === Last TimeStep, Resetting === ===")
 	// 		t = m.Reset()
+	// 		break
 	// 	}
 	// }
+	// fmt.Println(r)
 
 	// === === === === === === === === === === === === === === === ===
 	// Tile Coding
@@ -206,16 +210,13 @@ func main() {
 	// fmt.Println(tc.Encode(v2).Len())
 	// fmt.Println(matutils.Format(tc.EncodeBatch(b).T()))
 
-	numTilings := 15
+	numTilings := 10
 	tilings := make([][]int, numTilings)
 
-	for i := 0; i < len(tilings)/3; i++ {
-		tilings[i] = []int{5, 5, 5, 5}
+	for i := 0; i < len(tilings); i++ {
+		tilings[i] = []int{3, 3, 10, 5}
 	}
-	for i := len(tilings) / 3; i < len(tilings); i++ {
-		tilings[i] = []int{3, 3, 3, 3}
-	}
-	tm, t := wrappers.NewTileCoding(m, tilings, seed)
+	tm, _ := wrappers.NewTileCoding(m, tilings, seed)
 
 	// fmt.Println(tm)
 	// for i := 0; i < 110; i++ {
@@ -246,8 +247,6 @@ func main() {
 
 	// Create the learning algorithm
 	q := qlearning.New(tm, args, init, seed)
-	// q := esarsa.New(g, args, init, seed)
-	q.ObserveFirst(t)
 
 	// Experiment
 	saver := savers.NewReturn("./data.bin")
