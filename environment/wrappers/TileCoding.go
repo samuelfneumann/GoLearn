@@ -23,12 +23,15 @@ type TileCoding struct {
 }
 
 // NewTileCoding creates and returns a new TileCoding environment,
-// given an existing environment to wrap.
+// wrapping an existing environment. The wrapped environment
+// is reset when wrapped by the TileCoding environment by calling
+// the wrapped environment's Reset() method.
 //
 // The bins parameter specifies both how many tilings to use as well
 // as the number of tiles per tiling. The length of the outer-slice is
 // the number of tilings. The lengths of the inner-slices are the
 // number of bins per dimension for that tiling.
+//
 //
 // See tilecoder.TileCoder for more details.
 func NewTileCoding(env environment.Environment, bins [][]int,
