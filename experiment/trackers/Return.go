@@ -1,4 +1,4 @@
-package savers
+package trackers
 
 import (
 	"encoding/gob"
@@ -10,7 +10,7 @@ import (
 )
 
 // Return tracks and saves the episodic return in an experiment.
-// Note that an episode must finish for this Saver to save its data.
+// Note that an episode must finish for this Tracker to save its data.
 // If the last episode in an experiment does not finish, that episode's
 // return will not be saved.
 type Return struct {
@@ -20,7 +20,7 @@ type Return struct {
 	filename       string
 }
 
-// NewReturn creates and returns a new *Return Saver
+// NewReturn creates and returns a new *Return Tracker
 func NewReturn(filename string) *Return {
 	var saver Return
 	saver.lastTimeStep = -1
@@ -29,7 +29,7 @@ func NewReturn(filename string) *Return {
 }
 
 // Track tracks the rewards seen on a timestep. By calling this method
-// on every timestep, the Saver will store all rewards seen in the
+// on every timestep, the Tracker will store all rewards seen in the
 // episode, and save the cumulative reward for that episode as the
 // episodic return. When a new episode starts, this method will
 // automatically detect this and start accumulating the rewards for this
@@ -64,7 +64,7 @@ func (r *Return) Track(step ts.TimeStep) {
 	}
 }
 
-// Save saves the data tracked by the Return Saver to disk.
+// Save saves the data tracked by the Return Tracker to disk.
 func (r *Return) Save() {
 	// Open the file to save to
 	file, err := os.Create(r.filename)

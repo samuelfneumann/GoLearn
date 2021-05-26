@@ -1,4 +1,4 @@
-package savers
+package trackers
 
 import (
 	"encoding/gob"
@@ -10,7 +10,7 @@ import (
 
 // EpisodeLength tracks and saves the lengths of episodes in an
 // experiment.
-// Note that an episode must finish for this Saver to save its data.
+// Note that an episode must finish for this Tracker to save its data.
 // If the last episode in an experiment does not finish, that episode's
 // length will not be saved.
 type EpisodeLength struct {
@@ -37,7 +37,7 @@ func (e *EpisodeLength) Track(t timestep.TimeStep) {
 	}
 }
 
-// Save saves the data tracked by the EpisodeLength Saver to disk.
+// Save saves the data tracked by the EpisodeLength Tracker to disk.
 func (e *EpisodeLength) Save() {
 	// Open the file to save to
 	file, err := os.Create(e.filename)

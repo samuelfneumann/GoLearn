@@ -162,37 +162,37 @@ that the tiling needs to be offset in each dimension that is tile coded.
 If state features are `n-D`, then the offset of the tilings is also `n-D`.
 
 # Experiments
-## Savers
-`Savers` define what data an `Experiment` will save to disk. For example,
-the `savers.Return Saver` will cause an `Experiment` to save the episodic
-returns seen during the `Experiment`. The `savers.EpisodeLength Saver`
+## Trackers
+`Trackers` define what data an `Experiment` will save to disk. For example,
+the `trackers.Return Tracker` will cause an `Experiment` to save the episodic
+returns seen during the `Experiment`. The `trackers.EpisodeLength Tracker`
 will cause an `Experiment` to save the episode lengths during an
-`Experiment`. Before running an `Experiment`, `Savers` can be registered
-with the `Experiment` by passing the required `Savers` to the `Experiment`
+`Experiment`. Before running an `Experiment`, `Trackers` can be registered
+with the `Experiment` by passing the required `Trackers` to the `Experiment`
 constructor. Additionally, the `Register()` method can be used to
-register a `Saver` with an `Experiment` after the `Experiment` has already
+register a `Tracker` with an `Experiment` after the `Experiment` has already
 been constructed.
 
-Any struct that implements the `Saver` interface can be passed to an
+Any struct that implements the `Tracker` interface can be passed to an
 `Experiment`. For each timestep, the `Experiment`
 will send the latest `TimeStep` returned from the `Environment` to
-each of the `Savers` registered with the `Experiment` using the `Saver`'s
-`Track()` method. This will cache the needed data in each `Saver`. Once
+each of the `Trackers` registered with the `Experiment` using the `Tracker`'s
+`Track()` method. This will cache the needed data in each `Tracker`. Once
 the `Experiment` is done, the `Save()` method can then be called on each
-`Saver` to save the recorded experimental data to disk. Alternatively, each
+`Tracker` to save the recorded experimental data to disk. Alternatively, each
 `Experiment` implements a `Save()` method which will automatically save
-all data for each of the `Saver`s registered with the `Experiment`. This
+all data for each of the `Tracker`s registered with the `Experiment`. This
 is perhaps the easiest way to save experimental data.
-The `Saver` interface
+The `Tracker` interface
 is:
 ```
-type Saver interface {
+type Tracker interface {
 	Track(t ts.TimeStep)
 	Save()
 }
 ```
 
-`Savers` follow the `observer-observable` design pattern to track data
+`Trackers` follow the `observer-observable` design pattern to track data
 generated from an experiment and save it later.
 
 

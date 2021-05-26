@@ -3,7 +3,7 @@ package experiment
 import (
 	"sfneuman.com/golearn/agent"
 	env "sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/experiment/savers"
+	"sfneuman.com/golearn/experiment/trackers"
 	ts "sfneuman.com/golearn/timestep"
 )
 
@@ -14,7 +14,7 @@ type Online struct {
 	agent.Agent
 	maxSteps     uint
 	currentSteps uint
-	savers       []savers.Saver
+	savers       []trackers.Tracker
 }
 
 // NewOnline creates and returns a new online experiment on a given
@@ -22,14 +22,14 @@ type Online struct {
 // many timesteps the experiment is run for, and the s parameter
 // is a slice of savers.Saver which determine what data is saved.
 func NewOnline(e env.Environment, a agent.Agent, steps uint,
-	s ...savers.Saver) *Online {
-	return &Online{e, a, steps, 0, s}
+	t ...trackers.Tracker) *Online {
+	return &Online{e, a, steps, 0, t}
 }
 
 // Register registers a saver.Saver with an Experiment so that data
 // generated during the experiment can be tracked and saved
-func (o *Online) Register(s savers.Saver) {
-	o.savers = append(o.savers, s)
+func (o *Online) Register(t trackers.Tracker) {
+	o.savers = append(o.savers, t)
 }
 
 // RunEpisode runs a single episode of the experiment

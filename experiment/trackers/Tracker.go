@@ -1,6 +1,6 @@
 // Package savers implements Savers, which track and save data in an
 // experiment
-package savers
+package trackers
 
 import (
 	"encoding/gob"
@@ -10,14 +10,14 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
-// Interface Saver keeps track of the experiment data and saves the data
+// Interface Tracker keeps track of experiment data and saves the data
 // after the experiment has finished
-type Saver interface {
+type Tracker interface {
 	Track(t ts.TimeStep)
 	Save()
 }
 
-// LoadData loads and returns the data saved by a Saver
+// LoadData loads and returns the data saved by a Tracker
 func LoadData(filename string) []float64 {
 	// Open file
 	file, err := os.Open(filename)

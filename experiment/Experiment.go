@@ -2,7 +2,7 @@
 package experiment
 
 import (
-	"sfneuman.com/golearn/experiment/savers"
+	"sfneuman.com/golearn/experiment/trackers"
 	ts "sfneuman.com/golearn/timestep"
 )
 
@@ -26,5 +26,5 @@ type Experiment interface {
 	RunEpisode() bool  // Returns whether or not the current episode finished
 	track(ts.TimeStep) // Track current timestep by sending it to Savers
 	Save()             // Save all tracked data
-	Register(s savers.Saver)
+	Register(t trackers.Tracker)
 }

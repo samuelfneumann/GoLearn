@@ -9,7 +9,7 @@ import (
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/savers"
+	"sfneuman.com/golearn/experiment/trackers"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
@@ -45,11 +45,11 @@ func main() {
 	q := qlearning.New(tm, args, init, seed)
 
 	// Experiment
-	saver := savers.NewReturn("./data.bin")
-	e := experiment.NewOnline(tm, q, 1_000_000, saver)
+	saver := trackers.NewReturn("./data.bin")
+	e := experiment.NewOnline(tm, q, 10_000, saver)
 	e.Run()
 	e.Save()
 
-	data := savers.LoadData("./data.bin")
+	data := trackers.LoadData("./data.bin")
 	fmt.Println(data[len(data)-10:])
 }
