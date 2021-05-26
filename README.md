@@ -197,15 +197,15 @@ generated from an experiment and save it later.
 
 
 # ToDo
--[ ] Documentation for all environments should be consistent and
+- [ ] Documentation for all environments should be consistent and
 describe the same things in the same order
 
--[ ] Cartpole needs documentation finished
--[ ] Cartpole tasks need documentation finished
--[ ] UniformStarter needs documentation
+- [ ] Cartpole needs documentation finished
+- [ ] Cartpole tasks need documentation finished
+- [ ] UniformStarter needs documentation
 
--[ ] Should environment Enders and Starters each have their own package
+- [ ] Should environment Enders and Starters each have their own package
 
--[ ] Tasks and learners should both follow the Null Object pattern
+- [ ] Tasks and learners should both follow the Null Object pattern
 
--[ ] Cartpole needs Render() method
+- [ ] Cartpole needs `Render()` method
