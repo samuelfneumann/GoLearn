@@ -203,6 +203,7 @@ describe the same things in the same order
 - [ ] Cartpole needs documentation finished
 - [ ] Cartpole tasks need documentation finished
 - [ ] UniformStarter needs documentation
+- [ ] TileCoding and TileCoder could benefit from improved documentation
 
 - [ ] Should environment Enders and Starters each have their own package
 
