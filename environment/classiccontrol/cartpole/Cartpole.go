@@ -113,16 +113,6 @@ func (c *base) Reset() ts.TimeStep {
 
 }
 
-// ActionSpec returns the action specification of the environment
-func (c *base) ActionSpec() spec.Environment {
-	shape := mat.NewVecDense(1, nil)
-	lowerBound := mat.NewVecDense(1, []float64{float64(MinDiscreteAction)})
-	upperBound := mat.NewVecDense(1, []float64{float64(MaxDiscreteAction)})
-
-	return spec.NewEnvironment(shape, spec.Action, lowerBound,
-		upperBound, spec.Discrete)
-}
-
 // ObservationSpec returns the observation specification of the
 // environment
 func (c *base) ObservationSpec() spec.Environment {
