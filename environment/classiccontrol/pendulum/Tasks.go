@@ -58,5 +58,4 @@ func (s *SwingUp) RewardSpec() spec.Environment {
 
 	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
 		spec.Continuous)
-
 }

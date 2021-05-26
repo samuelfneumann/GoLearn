@@ -23,6 +23,8 @@ implemented environments are in the following packages:
 Pendulum and its tasks
 * `classiccontrol/mountaincar`: Implements the classic control problem
 Mountain Car and its tasks
+* `classiccontrol/cartpole`: Implements the classic control problem
+Cartpole and its tasks
 
 Each package also defines public constants that determine the physical
 parameters of the `Environment`. For example, `mountaincar.Gravity` is
@@ -84,6 +86,7 @@ may be used for `Environment`s within that package. The global
 `Ender`s are:
 
 * `StepLimit`: ends episodes at a specific timestep limit.
+* `IntervalLimit`: ends episodes when a state feature leaves an interval.
 
 ## Environment Wrappers
 `Environment` wrappers can be founds in the `environment/wrappers` package.
@@ -199,7 +202,10 @@ describe the same things in the same order
 
 -[ ] Cartpole needs documentation finished
 -[ ] Cartpole tasks need documentation finished
--[ ] Cartpole needs Render() method
+-[ ] UniformStarter needs documentation
 
--[ ] Change mountaincar.Goal's GoalEnder to use the
-environment.IntervalEnder to just check if the goal position was reached.
+-[ ] Should environment Enders and Starters each have their own package
+
+-[ ] Tasks and learners should both follow the Null Object pattern
+
+-[ ] Cartpole needs Render() method
