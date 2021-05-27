@@ -17,6 +17,7 @@ const (
 	Observation
 	Discount
 	Reward
+	AverageReward
 )
 
 // Cardinality determines the cardinality of a number (discrete or continuous)
