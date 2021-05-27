@@ -15,12 +15,13 @@ import (
 )
 
 const (
-	MinPosition float64 = -1.2
-	MaxPosition float64 = 0.6
-	MaxSpeed    float64 = 0.07
-	Power       float64 = 0.0015 // Engine power
-	Gravity     float64 = 0.0025
-	ActionDims  int     = 1
+	MinPosition     float64 = -1.2
+	MaxPosition     float64 = 0.6
+	MaxSpeed        float64 = 0.07
+	Power           float64 = 0.0015 // Engine power
+	Gravity         float64 = 0.0025
+	ActionDims      int     = 1
+	ObservationDims int     = 2
 
 	// Discrete Actions Env
 	MinDiscreteAction int = 0
@@ -76,10 +77,10 @@ func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 // ObservationSpec returns the observation specification of the
 // environment
 func (m *base) ObservationSpec() spec.Environment {
-	shape := mat.NewVecDense(2, nil)
-	lowerBound := mat.NewVecDense(2, []float64{m.positionBounds.Min,
+	shape := mat.NewVecDense(ObservationDims, nil)
+	lowerBound := mat.NewVecDense(ObservationDims, []float64{m.positionBounds.Min,
 		m.speedBounds.Min})
-	upperBound := mat.NewVecDense(2, []float64{m.positionBounds.Max,
+	upperBound := mat.NewVecDense(ObservationDims, []float64{m.positionBounds.Max,
 		m.speedBounds.Max})
 
 	return spec.NewEnvironment(shape, spec.Observation, lowerBound,

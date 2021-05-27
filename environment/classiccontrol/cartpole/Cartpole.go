@@ -15,14 +15,15 @@ import (
 
 const (
 	// Physical constants
-	Gravity        float64 = 9.8
-	CartMass       float64 = 1.0
-	PoleMass       float64 = 0.1
-	TotalMass      float64 = CartMass + PoleMass
-	HalfPoleLength float64 = 0.5  // half of pole length
-	ForceMag       float64 = 10.0 // Magnification of force applied
-	Dt             float64 = 0.02 // seconds between state updates
-	ActionDims     int     = 1
+	Gravity         float64 = 9.8
+	CartMass        float64 = 1.0
+	PoleMass        float64 = 0.1
+	TotalMass       float64 = CartMass + PoleMass
+	HalfPoleLength  float64 = 0.5  // half of pole length
+	ForceMag        float64 = 10.0 // Magnification of force applied
+	Dt              float64 = 0.02 // seconds between state updates
+	ActionDims      int     = 1
+	ObservationDims int     = 4
 
 	// Bounds (+/-) on state variables
 	PositionBounds        float64 = 4.8
@@ -112,15 +113,15 @@ func (c *base) Reset() ts.TimeStep {
 // ObservationSpec returns the observation specification of the
 // environment
 func (c *base) ObservationSpec() spec.Environment {
-	shape := mat.NewVecDense(4, nil)
+	shape := mat.NewVecDense(ObservationDims, nil)
 
 	lower := []float64{c.positionBounds.Min, c.speedBounds.Min,
 		c.angleBounds.Min, c.angularVelocityBounds.Min}
-	lowerBound := mat.NewVecDense(4, lower)
+	lowerBound := mat.NewVecDense(ObservationDims, lower)
 
 	upper := []float64{c.positionBounds.Max, c.speedBounds.Max,
 		c.angleBounds.Max, c.angularVelocityBounds.Max}
-	upperBound := mat.NewVecDense(4, upper)
+	upperBound := mat.NewVecDense(ObservationDims, upper)
 
 	return spec.NewEnvironment(shape, spec.Observation, lowerBound,
 		upperBound, spec.Continuous)

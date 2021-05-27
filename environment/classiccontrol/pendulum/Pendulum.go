@@ -16,14 +16,15 @@ import (
 
 // default physical constants
 const (
-	AngleBound  float64 = math.Pi // The angle bounds
-	SpeedBound  float64 = 8.0     // The angular velocity/speed bounds
-	TorqueBound float64 = 2.0     // The torque bounds
-	dt          float64 = 0.05
-	Gravity     float64 = 9.8
-	Mass        float64 = 1.0
-	Length      float64 = 1.0
-	ActionDims  int     = 1
+	AngleBound      float64 = math.Pi // The angle bounds
+	SpeedBound      float64 = 8.0     // The angular velocity/speed bounds
+	TorqueBound     float64 = 2.0     // The torque bounds
+	dt              float64 = 0.05
+	Gravity         float64 = 9.8
+	Mass            float64 = 1.0
+	Length          float64 = 1.0
+	ActionDims      int     = 1
+	ObservationDims int     = 2
 )
 
 // Pendulum is an classic control environment where an agent must learn to
@@ -86,24 +87,6 @@ func New(t environment.Task, d float64) (*Pendulum, timestep.TimeStep) {
 		speedBounds, torqueBounds, firstStep, d}
 
 	return &pendulum, firstStep
-}
-
-// validateState validates the state to ensure that the angle and angular
-// velocity are within the environmental limits
-func validateState(obs mat.Vector, angleBounds, speedBounds r1.Interval) {
-	// Check if the angle is within bounds
-	thWithinBounds := obs.AtVec(0) <= angleBounds.Max &&
-		obs.AtVec(0) >= angleBounds.Min
-	if !thWithinBounds {
-		panic(fmt.Sprintf("theta is not within bounds %v", angleBounds))
-	}
-
-	// Check if the angular velocity is within bounds
-	thdotWithinBounds := obs.AtVec(1) <= speedBounds.Max &&
-		obs.AtVec(1) >= speedBounds.Min
-	if !thdotWithinBounds {
-		panic(fmt.Sprintf("theta dot is not within bounds %v", speedBounds))
-	}
 }
 
 // Reset resets the environment and returns a starting state drawn from the
@@ -201,13 +184,13 @@ func (p *Pendulum) ActionSpec() spec.Environment {
 
 // ObservationSpec returns the observation specification of the environment
 func (p *Pendulum) ObservationSpec() spec.Environment {
-	shape := mat.NewVecDense(2, nil)
+	shape := mat.NewVecDense(ObservationDims, nil)
 
 	minObs := []float64{p.angleBounds.Min, p.speedBounds.Min}
-	lowerBound := mat.NewVecDense(2, minObs)
+	lowerBound := mat.NewVecDense(ObservationDims, minObs)
 
 	maxObs := []float64{p.angleBounds.Max, p.speedBounds.Max}
-	upperBound := mat.NewVecDense(2, maxObs)
+	upperBound := mat.NewVecDense(ObservationDims, maxObs)
 
 	return spec.NewEnvironment(shape, spec.Observation, lowerBound, upperBound,
 		spec.Continuous)
@@ -266,5 +249,23 @@ func normalizeAngle(th float64, angleBounds r1.Interval) float64 {
 		return math.Pi + th - (angleBounds.Min * float64(divisor))
 	} else {
 		return th
+	}
+}
+
+// validateState validates the state to ensure that the angle and angular
+// velocity are within the environmental limits
+func validateState(obs mat.Vector, angleBounds, speedBounds r1.Interval) {
+	// Check if the angle is within bounds
+	thWithinBounds := obs.AtVec(0) <= angleBounds.Max &&
+		obs.AtVec(0) >= angleBounds.Min
+	if !thWithinBounds {
+		panic(fmt.Sprintf("theta is not within bounds %v", angleBounds))
+	}
+
+	// Check if the angular velocity is within bounds
+	thdotWithinBounds := obs.AtVec(1) <= speedBounds.Max &&
+		obs.AtVec(1) >= speedBounds.Min
+	if !thdotWithinBounds {
+		panic(fmt.Sprintf("theta dot is not within bounds %v", speedBounds))
 	}
 }
