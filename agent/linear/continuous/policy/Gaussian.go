@@ -15,8 +15,9 @@ import (
 
 const (
 	// Keys for weights map: map[string]*mat.Dense
-	MeanWeightsKey string = "mean"
-	StdWeightsKey  string = "standard deviation"
+	MeanWeightsKey   string = "mean"
+	StdWeightsKey    string = "standard deviation"
+	CriticWeightsKey string = "critic"
 )
 
 type Gaussian struct {
