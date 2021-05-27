@@ -32,21 +32,28 @@ const (
 	MaxContinuousAction float64 = 1.0
 )
 
-// base implements the underlying Mountain Car environment. It tracks
-// all the needed physical and environmental variables, but does not
-// compute next states given actions. The Discrete and Continuous
-// structs each embed a base environment and calculate the next states
-// from actions. This class is only used to track the Task and current state.
+// base implements the classic control Mountain Car environment. In this
+// environment, the agent controls a car in a valley between two hills.
+// The car is underpowered and cannot drive up the hill unless it rocks
+// back and forth from hill to hill, using its momentum to gradually
+// climb higher.
 //
-// Note that this struct does not implement the environment.Environment
-// interface and is used only to unify the Discrete and Continuous
-// action versions of Mountain Car by storing and updating variables
-// that are common to both environment. This reduces code duplication
-// between the two environments.
+// State features consist of the x position of the car and its velocity.
+// These features are bounded by the MinPosition, MaxPosition, and
+// MaxSpeed constants defined in this package. The sign of the velocity
+// feature denotes direction, with negative meaning that the car is
+// travelling left and positive meaning that the car is travelling
+// right. Upon reaching the minimum or maximum position, the velocity
+// of the car is set to 0.
 //
-// In Mountain Car, the environment state is continuous and consists of
-// the car's x position and velocity. The x position and velocity are
-// bounded by the constants defined in this package.
+// Actions determine the force to apply to the car and in which
+// direction to apply this force. Actions may be discrete or continuous.
+// Environments that deal with discrete and continuous actions are the
+// public mountaincar.Discrete and mountaincar.Continuous structs
+// respectively. These are the only public Mountain Car environments
+// that can be used.
+//
+// base does not implement the environment.Environment interface
 type base struct {
 	env.Task
 	positionBounds r1.Interval

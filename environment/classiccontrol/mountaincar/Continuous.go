@@ -8,14 +8,27 @@ import (
 	"sfneuman.com/golearn/utils/floatutils"
 )
 
-// mountaincar.Continuous in a classic control environment where an agent must
-// learn to drive an underpowered car up a hill. Actions are continuous in
-// [-1.0, 1.0], representing the acceleration and direction of
-// acceleration to be applied to the var. Actions outside of this range
-// are clipped to within this range.
+// Continuous implements the classic control Mountain Car environment.
+// In this environment, the agent controls a car in a valley between two
+// hills. The car is underpowered and cannot drive up the hill unless
+// it rocks back and forth from hill to hill, using its momentum to
+// gradually climb higher.
 //
-//For more information on the Mountain Car environment, see
-// mountaincar.Discrete.
+// State features consist of the x position of the car and its velocity.
+// These features are bounded by the MinPosition, MaxPosition, and
+// MaxSpeed constants defined in this package. The sign of the velocity
+// feature denotes direction, with negative meaning that the car is
+// travelling left and positive meaning that the car is travelling
+// right. Upon reaching the minimum or maximum position, the velocity
+// of the car is set to 0.
+//
+// Actions are 1-dimensional and continuous. Actions determine the force
+// to apply to the car and in which direction to apply this force.
+// Actions are bounded between [-1, 1] = [MinContinuousAction,
+// MaxContinuousAction], and actions outside of this range are clipped
+// to stay within this range.
+//
+// Continuous implements the environment.Environment interface
 type Continuous struct {
 	*base
 }

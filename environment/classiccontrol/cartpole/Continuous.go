@@ -21,13 +21,16 @@ import (
 // bounded by the constants defined in this package. For the position,
 // speed, and angular velocity features, extreme values are clipped to
 // within the legal ranges. For the pole's angle feature, extreme values
-// are normalized so that all angles stay in the range (-π, π].
+// are normalized so that all angles stay in the range (-π, π]. Upon
+// reaching a position boundary, the velocity of the cart is set to 0.
 //
 // Actions are continuous and 1-dimensional, consisting of the force
 // to apply to the cart horizontally. Negative force moves the cart left
 // and positive force moves the cart right. Actions are bounded to the
-// interval [-1, 1]. Actions outside of this range are clipped to stay
-// within this range.
+// interval [-1, 1] = [MinContinuousAction, MaxContinuousAction].
+// Actions outside of this range are clipped to stay within this range.
+//
+// Continuous implements the environment.Environment interface
 type Continuous struct {
 	*base
 }

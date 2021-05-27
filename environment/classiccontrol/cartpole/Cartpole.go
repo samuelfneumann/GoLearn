@@ -40,7 +40,7 @@ const (
 	MinContinuousAction float64 = -MaxContinuousAction
 )
 
-// Cartpole implements the classic control environment Cartpole. In
+// base implements the classic control environment Cartpole. In
 // this environment, a pole is attached to a cart, which can move
 // horizontally. Gravity pulls the pole downwards so that balancing
 // it in an upright position is very difficult.
@@ -51,12 +51,16 @@ const (
 // bounded by the constants defined in this package. For the position,
 // speed, and angular velocity features, extreme values are clipped to
 // within the legal ranges. For the pole's angle feature, extreme values
-// are normalized so that all angles stay in the range (-π, π].
+// are normalized so that all angles stay in the range (-π, π]. Upon
+// reaching a position boundary, the velocity of the cart is set to 0.
 //
-// Actions may be discrete or continuous. Environments the deal with
-// discrete and continuous actions are cartpole.Discrete and
-// cartpole.Continuous respectively. These are the only public
-// CartPole environments.
+// Actions determine the force to apply to the cart and in which
+// direction to apply this force. Actions may be discrete or continuous.
+// Environments that deal with discrete and continuous actions are
+// the public cartpole.Discrete and cartpole.Continuous structs
+// respectively. These are the only public CartPole environments.
+//
+// base does not implement the environment.Environment interface
 type base struct {
 	env.Task
 	lastStep              ts.TimeStep

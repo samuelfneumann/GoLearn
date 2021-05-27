@@ -22,7 +22,8 @@ import (
 // bounded by the constants defined in this package. For the position,
 // speed, and angular velocity features, extreme values are clipped to
 // within the legal ranges. For the pole's angle feature, extreme values
-// are normalized so that all angles stay in the range (-π, π].
+// are normalized so that all angles stay in the range (-π, π]. Upon
+// reaching a position boundary, the velocity of the cart is set to 0.
 //
 // Actions are discrete, consisting of the direction to apply
 // horizontal force to the cart. Legal actions are in {0, 1, 2}:
@@ -33,6 +34,8 @@ import (
 //	  2			Apply force right
 //
 // Illegal actions will cause the environment to panic.
+//
+// Discrete implements the environment.Environment interface
 type Discrete struct {
 	*base
 }

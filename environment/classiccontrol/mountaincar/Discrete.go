@@ -11,9 +11,23 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
-// mountaincar.Discrete in a classic control environment where an agent must
-// learn to drive an underpowered car up a hill. Actions are discrete in
-// (0, 1, 2) where:
+// Discrete implements the classic control Mountain Car environment.
+// In this environment, the agent controls a car in a valley between two
+// hills. The car is underpowered and cannot drive up the hill unless
+// it rocks back and forth from hill to hill, using its momentum to
+// gradually climb higher.
+//
+// State features consist of the x position of the car and its velocity.
+// These features are bounded by the MinPosition, MaxPosition, and
+// MaxSpeed constants defined in this package. The sign of the velocity
+// feature denotes direction, with negative meaning that the car is
+// travelling left and positive meaning that the car is travelling
+// right. Upon reaching the minimum or maximum position, the velocity
+// of the car is set to 0.
+//
+// Actions are 1-dimensional and discrete in (0, 1, 2). Actions
+// determine in which direction to apply full accelerating force to the
+// car:
 //
 //	Action	Meaning
 //	  0		Accelerate left
@@ -22,15 +36,8 @@ import (
 //
 //  Actions other than 0, 1, or 2 result in a panic
 //
-// When designing a starter for this environment, care should be taken to
-// ensure that the starting states are chosen within the environmental
-// bounds. If the starter produces a state outside of the position and
-// speed bounds, the environment will panic. This may happen near the
-// end of training, resulting in significant data loss.
-//
-// Any taks may be used with the mountaincar.Discrete environment, but the
-// classic control task is defined in the mountaincar.Goal struct, where the
-// agent must learn to reach the goal at the top of the hill.
+// Discrete implements the environment.Environment interface
+
 type Discrete struct {
 	*base
 }
