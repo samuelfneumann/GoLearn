@@ -126,9 +126,12 @@ func (p *Pendulum) NextState(t timestep.TimeStep, a mat.Vector) mat.Vector {
 	return newObs
 }
 
-// Step takes one environmental step given an action and returns a TimeStep
-// representing the new state and a bool indicating whether or not this is the
-// last environmental transition
+// Step takes one environmental step given action a and returns the next
+// timestep as a timestep.TimeStep and a bool indicating whether or not
+// the episode has ended. Actions are 1-dimensional and continuous, c
+// onsisting of the horizontal force to apply to the cart. Actions
+// outside the legal range of [-1, 1] are clipped to stay within this
+// range.
 func (p *Pendulum) Step(action mat.Vector) (timestep.TimeStep, bool) {
 	// Ensure action is 1-dimensional
 	if action.Len() > ActionDims {

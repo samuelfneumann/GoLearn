@@ -57,8 +57,11 @@ func (m *Continuous) ActionSpec() spec.Environment {
 }
 
 // Step takes one environmental step given action a and returns the next
-// state as a timestep.TimeStep and a bool indicating whether or not the
-// episode has ended
+// timestep as a timestep.TimeStep and a bool indicating whether or not
+// the episode has ended. Actions are 1-dimensional and continuous,
+// consisting of the horizontal force to apply to the cart. Actions
+// outside the legal range of [-2, 2] are clipped to stay within this
+// range.
 func (m *Continuous) Step(a mat.Vector) (ts.TimeStep, bool) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {

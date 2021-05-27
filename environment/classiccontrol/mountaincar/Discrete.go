@@ -34,7 +34,7 @@ import (
 //	  1		Do nothing
 //	  2		Accelerate right
 //
-//  Actions other than 0, 1, or 2 result in a panic
+// Actions other than 0, 1, or 2 result in a panic
 //
 // Discrete implements the environment.Environment interface
 
@@ -66,8 +66,11 @@ func (m *Discrete) ActionSpec() spec.Environment {
 }
 
 // Step takes one environmental step given action a and returns the next
-// state as a timestep.TimeStep and a bool indicating whether or not the
-// episode has ended
+// timestep as a timestep.TimeStep and a bool indicating whether or not
+// the episode has ended. Actions are discrete, consisting of the
+// direction to accelerate the car or whether to apply no acceleration
+// to the car. Legal actions are in the set {0, 1, 2}. Actions outside
+// this range will cause the environment to panic.
 func (m *Discrete) Step(a mat.Vector) (ts.TimeStep, bool) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
