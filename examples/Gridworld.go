@@ -6,7 +6,7 @@ import (
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/environment/gridworld"
 	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/savers"
+	"sfneuman.com/golearn/experiment/trackers"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
@@ -57,11 +57,11 @@ func Gridworld() {
 	q := qlearning.New(g, args, init, seed)
 
 	// Experiment
-	saver := savers.NewReturn("./data.bin")
+	saver := trackers.NewReturn("./data.bin")
 	e := experiment.NewOnline(g, q, 100_000, saver)
 	e.Run()
 	e.Save()
 
-	data := savers.LoadData("./data.bin")
+	data := trackers.LoadData("./data.bin")
 	fmt.Println(data)
 }
