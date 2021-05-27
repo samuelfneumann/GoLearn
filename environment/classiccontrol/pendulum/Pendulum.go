@@ -152,6 +152,11 @@ func (p *Pendulum) NextState(t timestep.TimeStep, a mat.Vector) mat.Vector {
 // representing the new state and a bool indicating whether or not this is the
 // last environmental transition
 func (p *Pendulum) Step(action mat.Vector) (timestep.TimeStep, bool) {
+	// Ensure action is 1-dimensional
+	if action.Len() > 1 {
+		panic("Actions should be 1-dimensional")
+	}
+
 	nextState := p.NextState(p.lastStep, action)
 	newth := nextState.AtVec(0)
 
