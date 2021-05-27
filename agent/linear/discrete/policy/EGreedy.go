@@ -67,14 +67,23 @@ func (p *EGreedy) Weights() map[string]*mat.Dense {
 	return weights
 }
 
+// actionValues calculates the values of each action in a state
+func (e *EGreedy) actionValues(obs mat.Vector) mat.Vector {
+	// Calculate all action values
+	numActions, _ := e.weights.Dims()
+	actionValues := mat.NewVecDense(numActions, nil)
+	actionValues.MulVec(e.weights, obs)
+
+	return actionValues
+}
+
 // SelectAction selects and action from an ε-greedy policy
 func (p *EGreedy) SelectAction(t timestep.TimeStep) mat.Vector {
 	obs := t.Observation
 
 	// Calculate all action values
-	numActions, _ := p.weights.Dims()
-	actionValues := mat.NewVecDense(numActions, nil)
-	actionValues.MulVec(p.weights, obs)
+	actionValues := p.actionValues(obs)
+	numActions := actionValues.Len()
 
 	// Find the greedy action
 	greedyAction := matutils.MaxVec(actionValues)

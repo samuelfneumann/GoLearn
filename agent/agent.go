@@ -29,6 +29,7 @@ type Learner interface {
 	ObserveFirst(timestep.TimeStep)
 	Weights() map[string]*mat.Dense
 	SetWeights(map[string]*mat.Dense) error
+	TdError(t timestep.Transition) float64
 }
 
 // Policy represents a policy that an agent can have.

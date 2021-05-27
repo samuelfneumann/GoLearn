@@ -29,7 +29,32 @@ func (s StepType) String() string {
 	}
 }
 
-// TimeStep packages together a single timestep in an environment
+// Transition packages together a SARSA tuple (S_{t}, A_{t}, R_{t+1},
+// S_{t+1}, A_{t+1})
+type Transition struct {
+	State      mat.Vector
+	Action     mat.Vector
+	Reward     float64
+	Discount   float64
+	NextState  mat.Vector
+	NextAction mat.Vector
+}
+
+// NewTransition creates and returns a new transition struct
+func NewTransition(step TimeStep, action mat.Vector, nextStep TimeStep,
+	nextAction mat.Vector) Transition {
+	state := step.Observation
+	reward := nextStep.Reward
+	discount := nextStep.Discount
+	nextState := nextStep.Observation
+	return Transition{state, action, reward, discount, nextState, nextAction}
+}
+
+// TimeStep packages together a single timestep in an environment.
+// Given a SARSA tuple (S_{t}, A_{t}, R_{t+1}, S_{t+1}, A_{t+1}), a
+// TimeStep packages together the (R_{t+1}, S_{t+1}) portion, together
+// with the discount value, step number, and whether the step is the
+// last environmental step.
 type TimeStep struct {
 	StepType    StepType
 	Reward      float64
