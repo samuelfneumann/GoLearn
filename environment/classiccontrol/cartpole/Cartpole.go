@@ -40,32 +40,27 @@ const (
 
 // Cartpole implements the classic control environment Cartpole. In
 // this environment, a pole is attached to a cart, which can move
-// horizontally. The agent must get the pole to face straight up for
-// as long as possible.
+// horizontally. Gravity pulls the pole downwards so that balancing
+// it in an upright position is very difficult.
 //
 // The state features are continuous and consist of the cart's x
 // position and speed, as well as the pole's angle from the positive
 // y-axis and the pole's angular velocity. All state features are
-// bounded by the constants defined in this file. For the position,
+// bounded by the constants defined in this package. For the position,
 // speed, and angular velocity features, extreme values are clipped to
 // within the legal ranges. For the pole's angle feature, extreme values
 // are normalized so that all angles stay in the range (-π, π].
 //
-// Actions are discrete and consist of the force applied to the cart:
-//
-//	Action	Meaning
-//	  0		Accelerate left
-//	  1		Do nothing
-//	  2		Accelerate right
-//
-// For discrete actions, the force applied to the cart is (action - 1) *
-// ForceMag.
+// Actions may be discrete or continuous. Environments the deal with
+// discrete and continuous actions are cartpole.Discrete and
+// cartpole.Continuous respectively. These are the only public
+// CartPole environments.
 type base struct {
 	env.Task
 	lastStep              ts.TimeStep
 	discount              float64
 	gravity               float64
-	forceMag              float64
+	forceMagnification    float64
 	poleMass              float64
 	halfPoleLength        float64
 	cartMass              float64
@@ -76,7 +71,7 @@ type base struct {
 	angularVelocityBounds r1.Interval
 }
 
-// New constructs a new Cartpole environment
+// New constructs a new base Cartpole environment
 func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 	positionBounds := r1.Interval{Min: -PositionBounds, Max: PositionBounds}
 	speedBounds := r1.Interval{Min: -SpeedBounds, Max: SpeedBounds}
@@ -140,7 +135,13 @@ func (c *base) DiscountSpec() spec.Environment {
 		upperBound, spec.Continuous)
 }
 
+// nextState calculates the next state of the environment given a force
+// to apply to the cart's base. Negative force will cause the cart to
+// move left while positive force will move the cart right.
 func (c *base) nextState(force float64) mat.Vector {
+	// Magnify the force
+	force *= c.forceMagnification
+
 	// Get state variables
 	state := c.lastStep.Observation
 	x, xDot := state.AtVec(0), state.AtVec(1)
@@ -184,6 +185,16 @@ func (c *base) nextState(force float64) mat.Vector {
 
 }
 
+// update calculates the next TimeStep in the environment given an
+// action and the next state of the environment. This function then
+// saves this TimeStep as the current step in the environment.
+//
+// This funciton is used so that the discrete and continuous action
+// versions of Cartpole can be deal with uniformly. Each calculates
+// the force to apply and calls this struct's nextState() function.
+// The result of that function is then passed to this function as
+// well as the action taken, which is needed to calculate the reward
+// for the action.
 func (c *base) update(a, newState mat.Vector) (ts.TimeStep, bool) {
 	reward := c.GetReward(c.lastStep.Observation, a, newState)
 	nextStep := ts.New(ts.Mid, reward, c.discount, newState,
@@ -232,6 +243,7 @@ func validateState(obs mat.Vector, positionBounds, speedBounds, angleBounds,
 
 }
 
+// String returns the string representation of the environment
 func (c *base) String() string {
 	msg := "Cartpole  |  Position: %v  | Speed: %v  |  Angle: %v" +
 		"  |  Angular Velocity: %v"
