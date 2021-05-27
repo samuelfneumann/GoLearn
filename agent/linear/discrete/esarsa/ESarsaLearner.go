@@ -35,24 +35,24 @@ func NewESarsaLearner(weights map[string]*mat.Dense, learningRate,
 }
 
 // ObserveFirst observes and records the first episodic timestep
-func (q *ESarsaLearner) ObserveFirst(t timestep.TimeStep) {
+func (e *ESarsaLearner) ObserveFirst(t timestep.TimeStep) {
 	if !t.First() {
 		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
 			"called on the first timestep (current timestep = %d)", t.Number)
 	}
-	q.step = timestep.TimeStep{}
-	q.nextStep = t
+	e.step = timestep.TimeStep{}
+	e.nextStep = t
 }
 
 // Observe observes and records any timestep other than the first timestep
-func (q *ESarsaLearner) Observe(action mat.Vector, nextStep timestep.TimeStep) {
+func (e *ESarsaLearner) Observe(action mat.Vector, nextStep timestep.TimeStep) {
 	if action.Len() != 1 {
 		fmt.Fprintf(os.Stderr, "Warning: value-based methods should not "+
 			"have multi-dimensional actions (action dim = %d)", action.Len())
 	}
-	q.step = q.nextStep
-	q.action = int(action.AtVec(0))
-	q.nextStep = nextStep
+	e.step = e.nextStep
+	e.action = int(action.AtVec(0))
+	e.nextStep = nextStep
 }
 
 func (e *ESarsaLearner) targetProbabilities(actionValues mat.Vector) mat.Vector {
@@ -71,41 +71,41 @@ func (e *ESarsaLearner) targetProbabilities(actionValues mat.Vector) mat.Vector 
 }
 
 // Step updates the weights of the Agent's Learner and Policy
-func (q *ESarsaLearner) Step() {
-	numActions, _ := q.weights.Dims()
+func (e *ESarsaLearner) Step() {
+	numActions, _ := e.weights.Dims()
 
 	// Calculate the action values in the next state
 	actionValues := mat.NewVecDense(numActions, nil)
-	nextState := q.nextStep.Observation
-	actionValues.MulVec(q.weights, nextState)
+	nextState := e.nextStep.Observation
+	actionValues.MulVec(e.weights, nextState)
 
 	// Find the target policy's probability of each action
-	targetProbs := q.targetProbabilities(actionValues)
+	targetProbs := e.targetProbabilities(actionValues)
 
 	// Create the update target
-	discount := q.nextStep.Discount
+	discount := e.nextStep.Discount
 	expectedQ := mat.Dot(targetProbs, actionValues)
-	target := q.nextStep.Reward + discount*expectedQ
+	target := e.nextStep.Reward + discount*expectedQ
 
 	// Find the current estimate of the taken action
-	weights := q.weights.RowView(q.action)
-	state := q.step.Observation
+	weights := e.weights.RowView(e.action)
+	state := e.step.Observation
 	currentEstimate := mat.Dot(weights, state)
 
 	// Construct the scaling factor of the gradient
-	scale := q.learningRate * (target - currentEstimate)
+	scale := e.learningRate * (target - currentEstimate)
 
 	// Perform gradient descent: ∇weights = scale * state
 	newWeights := mat.NewVecDense(weights.Len(), nil)
 	newWeights.AddScaledVec(weights, scale, state)
-	q.weights.SetRow(q.action, mat.Col(nil, 0, newWeights))
+	e.weights.SetRow(e.action, mat.Col(nil, 0, newWeights))
 
 }
 
 // Weights gets and returns the weights of the learner
-func (q *ESarsaLearner) Weights() map[string]*mat.Dense {
+func (e *ESarsaLearner) Weights() map[string]*mat.Dense {
 	weights := make(map[string]*mat.Dense)
-	weights[policy.WeightsKey] = q.weights
+	weights[policy.WeightsKey] = e.weights
 
 	return weights
 }
