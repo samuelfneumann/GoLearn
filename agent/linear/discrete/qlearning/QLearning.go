@@ -69,17 +69,9 @@ func New(env environment.Environment, agent spec.Agent,
 		panic("no learning rate specified")
 	}
 
-	// Get the environment specifications
-	envSpec := env.ObservationSpec()
-	features := envSpec.Shape.Len()
-
-	// Calculate the number of actions == Upper Bound + 1
-	// e.g. if there are 4 actions (0, 1, 2, 3), then the upper bound is 3
-	actions := int(env.ActionSpec().UpperBound.AtVec(0) + 1.0)
-
 	// Create algorithm components using previous specifications
-	behaviour := policy.NewEGreedy(e, seed, features, actions)
-	target := policy.NewGreedy(seed, features, actions)
+	behaviour := policy.NewEGreedy(e, seed, env)
+	target := policy.NewGreedy(seed, env)
 
 	// Ensure both policies and learner reference the same weights
 	weights := behaviour.Weights()

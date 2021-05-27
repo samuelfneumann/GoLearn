@@ -9,6 +9,8 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/distuv"
+	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils"
 )
@@ -25,9 +27,26 @@ type EGreedy struct {
 // probability with which a random action is selected; features is the
 // number of features in a given feature vector for the environment;
 // actions are the number of actions in the environment
-func NewEGreedy(e float64, seed uint64, features, actions int) *EGreedy {
+func NewEGreedy(e float64, seed uint64, env environment.Environment) *EGreedy {
 	source := rand.NewSource(seed)
 
+	// Ensure actions are 1-dimensional
+	if env.ActionSpec().Shape.Len() != 1 {
+		panic("EGreedy can only be used with 1-dimensional actions")
+	}
+
+	// Ensure actions are discrete
+	if env.ActionSpec().Cardinality != spec.Discrete {
+		panic("EGreedy can only be used with discrete actions")
+	}
+
+	// Calculate the number of actions
+	actions := int(env.ActionSpec().UpperBound.AtVec(0)) + 1
+
+	// Calculate the number of features
+	features := env.ObservationSpec().Shape.Len()
+
+	// Create the weight matrix: rows = actions, cols = features
 	weights := mat.NewDense(actions, features, nil)
 
 	return &EGreedy{weights, e, source}
