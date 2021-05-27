@@ -29,7 +29,7 @@ func NewESarsaLearner(weights map[string]*mat.Dense, learningRate,
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
-	learner := &ESarsaLearner{nil, step, -0, nextStep, learningRate, targetE}
+	learner := &ESarsaLearner{nil, step, 0, nextStep, learningRate, targetE}
 	learner.SetWeights(weights)
 	return learner
 }
