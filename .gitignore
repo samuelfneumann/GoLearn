@@ -1,3 +1,5 @@
 # Ignore data files
 *.bin
 **.bin
+
+DocumentationGuidelines.txt
