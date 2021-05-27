@@ -62,6 +62,11 @@ func (m *Discrete) ActionSpec() spec.Environment {
 // state as a timestep.TimeStep and a bool indicating whether or not the
 // episode has ended
 func (m *Discrete) Step(a mat.Vector) (ts.TimeStep, bool) {
+	// Ensure action is 1-dimensional
+	if a.Len() > 1 {
+		panic("Actions should be 1-dimensional")
+	}
+
 	// Discrete action in {0, 1, 2}
 	action := a.AtVec(0)
 

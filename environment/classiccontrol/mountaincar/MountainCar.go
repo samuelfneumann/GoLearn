@@ -132,15 +132,16 @@ func (m *base) nextState(force float64) mat.Vector {
 
 }
 
-// update updates the base environment to change the last state to newState.
-// This function also checks whether or not a TimeStep is the last in the
-// episode, adjusting it accordingly. This funciton also calculates the
-// reward for the previous state and given action as defined by the
-// Task. This function returns the next TimeStep and whether or not this
-// TimeStep is the last in the episode.
+// update calculates the next TimeStep in the environment given an
+// action and the next state of the environment. This function then
+// saves this TimeStep as the current step in the environment.
 //
-// This function updates the underlying variables which are common to
-// both the Discrete and Continuous action versions of Mountain Car.
+// This funciton is used so that the discrete and continuous action
+// versions of Mountain Car can be deal with uniformly. Each calculates
+// the force to apply and calls this struct's nextState() function.
+// The result of that function is then passed to this function as
+// well as the action taken, which is needed to calculate the reward
+// for the action.
 func (m *base) update(action, newState mat.Vector) (ts.TimeStep, bool) {
 	// Create the new timestep
 	reward := m.GetReward(m.lastStep.Observation, action, newState)

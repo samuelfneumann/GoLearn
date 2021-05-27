@@ -47,6 +47,11 @@ func (m *Continuous) ActionSpec() spec.Environment {
 // state as a timestep.TimeStep and a bool indicating whether or not the
 // episode has ended
 func (m *Continuous) Step(a mat.Vector) (ts.TimeStep, bool) {
+	// Ensure action is 1-dimensional
+	if a.Len() > 1 {
+		panic("Actions should be 1-dimensional")
+	}
+
 	// Clip action to legal range
 	force := floatutils.Clip(a.AtVec(0), MinContinuousAction,
 		MaxContinuousAction)
