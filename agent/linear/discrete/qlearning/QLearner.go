@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"gonum.org/v1/gonum/mat"
+	"sfneuman.com/golearn/agent/linear/discrete/policy"
 	"sfneuman.com/golearn/timestep"
 )
 
@@ -85,7 +86,7 @@ func (q *QLearner) Step() {
 // Weights gets and returns the weights of the learner
 func (q *QLearner) Weights() map[string]*mat.Dense {
 	weights := make(map[string]*mat.Dense)
-	weights["weights"] = q.weights
+	weights[policy.WeightsKey] = q.weights
 
 	return weights
 }
@@ -94,7 +95,7 @@ func (q *QLearner) Weights() map[string]*mat.Dense {
 // The SetWeights function can take the output of a call to Weights()
 // on another Learner or Linear Policy that has a key "weights"
 func (e *QLearner) SetWeights(weights map[string]*mat.Dense) error {
-	newWeights, ok := weights["weights"]
+	newWeights, ok := weights[policy.WeightsKey]
 	if !ok {
 		return fmt.Errorf("SetWeights: no weights named \"weights\"")
 	}

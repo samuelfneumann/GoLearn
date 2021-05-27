@@ -15,6 +15,11 @@ import (
 	"sfneuman.com/golearn/utils/matutils"
 )
 
+const (
+	// Keys for weights map: map[string]*mat.Dense
+	WeightsKey string = "weights"
+)
+
 // EGreedy implements an ε-greedy policy using linear function
 // approximation
 type EGreedy struct {
@@ -57,7 +62,7 @@ func NewEGreedy(e float64, seed uint64, env environment.Environment) *EGreedy {
 // string description -> weights
 func (p *EGreedy) Weights() map[string]*mat.Dense {
 	weights := make(map[string]*mat.Dense)
-	weights["weights"] = p.weights
+	weights[WeightsKey] = p.weights
 
 	return weights
 }
@@ -97,7 +102,7 @@ func (p *EGreedy) SelectAction(t timestep.TimeStep) mat.Vector {
 // The SetWeights function can take the output of a call to Weights()
 // on another EGreedy Policy directly
 func (p *EGreedy) SetWeights(weights map[string]*mat.Dense) error {
-	newWeights, ok := weights["weights"]
+	newWeights, ok := weights[WeightsKey]
 	if !ok {
 		return fmt.Errorf("SetWeights: no weights named \"weights\"")
 	}

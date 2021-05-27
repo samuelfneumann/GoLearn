@@ -46,7 +46,7 @@ func main() {
 
 	// Experiment
 	saver := trackers.NewReturn("./data.bin")
-	e := experiment.NewOnline(tm, q, 10_000, saver)
+	e := experiment.NewOnline(tm, q, 100_000, saver)
 	e.Run()
 	e.Save()
 

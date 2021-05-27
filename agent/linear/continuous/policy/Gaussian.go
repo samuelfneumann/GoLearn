@@ -15,8 +15,8 @@ import (
 
 const (
 	// Keys for weights map: map[string]*mat.Dense
-	MeanWeights string = "mean"
-	StdWeights  string = "standard deviation"
+	MeanWeightsKey string = "mean"
+	StdWeightsKey  string = "standard deviation"
 )
 
 type Gaussian struct {
@@ -74,27 +74,27 @@ func (g *Gaussian) SelectAction(t timestep.TimeStep) mat.Vector {
 func (g *Gaussian) Weights() map[string]*mat.Dense {
 	weights := make(map[string]*mat.Dense)
 
-	weights[MeanWeights] = g.meanWeights
-	weights[StdWeights] = g.stdWeights
+	weights[MeanWeightsKey] = g.meanWeights
+	weights[StdWeightsKey] = g.stdWeights
 
 	return weights
 }
 
 func (g *Gaussian) SetWeights(weights map[string]*mat.Dense) error {
 	// Set the weights for the mean
-	meanWeights, ok := weights[MeanWeights]
+	meanWeights, ok := weights[MeanWeightsKey]
 	if !ok {
 		return fmt.Errorf("SetWeights: no weights named \"%v\"",
-			MeanWeights)
+			MeanWeightsKey)
 	}
 
 	g.meanWeights = meanWeights
 
 	// Set the weights for the std deviation
-	stdWeights, ok := weights[StdWeights]
+	stdWeights, ok := weights[StdWeightsKey]
 	if !ok {
 		return fmt.Errorf("SetWeights: no weights named \"%v\"",
-			StdWeights)
+			StdWeightsKey)
 	}
 
 	g.stdWeights = stdWeights
