@@ -20,6 +20,7 @@ const (
 	MaxSpeed    float64 = 0.07
 	Power       float64 = 0.0015 // Engine power
 	Gravity     float64 = 0.0025
+	ActionDims  int     = 1
 
 	// Discrete Actions Env
 	MinDiscreteAction int = 0

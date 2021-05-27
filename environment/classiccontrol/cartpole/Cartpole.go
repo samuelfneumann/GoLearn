@@ -22,8 +22,9 @@ const (
 	HalfPoleLength float64 = 0.5  // half of pole length
 	ForceMag       float64 = 10.0 // Magnification of force applied
 	Dt             float64 = 0.02 // seconds between state updates
+	ActionDims     int     = 1
 
-	// Bounds (+/-) on state variabels
+	// Bounds (+/-) on state variables
 	PositionBounds        float64 = 4.8
 	SpeedBounds           float64 = 2
 	AngleBounds           float64 = math.Pi

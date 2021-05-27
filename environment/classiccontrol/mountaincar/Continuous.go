@@ -34,9 +34,9 @@ func NewContinuous(t env.Task, discount float64) (*Continuous, ts.TimeStep) {
 
 // ActionSpec returns the action specification of the environment
 func (m *Continuous) ActionSpec() spec.Environment {
-	shape := mat.NewVecDense(1, nil)
-	lowerBound := mat.NewVecDense(1, []float64{MinContinuousAction})
-	upperBound := mat.NewVecDense(1, []float64{MaxContinuousAction})
+	shape := mat.NewVecDense(ActionDims, nil)
+	lowerBound := mat.NewVecDense(ActionDims, []float64{MinContinuousAction})
+	upperBound := mat.NewVecDense(ActionDims, []float64{MaxContinuousAction})
 
 	return spec.NewEnvironment(shape, spec.Action, lowerBound,
 		upperBound, spec.Continuous)
@@ -48,7 +48,7 @@ func (m *Continuous) ActionSpec() spec.Environment {
 // episode has ended
 func (m *Continuous) Step(a mat.Vector) (ts.TimeStep, bool) {
 	// Ensure action is 1-dimensional
-	if a.Len() > 1 {
+	if a.Len() > ActionDims {
 		panic("Actions should be 1-dimensional")
 	}
 

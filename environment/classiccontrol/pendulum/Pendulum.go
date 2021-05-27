@@ -23,6 +23,7 @@ const (
 	Gravity     float64 = 9.8
 	Mass        float64 = 1.0
 	Length      float64 = 1.0
+	ActionDims  int     = 1
 )
 
 // Pendulum is an classic control environment where an agent must learn to
@@ -153,7 +154,7 @@ func (p *Pendulum) NextState(t timestep.TimeStep, a mat.Vector) mat.Vector {
 // last environmental transition
 func (p *Pendulum) Step(action mat.Vector) (timestep.TimeStep, bool) {
 	// Ensure action is 1-dimensional
-	if action.Len() > 1 {
+	if action.Len() > ActionDims {
 		panic("Actions should be 1-dimensional")
 	}
 
@@ -187,11 +188,11 @@ func (p *Pendulum) DiscountSpec() spec.Environment {
 
 // ActionSpec returns the action specification of the environment
 func (p *Pendulum) ActionSpec() spec.Environment {
-	shape := mat.NewVecDense(1, nil)
+	shape := mat.NewVecDense(ActionDims, nil)
 
 	minAction, maxAction := p.torqueBounds.Min, p.torqueBounds.Max
-	lowerBound := mat.NewVecDense(1, []float64{minAction})
-	upperBound := mat.NewVecDense(1, []float64{maxAction})
+	lowerBound := mat.NewVecDense(ActionDims, []float64{minAction})
+	upperBound := mat.NewVecDense(ActionDims, []float64{maxAction})
 
 	return spec.NewEnvironment(shape, spec.Action, lowerBound, upperBound,
 		spec.Continuous)

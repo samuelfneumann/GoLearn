@@ -48,9 +48,9 @@ func NewDiscrete(t env.Task, discount float64) (*Discrete, ts.TimeStep) {
 
 // ActionSpec returns the action specification of the environment
 func (c *Discrete) ActionSpec() spec.Environment {
-	shape := mat.NewVecDense(1, nil)
-	lowerBound := mat.NewVecDense(1, []float64{float64(MinDiscreteAction)})
-	upperBound := mat.NewVecDense(1, []float64{float64(MaxDiscreteAction)})
+	shape := mat.NewVecDense(ActionDims, nil)
+	lowerBound := mat.NewVecDense(ActionDims, []float64{float64(MinDiscreteAction)})
+	upperBound := mat.NewVecDense(ActionDims, []float64{float64(MaxDiscreteAction)})
 
 	return spec.NewEnvironment(shape, spec.Action, lowerBound,
 		upperBound, spec.Discrete)
@@ -64,7 +64,7 @@ func (c *Discrete) ActionSpec() spec.Environment {
 // this range will cause the environment to panic.
 func (c *Discrete) Step(a mat.Vector) (ts.TimeStep, bool) {
 	// Ensure action is 1-dimensional
-	if a.Len() > 1 {
+	if a.Len() > ActionDims {
 		panic("Actions should be 1-dimensional")
 	}
 
