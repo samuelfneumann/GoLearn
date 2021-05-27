@@ -8,14 +8,21 @@ import (
 	"sfneuman.com/golearn/spec"
 )
 
-// SwingUp implements a task where the agent must swing the pendulum up
-// and hold it in a vertical position. Rewards are the cosine of the
-// pendulum angle measured from the positive y-axis. The goal state
-// is the pendulum sticking straight up, at which point the agent gets
-// a reward of 1.0 on each timestep. This task is continuing.
+// SwingUp implements the classic control Pendulum swingup task. In
+// this task, the agent must learn to swing the pendulum up and hold it
+// in a vertical position facing upwards. The force that the agent
+// applies to the pendulum is underpowered, so the agent must learn to
+// rock the pendulum from side to side until it can an upwards
+// position.
+//
+// Rewards are the cosine of the angle of the pendulum measured from the
+// positive y-axis. For facing straight up, a reward of +1 is given.
+// For facing straight down a reward of -1 is given.
+//
+// Episodes end after a step limit.
 type SwingUp struct {
 	environment.Starter
-	environment.Ender
+	*environment.StepLimit
 }
 
 // NewSwingUp creates and returns a new SwingUp task

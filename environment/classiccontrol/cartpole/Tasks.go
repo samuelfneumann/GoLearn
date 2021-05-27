@@ -14,7 +14,7 @@ const (
 	FailAngle float64 = 12 * 2 * math.Pi / 360
 )
 
-// Balance implements the classic control Cartpole Balance task. In this
+// Balance implements the classic control Cartpole balance task. In this
 // Task, the goal of the agent is to balance the pole on the cart in
 // an upright position for as long as possible. Goal positions consist
 // of the pole above some set angle threshold θ.

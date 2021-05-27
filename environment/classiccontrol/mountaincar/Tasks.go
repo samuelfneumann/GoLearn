@@ -15,9 +15,17 @@ const (
 	GoalPosition float64 = 0.45
 )
 
-// Goal implements a goal state in the MountainCar environment. The
-// agent must learn to reach the goal, and upon reaching the goal, the
-// episode ends. This task is an episodic, cost-to-goal task.
+// Goal implements the classic control task of reaching a goal on
+// Mountain Car. In this task, the agent must learn to drive the car
+// up the hill and reach the goal state. Since the car is underpowered,
+// it must rock back and forth from hill to hill until it reaches the
+// goal.
+//
+// Rewards are -1 on each timestep and 0 for the action which
+// transitions the car to the goal.
+//
+// Episodes end after a step limit or when the car reaches the goal
+// state.
 type Goal struct {
 	environment.Starter
 	goalEnder *environment.IntervalLimit
