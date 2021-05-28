@@ -9,7 +9,17 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
-// Return tracks and saves the episodic return in an experiment.
+// Return tracks and saves the episodic return in an experiment. When
+// an environment returns a TimeStep, this Tracker will extract the
+// reward and accumulate the return for each episode in the experiment
+// and on that specific environment. If an environment is wrapped by
+// some environment wrapper which modifies rewards, then this Tracker
+// tracks the rewards returned by the wrapped environment. For example,
+// if an experiment is run on a experiments/wrappers.AverageReward
+// environment wrapping Mountain Car, then this Tracker will track
+// the cumulative episodic average reward, and not the episodic return
+// from the Mountain Car Environment.
+//
 // Note that an episode must finish for this Tracker to save its data.
 // If the last episode in an experiment does not finish, that episode's
 // return will not be saved.

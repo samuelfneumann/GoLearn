@@ -197,16 +197,15 @@ generated from an experiment and save it later.
 
 
 # ToDo
-- [ ] Documentation for all environments should be consistent and
-describe the same things in the same order
 
-- [ ] Cartpole needs documentation finished
-- [ ] Cartpole tasks need documentation finished
 - [ ] UniformStarter needs documentation
 - [ ] TileCoding and TileCoder could benefit from improved documentation
-
-- [ ] Should environment Enders and Starters each have their own package
 
 - [ ] Tasks and learners should both follow the Null Object pattern
 
 - [ ] Cartpole needs `Render()` method
+
+
+Documentation of AverageReward
+
+Find some way to save the episodic return for average reward environments. Maybe create an AverageRewardTracker
