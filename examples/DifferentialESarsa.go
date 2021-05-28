@@ -1,4 +1,4 @@
-package main
+package examples
 
 import (
 	"fmt"
@@ -33,6 +33,7 @@ func main() {
 	}
 	tm, _ := wrappers.NewTileCoding(m, tilings, seed)
 
+	// Create the average reward environment wrapper
 	ttm, _ := wrappers.NewAverageReward(tm, 0.0, 0.01, true)
 
 	// Zero RNG
@@ -44,16 +45,17 @@ func main() {
 
 	// Create the learning algorithm
 	args := spec.ESarsa{BehaviourE: 0.1, TargetE: 0.05, LearningRate: 0.05}
-	q := esarsa.New(tm, args, init, seed)
+	e := esarsa.New(tm, args, init, seed)
 
-	// Register learner with average reward
-	ttm.Register(q)
+	// Register learner with average reward environment so that the
+	// TDError of the learner can be used to update the average reward
+	ttm.Register(e)
 
 	// Experiment
 	saver := trackers.NewReturn("./data.bin")
-	e := experiment.NewOnline(ttm, q, 100_000, saver)
-	e.Run()
-	e.Save()
+	exp := experiment.NewOnline(ttm, e, 100_000, saver)
+	exp.Run()
+	exp.Save()
 
 	data := trackers.LoadData("./data.bin")
 	fmt.Println(data[len(data)-10:])

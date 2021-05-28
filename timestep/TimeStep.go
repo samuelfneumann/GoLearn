@@ -44,7 +44,7 @@ type Transition struct {
 func NewTransition(step TimeStep, action mat.Vector, nextStep TimeStep,
 	nextAction mat.Vector) Transition {
 	state := step.Observation
-	reward := nextStep.Reward
+	reward := nextStep.Reward // reward for the action argument
 	discount := nextStep.Discount
 	nextState := nextStep.Observation
 	return Transition{state, action, reward, discount, nextState, nextAction}
