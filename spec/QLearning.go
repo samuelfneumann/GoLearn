@@ -8,13 +8,13 @@ type QLearning struct {
 
 // Gets the configuration for QLearning. The spec.Qlearning specification
 // can be used with the esarsa.ESarsa or qlearning.QLearning algorithms
-func (q QLearning) Spec() map[string]float64 {
-	spec := make(map[string]float64)
+func (q QLearning) Spec() map[Key]float64 {
+	spec := make(map[Key]float64)
 
 	// Ensure compatability with esarsa.ESarsa
-	spec["target epsilon"] = 0.0
+	spec[TargetE] = 0.0
 
-	spec["behaviour epsilon"] = q.E
-	spec["learning rate"] = q.LearningRate
+	spec[BehaviourE] = q.E
+	spec[LearningRate] = q.LearningRate
 	return spec
 }

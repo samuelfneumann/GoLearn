@@ -50,7 +50,7 @@ func New(env environment.Environment, agent spec.Agent,
 
 	// Get the behaviour policy
 	agentSpec := agent.Spec()
-	e, ok := agentSpec["behaviour epsilon"]
+	e, ok := agentSpec[spec.BehaviourE]
 	if !ok {
 		err := fmt.Errorf("qlearning: no behaviour epsilon specified")
 		return &QLearning{}, err
@@ -69,7 +69,7 @@ func New(env environment.Environment, agent spec.Agent,
 	}
 
 	// Get the learning rate
-	learningRate, ok := agentSpec["learning rate"]
+	learningRate, ok := agentSpec[spec.LearningRate]
 	if !ok {
 		err := fmt.Errorf("qlearning: no learning rate specified")
 		return &QLearning{}, err

@@ -8,10 +8,10 @@ type ESarsa struct {
 }
 
 // Gets the configuration for QLearning
-func (e ESarsa) Spec() map[string]float64 {
-	spec := make(map[string]float64)
-	spec["target epsilon"] = e.TargetE
-	spec["behaviour epsilon"] = e.BehaviourE
-	spec["learning rate"] = e.LearningRate
+func (e ESarsa) Spec() map[Key]float64 {
+	spec := make(map[Key]float64)
+	spec[TargetE] = e.TargetE
+	spec[BehaviourE] = e.BehaviourE
+	spec[LearningRate] = e.LearningRate
 	return spec
 }

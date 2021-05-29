@@ -63,7 +63,7 @@ func New(env environment.Environment, agent spec.Agent,
 
 	// Get the behaviour policy
 	agentSpec := agent.Spec()
-	behaviourE, ok := agentSpec["behaviour epsilon"]
+	behaviourE, ok := agentSpec[spec.BehaviourE]
 	if !ok {
 		err := fmt.Errorf("esarsa: no behaviour epsilon specified")
 		return &ESarsa{}, err
@@ -75,7 +75,7 @@ func New(env environment.Environment, agent spec.Agent,
 	}
 
 	// Get the target policy
-	targetE, ok := agentSpec["target epsilon"]
+	targetE, ok := agentSpec[spec.TargetE]
 	if !ok {
 		panic("no target epsilon specified")
 	}
@@ -89,7 +89,7 @@ func New(env environment.Environment, agent spec.Agent,
 	}
 
 	// Get the learning rate
-	learningRate, ok := agentSpec["learning rate"]
+	learningRate, ok := agentSpec[spec.LearningRate]
 	if !ok {
 		err := fmt.Errorf("esarsa: no learning rate specified")
 		return &ESarsa{}, err
