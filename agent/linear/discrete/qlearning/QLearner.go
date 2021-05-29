@@ -22,13 +22,15 @@ type QLearner struct {
 // NewQLearner creates a new QLearner struct
 //
 // weights are the weights of the policy to learn
-func NewQLearner(weights map[string]*mat.Dense, learningRate float64) *QLearner {
+func NewQLearner(weights map[string]*mat.Dense,
+	learningRate float64) (*QLearner, error) {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
 	learner := &QLearner{nil, step, 0, nextStep, learningRate}
-	learner.SetWeights(weights)
-	return learner
+	err := learner.SetWeights(weights)
+
+	return learner, err
 }
 
 // ObserveFirst observes and records the first episodic timestep

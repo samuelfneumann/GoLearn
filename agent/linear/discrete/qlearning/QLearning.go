@@ -17,7 +17,7 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
-// QLearning implements the Q-Learning algorithm. Actions selected by
+// QLearning implements the online Q-Learning algorithm. Actions selected by
 // this algorithm will always be enumerated as (0, 1, 2, ... N) where
 // N is the maximum possible action.
 type QLearning struct {
@@ -25,20 +25,6 @@ type QLearning struct {
 	agent.Policy // Behaviour
 	Target       agent.Policy
 	seed         uint64
-}
-
-// SetWeights sets the weights of the QLearning Learner and Policies
-func (q *QLearning) SetWeights(weights map[string]*mat.Dense) error {
-	// Learner and Policies share weights, so it is sufficient to call
-	// SetWeights() on only one of these fields
-	return q.Learner.SetWeights(weights)
-}
-
-// Weights gets the weights of the QLearning Learner and Policies
-func (q *QLearning) Weights() map[string]*mat.Dense {
-	// Learner and Policies share weights, so it is sufficient to call
-	// Weights() on only one of these fields
-	return q.Learner.Weights()
 }
 
 // New creates a new QLearning struct. The agent spec agent should be
@@ -93,10 +79,28 @@ func New(env environment.Environment, agent spec.Agent,
 	weights := behaviour.Weights()
 	target.SetWeights(weights)
 
-	learner := NewQLearner(weights, learningRate)
+	learner, err := NewQLearner(weights, learningRate)
+	if err != nil {
+		err := fmt.Errorf("qlearning: cannot create learner")
+		return &QLearning{}, err
+	}
 
 	// Initialize weights
 	init.Initialize(weights["weights"])
 
 	return &QLearning{learner, behaviour, target, seed}, nil
+}
+
+// SetWeights sets the weights of the QLearning Learner and Policies
+func (q *QLearning) SetWeights(weights map[string]*mat.Dense) error {
+	// Learner and Policies share weights, so it is sufficient to call
+	// SetWeights() on only one of these fields
+	return q.Learner.SetWeights(weights)
+}
+
+// Weights gets the weights of the QLearning Learner and Policies
+func (q *QLearning) Weights() map[string]*mat.Dense {
+	// Learner and Policies share weights, so it is sufficient to call
+	// Weights() on only one of these fields
+	return q.Learner.Weights()
 }

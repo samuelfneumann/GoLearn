@@ -12,7 +12,7 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
-// ESarsa implements the Expected Sarsa algorithm. Actions selected by
+// ESarsa implements the online Expected Sarsa algorithm. Actions selected by
 // this algorithm will always be enumerated as (0, 1, 2, ... N) where
 // N is the maximum possible action.
 type ESarsa struct {
@@ -99,7 +99,11 @@ func New(env environment.Environment, agent spec.Agent,
 	weights := behaviour.Weights()
 	target.SetWeights(weights)
 
-	learner := NewESarsaLearner(weights, learningRate, targetE)
+	learner, err := NewESarsaLearner(weights, learningRate, targetE)
+	if err != nil {
+		err := fmt.Errorf("esarsa: cannot create learner")
+		return &ESarsa{}, err
+	}
 
 	// Initialize weights
 	init.Initialize(weights["weights"])

@@ -10,8 +10,8 @@ import (
 	"sfneuman.com/golearn/utils/matutils"
 )
 
-// ESarsaLearner implements the update functionality for the Q-Learning
-// algorithm.
+// ESarsaLearner implements the update functionality for the
+// online Expected Sarsa algorithm.
 type ESarsaLearner struct {
 	weights      *mat.Dense
 	step         timestep.TimeStep
@@ -25,13 +25,13 @@ type ESarsaLearner struct {
 //
 // weights are the weights of the policy to learn
 func NewESarsaLearner(weights map[string]*mat.Dense, learningRate,
-	targetE float64) *ESarsaLearner {
+	targetE float64) (*ESarsaLearner, error) {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
 	learner := &ESarsaLearner{nil, step, 0, nextStep, learningRate, targetE}
-	learner.SetWeights(weights)
-	return learner
+	err := learner.SetWeights(weights)
+	return learner, err
 }
 
 // ObserveFirst observes and records the first episodic timestep
