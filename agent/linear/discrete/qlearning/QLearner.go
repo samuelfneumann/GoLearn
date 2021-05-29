@@ -26,7 +26,7 @@ func NewQLearner(weights map[string]*mat.Dense, learningRate float64) *QLearner 
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
-	learner := &QLearner{nil, step, -0, nextStep, learningRate}
+	learner := &QLearner{nil, step, 0, nextStep, learningRate}
 	learner.SetWeights(weights)
 	return learner
 }
