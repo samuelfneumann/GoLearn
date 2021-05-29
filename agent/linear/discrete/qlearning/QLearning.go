@@ -86,7 +86,9 @@ func New(env environment.Environment, agent spec.Agent,
 	}
 
 	// Initialize weights
-	init.Initialize(weights["weights"])
+	for weight := range weights {
+		init.Initialize(weights[weight])
+	}
 
 	return &QLearning{learner, behaviour, target, seed}, nil
 }
