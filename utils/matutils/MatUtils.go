@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/stat"
 )
 
 // Format formats a matrix for printing
@@ -28,6 +29,17 @@ func MaxVec(values mat.Vector) int {
 		}
 	}
 	return idx
+}
+
+// RowMean compute and returns the mean of the rows of a matrix
+func RowMean(matrix *mat.Dense) *mat.VecDense {
+	r, _ := matrix.Dims()
+	rowMeans := make([]float64, r)
+
+	for i := 0; i < r; i++ {
+		rowMeans[i] = stat.Mean(matrix.RawRowView(i), nil)
+	}
+	return mat.NewVecDense(r, rowMeans)
 }
 
 // VecClip performs an element-wise clipping of a vector's values such
