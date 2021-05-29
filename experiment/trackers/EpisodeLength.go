@@ -20,7 +20,7 @@ type EpisodeLength struct {
 
 // NewEpisodeLength returns a new EpisodeLength saver which will save
 // its data at the specified location filename
-func NewEpisodeLength(filename string) *EpisodeLength {
+func NewEpisodeLength(filename string) Tracker {
 	var saver EpisodeLength
 	saver.filename = filename
 	return &saver

@@ -84,6 +84,12 @@ func New(t environment.Task, d float64) (*Pendulum, timestep.TimeStep) {
 	return &pendulum, firstStep
 }
 
+// LastTimeStep returns the last TimeStep that occurred in the
+// environment
+func (p *Pendulum) LastTimeStep() timestep.TimeStep {
+	return p.lastStep
+}
+
 // Reset resets the environment and returns a starting state drawn from the
 // Starter
 func (p *Pendulum) Reset() timestep.TimeStep {

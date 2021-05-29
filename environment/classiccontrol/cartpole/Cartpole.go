@@ -9,6 +9,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r1"
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/timestep"
 	ts "sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
 )
@@ -98,6 +99,12 @@ func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 		angularVelocityBounds}
 
 	return &cartpole, firstStep
+}
+
+// LastTimeStep returns the last TimeStep that occurred in the
+// environment
+func (b *base) LastTimeStep() timestep.TimeStep {
+	return b.lastStep
 }
 
 // Reset resets the environment and returns a starting state drawn from
