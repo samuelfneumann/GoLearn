@@ -42,7 +42,7 @@ func (g *GridWorld) At(i, j int) float64 {
 
 // New creates a new gridworld with starting position (x, y), r rows, and c
 // columns, task t, and discount factor discount
-func New(r, c int, t environment.Task, d float64) (*GridWorld,
+func New(r, c int, t environment.Task, d float64) (environment.Environment,
 	timestep.TimeStep) {
 	// Set the starting position
 	start := t.Start()

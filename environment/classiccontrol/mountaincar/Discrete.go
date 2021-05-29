@@ -44,7 +44,8 @@ type Discrete struct {
 
 // New creates a new Discrete action Mountain Car environment with the
 // argument task
-func NewDiscrete(t env.Task, discount float64) (*Discrete, ts.TimeStep) {
+func NewDiscrete(t env.Task, discount float64) (env.Environment,
+	ts.TimeStep) {
 	// Create and store the base Mountain Car environment
 	baseEnv, firstStep := newBase(t, discount)
 

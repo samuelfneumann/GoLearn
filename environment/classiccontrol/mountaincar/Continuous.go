@@ -35,7 +35,7 @@ type Continuous struct {
 
 // NewContinuous creates a new Continuous action Mountain Car
 // environment with the argument task
-func NewContinuous(t env.Task, discount float64) (*Continuous, ts.TimeStep) {
+func NewContinuous(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
 	// Create and store the base Mountain Car environment
 	baseEnv, firstStep := newBase(t, discount)
 

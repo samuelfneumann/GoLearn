@@ -37,7 +37,7 @@ type Continuous struct {
 
 // NewContinuous constructs a new Cartpole environment with continuous
 // actions
-func NewContinuous(t env.Task, discount float64) (*Continuous, ts.TimeStep) {
+func NewContinuous(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
 	base, firstStep := newBase(t, discount)
 	cartpole := Continuous{base}
 
