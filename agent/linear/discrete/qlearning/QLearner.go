@@ -119,7 +119,8 @@ func (q *QLearner) Weights() map[string]*mat.Dense {
 func (e *QLearner) SetWeights(weights map[string]*mat.Dense) error {
 	newWeights, ok := weights[policy.WeightsKey]
 	if !ok {
-		return fmt.Errorf("SetWeights: no weights named \"weights\"")
+		return fmt.Errorf("SetWeights: no weights named \"%v\"",
+			policy.WeightsKey)
 	}
 
 	e.weights = newWeights
