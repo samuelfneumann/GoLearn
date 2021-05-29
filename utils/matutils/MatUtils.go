@@ -31,6 +31,20 @@ func MaxVec(values mat.Vector) int {
 	return idx
 }
 
+// VecMean takes the element-wise mean of all vectors in a slice
+func VecMean(vectors []mat.Vector) *mat.VecDense {
+	mean := mat.NewVecDense(vectors[0].Len(), nil)
+
+	for _, vector := range vectors {
+		mean.AddVec(mean, vector)
+	}
+
+	count := float64(len(vectors))
+	mean.ScaleVec(count, mean)
+
+	return mean
+}
+
 // MatMean takes the element-wise mean of all matrices in a slice
 func MatMean(matrices []mat.Matrix) *mat.Dense {
 	r, c := matrices[0].Dims()
