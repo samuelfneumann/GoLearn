@@ -63,7 +63,10 @@ func QlearningMountainCar() {
 	init := weights.NewLinearMV(rand)
 
 	// Create the Q-learning algorithm
-	q := qlearning.New(tm, args, init, seed)
+	q, err := qlearning.New(tm, args, init, seed)
+	if err != nil {
+		panic(err)
+	}
 
 	// Now, we will create the experiment. First, generate savers to
 	// determine what data from the experiment we want to save

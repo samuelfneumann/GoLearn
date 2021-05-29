@@ -7,6 +7,8 @@
 package qlearning
 
 import (
+	"fmt"
+
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/policy"
@@ -40,38 +42,52 @@ func (q *QLearning) Weights() map[string]*mat.Dense {
 }
 
 // New creates a new QLearning struct. The agent spec agent should be
-// a spec.QLearning
+// a spec.QLearning. If the agent spec is not a spec.QLearning, New
+// will panic.
 func New(env environment.Environment, agent spec.Agent,
-	init weights.Initializer, seed uint64) *QLearning {
+	init weights.Initializer, seed uint64) (*QLearning, error) {
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
-		panic("Q-learning can only be used with discrete actions")
+		return &QLearning{}, fmt.Errorf("qlearning: cannot use non-discrete " +
+			"actions")
 	}
-	if env.ActionSpec().Shape.Len() > 1 {
-		panic("Q-Learning cannot be used with multi-dimensional actions")
+	if env.ActionSpec().LowerBound.Len() > 1 {
+		return &QLearning{}, fmt.Errorf("qlearning: actions must be " +
+			"1-dimensional")
 	}
 	if env.ActionSpec().LowerBound.AtVec(0) != 0.0 {
-		panic("Actions must be enumerated starting from 0 for" +
-			"value-based methods")
+		return &QLearning{}, fmt.Errorf("qlearning: actions must be " +
+			"enumerated starting from 0")
 	}
 
 	agent = agent.(spec.QLearning) // Ensure we have a QLearning spec
 
-	// Get the agent specifications
+	// Get the behaviour policy
 	agentSpec := agent.Spec()
 	e, ok := agentSpec["behaviour epsilon"]
 	if !ok {
-		panic("no epsilon specified")
+		err := fmt.Errorf("qlearning: no behaviour epsilon specified")
+		return &QLearning{}, err
+	}
+	behaviour, err := policy.NewEGreedy(e, seed, env)
+	if err != nil {
+		return &QLearning{}, fmt.Errorf("qlearning: invalid behaviour "+
+			"policy: %v", err)
 	}
 
+	// Get the target policy
+	target, err := policy.NewGreedy(seed, env)
+	if err != nil {
+		return &QLearning{}, fmt.Errorf("qlearning: invalid target "+
+			"policy: %v", err)
+	}
+
+	// Get the learning rate
 	learningRate, ok := agentSpec["learning rate"]
 	if !ok {
-		panic("no learning rate specified")
+		err := fmt.Errorf("qlearning: no learning rate specified")
+		return &QLearning{}, err
 	}
-
-	// Create algorithm components using previous specifications
-	behaviour := policy.NewEGreedy(e, seed, env)
-	target := policy.NewGreedy(seed, env)
 
 	// Ensure both policies and learner reference the same weights
 	weights := behaviour.Weights()
@@ -82,5 +98,5 @@ func New(env environment.Environment, agent spec.Agent,
 	// Initialize weights
 	init.Initialize(weights["weights"])
 
-	return &QLearning{learner, behaviour, target, seed}
+	return &QLearning{learner, behaviour, target, seed}, nil
 }

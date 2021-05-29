@@ -54,7 +54,10 @@ func Gridworld() {
 	init := weights.NewLinearMV(rand)
 
 	// Create the learning algorithm
-	q := qlearning.New(g, args, init, seed)
+	q, err := qlearning.New(g, args, init, seed)
+	if err != nil {
+		panic(err)
+	}
 
 	// Experiment
 	saver := trackers.NewReturn("./data.bin")

@@ -37,49 +37,63 @@ func (e *ESarsa) Weights() map[string]*mat.Dense {
 }
 
 // New creates a new ESarsa struct. The agent spec agent should be a
-// spec.ESarsa or spec.QLearning
+// spec.ESarsa or spec.QLearning. If the agent spec is neither
+// spec.ESarsa or spec.QLearing, New will panic.
 func New(env environment.Environment, agent spec.Agent,
-	init weights.Initializer, seed uint64) *ESarsa {
+	init weights.Initializer, seed uint64) (*ESarsa, error) {
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
-		panic("ESarsa can only be used with discrete actions")
+		return &ESarsa{}, fmt.Errorf("esarsa: cannot use non-discrete actions")
 	}
 	if env.ActionSpec().LowerBound.Len() > 1 {
-		panic("ESarsa cannot be used with multi-dimensional actions")
+		return &ESarsa{}, fmt.Errorf("esarsa: actions must be 1-dimensional")
 	}
 	if env.ActionSpec().LowerBound.AtVec(0) != 0.0 {
-		panic("Actions must be enumerated starting from 0 for" +
-			"value-based methods")
+		return &ESarsa{}, fmt.Errorf("esarsa: actions must be enumerated " +
+			"starting from 0")
 	}
 
 	// Ensure we have either an ESarsa or QLearning spec
 	_, okSarsa := agent.(spec.ESarsa)
 	_, okQLearning := agent.(spec.QLearning)
 	if !okSarsa && !okQLearning {
-		msg := fmt.Sprintf("%T not spec.ESarsa or spec.QLearning", agent)
-		panic(msg)
+		err := fmt.Errorf("%T not spec.ESarsa or spec.QLearning", agent)
+		return &ESarsa{}, err
 	}
 
-	// Get the agent specifications
+	// Get the behaviour policy
 	agentSpec := agent.Spec()
 	behaviourE, ok := agentSpec["behaviour epsilon"]
 	if !ok {
-		panic("no behaviour epsilon specified")
+		err := fmt.Errorf("esarsa: no behaviour epsilon specified")
+		return &ESarsa{}, err
+	}
+	behaviour, err := policy.NewEGreedy(behaviourE, seed, env)
+	if err != nil {
+		return &ESarsa{}, fmt.Errorf("esarsa: invalid behaviour policy: %v",
+			err)
 	}
 
+	// Get the target policy
 	targetE, ok := agentSpec["target epsilon"]
 	if !ok {
 		panic("no target epsilon specified")
 	}
-
-	learningRate, ok := agentSpec["learning rate"]
 	if !ok {
-		panic("no learning rate specified")
+		err := fmt.Errorf("esarsa: no target epsilon specified")
+		return &ESarsa{}, err
+	}
+	target, err := policy.NewEGreedy(targetE, seed, env)
+	if err != nil {
+		return &ESarsa{}, fmt.Errorf("esarsa: invalid target policy: %v", err)
 	}
 
-	// Create algorithm components using previous specifications
-	behaviour := policy.NewEGreedy(behaviourE, seed, env)
-	target := policy.NewEGreedy(targetE, seed, env)
+	// Get the learning rate
+	learningRate, ok := agentSpec["learning rate"]
+	if !ok {
+		err := fmt.Errorf("esarsa: no learning rate specified")
+		return &ESarsa{}, err
+	}
 
 	// Ensure both policies and learner reference the same weights
 	weights := behaviour.Weights()
@@ -90,5 +104,5 @@ func New(env environment.Environment, agent spec.Agent,
 	// Initialize weights
 	init.Initialize(weights["weights"])
 
-	return &ESarsa{learner, behaviour, target, seed}
+	return &ESarsa{learner, behaviour, target, seed}, nil
 }

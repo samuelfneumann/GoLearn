@@ -32,17 +32,20 @@ type EGreedy struct {
 // probability with which a random action is selected; features is the
 // number of features in a given feature vector for the environment;
 // actions are the number of actions in the environment
-func NewEGreedy(e float64, seed uint64, env environment.Environment) *EGreedy {
+func NewEGreedy(e float64, seed uint64,
+	env environment.Environment) (*EGreedy, error) {
 	source := rand.NewSource(seed)
 
 	// Ensure actions are 1-dimensional
 	if env.ActionSpec().Shape.Len() != 1 {
-		panic("EGreedy can only be used with 1-dimensional actions")
+		return &EGreedy{}, fmt.Errorf("egreedy: can only use " +
+			"1-dimensional actions")
 	}
 
 	// Ensure actions are discrete
 	if env.ActionSpec().Cardinality != spec.Discrete {
-		panic("EGreedy can only be used with discrete actions")
+		return &EGreedy{}, fmt.Errorf("egreedy: can only use " +
+			"discrete actions")
 	}
 
 	// Calculate the number of actions
@@ -54,7 +57,7 @@ func NewEGreedy(e float64, seed uint64, env environment.Environment) *EGreedy {
 	// Create the weight matrix: rows = actions, cols = features
 	weights := mat.NewDense(actions, features, nil)
 
-	return &EGreedy{weights, e, source}
+	return &EGreedy{weights, e, source}, nil
 
 }
 

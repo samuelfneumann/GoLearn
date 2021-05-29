@@ -45,7 +45,10 @@ func main() {
 
 	// Create the learning algorithm
 	args := spec.ESarsa{BehaviourE: 0.1, TargetE: 0.05, LearningRate: 0.05}
-	e := esarsa.New(tm, args, init, seed)
+	e, err := esarsa.New(tm, args, init, seed)
+	if err != nil {
+		panic(err)
+	}
 
 	// Register learner with average reward environment so that the
 	// TDError of the learner can be used to update the average reward
