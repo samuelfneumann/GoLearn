@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/agent/linear/discrete/esarsa"
+	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/environment/wrappers"
@@ -43,8 +43,8 @@ func main() {
 	init := weights.NewLinearMV(rand)
 
 	// Create the learning algorithm
-	args := spec.ESarsa{BehaviourE: 0.1, TargetE: 0.05, LearningRate: 0.05}
-	q := esarsa.New(tm, args, init, seed)
+	args := spec.QLearning{E: 0.1, LearningRate: 0.05}
+	q, _ := qlearning.New(tm, args, init, seed)
 
 	// Register learner with average reward
 	ttm.Register(q)

@@ -100,6 +100,10 @@ A `NoiseMaker` might inject noise into the environmental observations. A
 So far, the following environment wrappers are implemented:
 
 * `TileCoding`: Tile codes environmental observations
+* `AverageReward`: Converts an environment to the average reward formulation, 
+	returning the differential reward at each timestep and tracking/updating 
+	the policy's average reward estimate over time. This wrapper easily converts
+	any algorithm to its differential counterpart.
 
 
 It is easy to implement your own environment wrapper. All you need to do
@@ -195,6 +199,19 @@ type Tracker interface {
 `Trackers` follow the `observer-observable` design pattern to track data
 generated from an experiment and save it later.
 
+If an `Environment` is wrapped in such a way that the `TimeStep` returned
+contains modified data, but the unmodified data is desired to be saved,
+the underlying, wrapped `Environemnt` can be registered with a `Tracker`
+using the `trackers.Register()` method. In this way, the data from the
+underlying, wrapped `Environment` will be tracked instead of the data 
+from the wrapper `Environment`. For example, if an environment is wrapped
+in an `wrappers.AverageReward` wrapper, then the differential reward is 
+returned on each timestep. In many cases, we desire to track the return of an
+episode, not the differential return. In this case, the underlying, wrapped
+`Environment` can be registered with a `Tracker` using the 
+`trackers.Register()` method. In this way, the underlying, un-modified reward
+and the episodic return (rather than the episodic differential return) can be
+tracked.
 
 # ToDo
 
@@ -204,8 +221,3 @@ generated from an experiment and save it later.
 - [ ] Tasks and learners should both follow the Null Object pattern
 
 - [ ] Cartpole needs `Render()` method
-
-
-Documentation of AverageReward
-
-Find some way to save the episodic return for average reward environments. Maybe create an AverageRewardTracker
