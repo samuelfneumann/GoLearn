@@ -32,7 +32,7 @@ type Return struct {
 }
 
 // NewReturn creates and returns a new *Return Tracker
-func NewReturn(filename string) Tracker {
+func NewReturn(filename string) *Return {
 	var saver Return
 	saver.lastTimeStep = -1
 	saver.filename = filename

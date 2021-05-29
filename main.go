@@ -50,9 +50,9 @@ func main() {
 	ttm.Register(q)
 
 	// Experiment
-	saver := trackers.NewReturn("./data.bin")
-	saver = trackers.Register(saver, m)
-	e := experiment.NewOnline(ttm, q, 100_000, saver)
+	var tracker trackers.Tracker = trackers.NewReturn("./data.bin")
+	tracker = trackers.Register(tracker, m)
+	e := experiment.NewOnline(ttm, q, 100_000, tracker)
 	e.Run()
 	e.Save()
 

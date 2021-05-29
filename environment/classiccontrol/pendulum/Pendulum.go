@@ -67,8 +67,7 @@ type Pendulum struct {
 }
 
 // New creates and returns a new Pendulum environment
-func New(t environment.Task, d float64) (environment.Environment,
-	timestep.TimeStep) {
+func New(t environment.Task, d float64) (*Pendulum, timestep.TimeStep) {
 	angleBounds := r1.Interval{Min: -AngleBound, Max: AngleBound}
 	speedBounds := r1.Interval{Min: -SpeedBound, Max: SpeedBound}
 	torqueBounds := r1.Interval{Min: MinContinuousAction,

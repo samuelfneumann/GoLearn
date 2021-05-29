@@ -42,7 +42,7 @@ type Discrete struct {
 
 // NewDiscrete constructs a new Cartpole environment with discrete
 // actions
-func NewDiscrete(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
+func NewDiscrete(t env.Task, discount float64) (*Discrete, ts.TimeStep) {
 	base, firstStep := newBase(t, discount)
 	cartpole := Discrete{base}
 

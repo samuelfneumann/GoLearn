@@ -30,6 +30,9 @@ type registeredTracker struct {
 // Register registers a new Tracker with an Environment, to track data
 // from the registered Environment only. Register returns a copy of the
 // argument Tracker that is registered with the argument Environment.
+//
+// Note: the underlying concrete type of the registered Tracker is
+// lost when registering an Environment with a Tracker.
 func Register(t Tracker, env environment.Environment) Tracker {
 	return &registeredTracker{t, env}
 }
