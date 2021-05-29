@@ -56,11 +56,10 @@ func QlearningMountainCar() {
 	// Create the Q-learning algorithm. First, we defined an initialization
 	// method for the Linear Q-learning algorithm's weights.
 	// First, we need to create an RNG that will sample weights for us.
-	weightSize := make([]float64, tm.ObservationSpec().Shape.Len())
-	rand := weights.NewZero(weightSize) // Zero RNG
+	rand := weights.NewZeroUV() // Zero RNG
 
 	// Create the weight initializer with the RNG
-	init := weights.NewLinearMV(rand)
+	init := weights.NewLinearUV(rand)
 
 	// Create the Q-learning algorithm
 	q, err := qlearning.New(tm, args, init, seed)

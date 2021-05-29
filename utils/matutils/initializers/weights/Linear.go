@@ -3,6 +3,7 @@ package weights
 import (
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/distmv"
+	"gonum.org/v1/gonum/stat/distuv"
 )
 
 // LinearMV initializes a single linear layer or matrix using weights
@@ -38,12 +39,39 @@ func NewLinearMV(rand distmv.Rander) LinearMV {
 // Initialize initializes a linear layer of weights
 func (l LinearMV) Initialize(weights *mat.Dense) {
 	if weights == nil {
-		panic("cannot pass nil weights")
+		return
 	}
 	r, _ := weights.Dims()
 
 	for i := 0; i < r; i++ {
 		row := l.Rand(nil)
 		weights.SetRow(i, row)
+	}
+}
+
+// LinearUV initializes a single linear layer of weights, drawn from
+// a univariate distribution
+type LinearUV struct {
+	distuv.Rander
+}
+
+// NewLinearUV  creates and returns a new LinearUV
+func NewLinearUV(rand distuv.Rander) LinearUV {
+	if rand == nil {
+		panic("rand cannot be nil")
+	}
+	return LinearUV{rand}
+}
+
+// Initialize initializes a matrix of weights using values drawn from
+// a univariate distribution
+func (l LinearUV) Initialize(weights *mat.Dense) {
+	if weights == nil {
+		return
+	}
+
+	backingData := weights.RawMatrix().Data
+	for i := 0; i < len(backingData); i++ {
+		backingData[i] = l.Rand()
 	}
 }

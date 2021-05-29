@@ -36,11 +36,10 @@ func main() {
 	ttm, _ := wrappers.NewAverageReward(tm, 0.0, 0.01, true)
 
 	// Zero RNG
-	weightSize := make([]float64, tm.ObservationSpec().Shape.Len())
-	rand := weights.NewZero(weightSize)
+	rand := weights.NewZeroUV()
 
 	// Create the weight initializer with the RNG
-	init := weights.NewLinearMV(rand)
+	init := weights.NewLinearUV(rand)
 
 	// Create the learning algorithm
 	args := spec.QLearning{E: 0.1, LearningRate: 0.05}

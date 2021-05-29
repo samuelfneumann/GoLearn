@@ -38,7 +38,7 @@ func main() {
 
 	// Zero RNG
 	weightSize := make([]float64, tm.ObservationSpec().Shape.Len())
-	rand := weights.NewZero(weightSize)
+	rand := weights.NewZeroMV(weightSize)
 
 	// Create the weight initializer with the RNG
 	init := weights.NewLinearMV(rand)

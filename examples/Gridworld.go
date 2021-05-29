@@ -48,7 +48,7 @@ func Gridworld() {
 	// method for the Linear Q-learning algorithm's weights.
 	// First, we need to create an RNG that will sample weights for us.
 	weightSize := make([]float64, g.ObservationSpec().Shape.Len())
-	rand := weights.NewZero(weightSize)
+	rand := weights.NewZeroMV(weightSize)
 
 	// Create the weight initializer previously crated RNG
 	init := weights.NewLinearMV(rand)
