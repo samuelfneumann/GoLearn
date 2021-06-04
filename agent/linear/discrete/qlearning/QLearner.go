@@ -21,13 +21,15 @@ type QLearner struct {
 
 // NewQLearner creates a new QLearner struct
 //
-// weights are the weights of the policy to learn
-func NewQLearner(weights map[string]*mat.Dense,
+// egreedy is the policy.EGreedy to learn
+func NewQLearner(egreedy policy.EGreedy,
 	learningRate float64) (*QLearner, error) {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
 	learner := &QLearner{nil, step, 0, nextStep, learningRate}
+	weights := egreedy.Weights()
+
 	err := learner.SetWeights(weights)
 
 	return learner, err

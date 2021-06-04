@@ -1,6 +1,16 @@
 # GoLearn: A Reinforcement Learning Framework in Go
 
 # Algorithms
+##Learner
+`Learner`s can be regular `Learner`s or `BatchLearner`s. Regular
+`Learner`s learn from the latest timestep alone. `BatchLearner`s will
+take in an experience replay and sample from it to learn.
+
+Learners/Policies may need to be split into linear learners and nonlinear
+learner and linear polices and nonlinear policies to deal with the setting
+and getting of weights. Nonlinear will use Gorgonia networks, while linear
+will use Gonum matrices.
+
 ## Value-Based Algorithms
 A number of value-based learning algorithms are included. So far, only
 linear/tabular versions of `Q-Learning` and `Expected Sarsa` are implemented.
@@ -100,8 +110,8 @@ A `NoiseMaker` might inject noise into the environmental observations. A
 So far, the following environment wrappers are implemented:
 
 * `TileCoding`: Tile codes environmental observations
-* `AverageReward`: Converts an environment to the average reward formulation, 
-	returning the differential reward at each timestep and tracking/updating 
+* `AverageReward`: Converts an environment to the average reward formulation,
+	returning the differential reward at each timestep and tracking/updating
 	the policy's average reward estimate over time. This wrapper easily converts
 	any algorithm to its differential counterpart.
 
@@ -203,12 +213,12 @@ If an `Environment` is wrapped in such a way that the `TimeStep` returned
 contains modified data, but the unmodified data is desired to be saved,
 the underlying, wrapped `Environemnt` can be registered with a `Tracker`
 using the `trackers.Register()` method. In this way, the data from the
-underlying, wrapped `Environment` will be tracked instead of the data 
+underlying, wrapped `Environment` will be tracked instead of the data
 from the wrapper `Environment`. For example, if an environment is wrapped
-in an `wrappers.AverageReward` wrapper, then the differential reward is 
+in an `wrappers.AverageReward` wrapper, then the differential reward is
 returned on each timestep. In many cases, we desire to track the return of an
 episode, not the differential return. In this case, the underlying, wrapped
-`Environment` can be registered with a `Tracker` using the 
+`Environment` can be registered with a `Tracker` using the
 `trackers.Register()` method. In this way, the underlying, un-modified reward
 and the episodic return (rather than the episodic differential return) can be
 tracked.
@@ -221,3 +231,11 @@ tracked.
 - [ ] Tasks and learners should both follow the Null Object pattern
 
 - [ ] Cartpole needs `Render()` method
+
+
+Experience Replay:
+	We will always have online version of algorithms that are different
+	from the ER counterparts. This is because if an algorithm is online,
+	then we can add in code optimizations (e.g. we don't need a replay
+	table, sampler, adder and we can store transitions directly intsead
+	of duplicating them and storing them in a table).

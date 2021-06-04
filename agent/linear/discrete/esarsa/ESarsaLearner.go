@@ -23,13 +23,14 @@ type ESarsaLearner struct {
 
 // NewESarsaLearner creates a new ESarsaLearner struct
 //
-// weights are the weights of the policy to learn
-func NewESarsaLearner(weights map[string]*mat.Dense, learningRate,
+// egreedy is the policy.EGreedy to learn
+func NewESarsaLearner(egreedy policy.EGreedy, learningRate,
 	targetE float64) (*ESarsaLearner, error) {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
 	learner := &ESarsaLearner{nil, step, 0, nextStep, learningRate, targetE}
+	weights := egreedy.Weights()
 	err := learner.SetWeights(weights)
 	return learner, err
 }
