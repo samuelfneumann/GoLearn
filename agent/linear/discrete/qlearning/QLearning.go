@@ -9,7 +9,6 @@ package qlearning
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/policy"
 	"sfneuman.com/golearn/environment"
@@ -91,18 +90,4 @@ func New(env environment.Environment, agent spec.Agent,
 	}
 
 	return &QLearning{learner, behaviour, target, seed}, nil
-}
-
-// SetWeights sets the weights of the QLearning Learner and Policies
-func (q *QLearning) SetWeights(weights map[string]*mat.Dense) error {
-	// Learner and Policies share weights, so it is sufficient to call
-	// SetWeights() on only one of these fields
-	return q.Learner.SetWeights(weights)
-}
-
-// Weights gets the weights of the QLearning Learner and Policies
-func (q *QLearning) Weights() map[string]*mat.Dense {
-	// Learner and Policies share weights, so it is sufficient to call
-	// Weights() on only one of these fields
-	return q.Learner.Weights()
 }
