@@ -27,8 +27,6 @@ type Learner interface {
 	Step() // Performs an update
 	Observe(action mat.Vector, nextObs timestep.TimeStep)
 	ObserveFirst(timestep.TimeStep)
-	Weights() map[string]*mat.Dense
-	SetWeights(map[string]*mat.Dense) error
 	TdError(t timestep.Transition) float64
 }
 
