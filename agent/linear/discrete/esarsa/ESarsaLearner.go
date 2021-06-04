@@ -13,12 +13,17 @@ import (
 // ESarsaLearner implements the update functionality for the
 // online Expected Sarsa algorithm.
 type ESarsaLearner struct {
-	weights      *mat.Dense
-	step         timestep.TimeStep
-	action       int
-	nextStep     timestep.TimeStep
+	weights *mat.Dense
+
+	// Store the latest transition
+	step     timestep.TimeStep
+	action   int
+	nextStep timestep.TimeStep
+
 	learningRate float64
-	targetE      float64
+
+	// ϵ of ϵ-greedy target policy
+	targetE float64
 }
 
 // NewESarsaLearner creates a new ESarsaLearner struct

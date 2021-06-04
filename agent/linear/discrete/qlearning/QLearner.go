@@ -12,10 +12,16 @@ import (
 // QLearner implements the update functionality for the Q-Learning
 // algorithm.
 type QLearner struct {
-	weights      *mat.Dense
-	step         timestep.TimeStep
-	action       int
-	nextStep     timestep.TimeStep
+	// Store policy weights instead of policy to increase computational
+	// efficiency. If policy was stored, then Weights() would need to
+	// be called often
+	weights *mat.Dense
+
+	// Store the latest transition
+	step     timestep.TimeStep
+	action   int
+	nextStep timestep.TimeStep
+
 	learningRate float64
 }
 
