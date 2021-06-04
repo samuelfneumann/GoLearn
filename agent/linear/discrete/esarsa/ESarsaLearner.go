@@ -24,7 +24,7 @@ type ESarsaLearner struct {
 // NewESarsaLearner creates a new ESarsaLearner struct
 //
 // egreedy is the policy.EGreedy to learn
-func NewESarsaLearner(egreedy policy.EGreedy, learningRate,
+func NewESarsaLearner(egreedy *policy.EGreedy, learningRate,
 	targetE float64) (*ESarsaLearner, error) {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}

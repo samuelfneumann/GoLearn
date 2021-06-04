@@ -99,7 +99,7 @@ func New(env environment.Environment, agent spec.Agent,
 	weights := behaviour.Weights()
 	target.SetWeights(weights)
 
-	learner, err := NewESarsaLearner(weights, learningRate, targetE)
+	learner, err := NewESarsaLearner(behaviour, learningRate, targetE)
 	if err != nil {
 		err := fmt.Errorf("esarsa: cannot create learner")
 		return &ESarsa{}, err

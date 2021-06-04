@@ -79,7 +79,7 @@ func New(env environment.Environment, agent spec.Agent,
 	weights := behaviour.Weights()
 	target.SetWeights(weights)
 
-	learner, err := NewQLearner(weights, learningRate)
+	learner, err := NewQLearner(behaviour, learningRate)
 	if err != nil {
 		err := fmt.Errorf("qlearning: cannot create learner")
 		return &QLearning{}, err

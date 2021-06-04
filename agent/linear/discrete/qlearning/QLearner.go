@@ -22,7 +22,7 @@ type QLearner struct {
 // NewQLearner creates a new QLearner struct
 //
 // egreedy is the policy.EGreedy to learn
-func NewQLearner(egreedy policy.EGreedy,
+func NewQLearner(egreedy *policy.EGreedy,
 	learningRate float64) (*QLearner, error) {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
