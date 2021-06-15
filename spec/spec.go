@@ -53,6 +53,7 @@ func NewEnvironment(shape mat.Vector, t SpecType, lowerBound,
 	return Environment{shape, t, lowerBound, upperBound, cardinality}
 }
 
+// Key implements keys for agent configuration maps
 type Key string
 
 const (
@@ -61,6 +62,7 @@ const (
 	LearningRate       Key = "LearningRate"
 	ActorLearningRate  Key = "ActorLearningRate"
 	CriticLearningRate Key = "CriticLearningRate"
+	Decay              Key = "Decay"
 )
 
 // Agent defines an agent specification, which uniquely determines all
