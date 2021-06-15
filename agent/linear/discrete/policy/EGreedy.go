@@ -70,6 +70,19 @@ func (p *EGreedy) Weights() map[string]*mat.Dense {
 	return weights
 }
 
+// SetWeights sets the weight pointers to point to a new set of weights.
+// The SetWeights function can take the output of a call to Weights()
+// on another EGreedy Policy directly
+func (p *EGreedy) SetWeights(weights map[string]*mat.Dense) error {
+	newWeights, ok := weights[WeightsKey]
+	if !ok {
+		return fmt.Errorf("SetWeights: no weights named \"weights\"")
+	}
+
+	p.weights = newWeights
+	return nil
+}
+
 // actionValues calculates the values of each action in a state
 func (e *EGreedy) actionValues(obs mat.Vector) mat.Vector {
 	// Calculate all action values
@@ -110,15 +123,21 @@ func (p *EGreedy) SelectAction(t timestep.TimeStep) mat.Vector {
 	return action
 }
 
-// SetWeights sets the weight pointers to point to a new set of weights.
-// The SetWeights function can take the output of a call to Weights()
-// on another EGreedy Policy directly
-func (p *EGreedy) SetWeights(weights map[string]*mat.Dense) error {
-	newWeights, ok := weights[WeightsKey]
-	if !ok {
-		return fmt.Errorf("SetWeights: no weights named \"weights\"")
-	}
+// ActionProbabilites returns the probability of taking each action in
+// a given state
+func (e *EGreedy) ActionProbabilities(obs mat.Vector) mat.Vector {
+	actionValues := e.actionValues(obs)
 
-	p.weights = newWeights
-	return nil
+	prob := make([]float64, 0, actionValues.Len())
+	numActions, _ := e.weights.Dims()
+	epsProb := e.epsilon / float64(numActions)
+
+	// Calculate the ε probability of taking each action
+	for i := 0; i < actionValues.Len(); i++ {
+		prob = append(prob, epsProb)
+	}
+	maxAction := matutils.MaxVec(actionValues)
+	prob[maxAction] += (1.0 - e.epsilon)
+
+	return mat.NewVecDense(len(prob), prob)
 }
