@@ -22,6 +22,9 @@ const (
 	CriticWeightsKey string = "critic"
 )
 
+// Guassian implements a multi-dimensional linear Gaussian policy.
+// The policy uses linear function approximation to compute the mean
+// and standard deviation of the policy.
 type Gaussian struct {
 	meanWeights *mat.Dense
 	stdWeights  *mat.Dense
@@ -29,6 +32,7 @@ type Gaussian struct {
 	source      rand.Source
 }
 
+// NewGaussian creates a new Gaussian policy
 func NewGaussian(seed uint64, env environment.Environment) *Gaussian {
 	// Calculate the dimension of actions
 	actionDims := env.ActionSpec().Shape.Len()
@@ -44,6 +48,26 @@ func NewGaussian(seed uint64, env environment.Environment) *Gaussian {
 	return &Gaussian{meanWeights, stdWeights, actionDims, source}
 }
 
+// Std gets the standard deviation of the policy given some state
+// observation obs
+func (g *Gaussian) Std(obs mat.Vector) mat.Vector {
+	stdVec := mat.NewVecDense(g.actionDims, nil)
+	stdVec.MulVec(g.stdWeights, obs)
+	for i := 0; i < stdVec.Len(); i++ {
+		std := math.Exp(stdVec.AtVec(i))
+		stdVec.SetVec(i, std)
+	}
+	return stdVec
+}
+
+// Mean gets the mean of the policy given some state observation obs
+func (g *Gaussian) Mean(obs mat.Vector) mat.Vector {
+	mean := mat.NewVecDense(g.actionDims, nil)
+	mean.MulVec(g.meanWeights, obs)
+	return mean
+}
+
+// SelectAction selects an action from the policy for a given timestep
 func (g *Gaussian) SelectAction(t timestep.TimeStep) mat.Vector {
 	obs := t.Observation
 
@@ -83,6 +107,7 @@ func (g *Gaussian) SelectAction(t timestep.TimeStep) mat.Vector {
 	return mat.NewVecDense(g.actionDims, underlyingMatrix.Data)
 }
 
+// Weights gets and returns the weights of the learner
 func (g *Gaussian) Weights() map[string]*mat.Dense {
 	weights := make(map[string]*mat.Dense)
 
@@ -92,6 +117,7 @@ func (g *Gaussian) Weights() map[string]*mat.Dense {
 	return weights
 }
 
+// SetWeights sets the weight pointers to point to a new set of weights.
 func (g *Gaussian) SetWeights(weights map[string]*mat.Dense) error {
 	// Set the weights for the mean
 	meanWeights, ok := weights[MeanWeightsKey]
