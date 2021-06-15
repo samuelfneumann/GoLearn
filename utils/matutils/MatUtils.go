@@ -45,6 +45,17 @@ func VecMean(vectors []mat.Vector) *mat.VecDense {
 	return mean
 }
 
+// Apply applies a function element-wise to a mutable matrix
+// The argument function is applied in-place
+func Apply(f func(float64) float64, m mat.Mutable) {
+	r, c := m.Dims()
+	for j := 0; j < r; j++ {
+		for i := 0; i < c; i++ {
+			m.Set(j, i, f(m.At(j, i)))
+		}
+	}
+}
+
 // MatMean takes the element-wise mean of all matrices in a slice
 func MatMean(matrices []mat.Matrix) *mat.Dense {
 	r, c := matrices[0].Dims()
