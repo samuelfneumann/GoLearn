@@ -40,6 +40,11 @@ type Environment struct {
 }
 
 // NewEnvironment constructs a new environment specification
+// The shape argument outlines the shape of the data described by the
+// specification. The argument t outlines what the specification is
+// describing (e.g. actions, observations, etc.). The cardinality
+// arguments describes whether the values that the spec describes are
+// continuous or discrete.
 func NewEnvironment(shape mat.Vector, t SpecType, lowerBound,
 	upperBound mat.Vector, cardinality Cardinality) Environment {
 	if shape.Len() != lowerBound.Len() {
