@@ -137,14 +137,6 @@ func (e *ESarsaLearner) Step() {
 
 }
 
-// Weights gets and returns the weights of the learner
-func (e *ESarsaLearner) Weights() map[string]*mat.Dense {
-	weights := make(map[string]*mat.Dense)
-	weights[policy.WeightsKey] = e.weights
-
-	return weights
-}
-
 // SetWeights sets the weight pointers to point to a new set of weights.
 // The SetWeights function can take the output of a call to Weights()
 // on another Learner or Linear Policy that has a key "weights"

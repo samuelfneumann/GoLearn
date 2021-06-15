@@ -225,12 +225,17 @@ tracked.
 
 # ToDo
 
+- [ ] Use Gorgonia for linear methods perhaps. This will keep initializers, etc. consistent between linear and nonlinear methods
 - [ ] UniformStarter needs documentation
 - [ ] TileCoding and TileCoder could benefit from improved documentation
 
 - [ ] Tasks and learners should both follow the Null Object pattern
 
 - [ ] Cartpole needs `Render()` method
+
+- [ ] Agents should have `EndEpisode()` method for cleanup on episode end (e.g. resetting eligibility traces)
+- [ ] Agent should have `Train()` and `Eval()` methods for setting agent to training or evaluation mode
+- [ ] Since Learners operate on specific policies (e.g. GaussianLearner operates on the Gaussian Policy), there is no need for the `Weights()` and `SetWeights()` functions. Just make the weights of the policy public and access them through the learner.
 
 
 Experience Replay:

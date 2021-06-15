@@ -116,14 +116,6 @@ func (q *QLearner) Step() {
 
 }
 
-// Weights gets and returns the weights of the learner
-func (q *QLearner) Weights() map[string]*mat.Dense {
-	weights := make(map[string]*mat.Dense)
-	weights[policy.WeightsKey] = q.weights
-
-	return weights
-}
-
 // SetWeights sets the weight pointers to point to a new set of weights.
 // The SetWeights function can take the output of a call to Weights()
 // on another Learner or Linear Policy that has a key "weights"

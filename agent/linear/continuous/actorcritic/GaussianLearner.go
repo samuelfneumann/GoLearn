@@ -191,22 +191,3 @@ func (g *GaussianLearner) SetWeights(weights map[string]*mat.Dense) error {
 
 	return nil
 }
-
-// Weights gets and returns the weights of the learner
-func (g *GaussianLearner) Weights() map[string]*mat.Dense {
-	weights := make(map[string]*mat.Dense)
-
-	// Return the mean weights
-	weights[policy.MeanWeightsKey] = mat.NewDense(1, g.meanWeights.Len(),
-		g.meanWeights.RawVector().Data)
-
-	// Return the std weights
-	weights[policy.StdWeightsKey] = mat.NewDense(1, g.stdWeights.Len(),
-		g.stdWeights.RawVector().Data)
-
-	// Return the critic weights
-	weights[policy.CriticWeightsKey] = mat.NewDense(1, g.criticWeights.Len(),
-		g.criticWeights.RawVector().Data)
-
-	return weights
-}
