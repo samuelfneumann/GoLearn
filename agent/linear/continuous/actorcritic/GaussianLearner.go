@@ -10,16 +10,17 @@ import (
 	"sfneuman.com/golearn/timestep"
 )
 
-// OnlineGaussianLearner learns only using a single action
-type OnlineGaussianLearner struct {
+// GaussianLearner does not use experience replay and 1d actions
+type GaussianLearner struct {
 	meanWeights   *mat.VecDense
 	stdWeights    *mat.VecDense
 	criticWeights *mat.VecDense
 
-	// // Eligibility traces
-	// meanTrace   *mat.Dense
-	// stdTrace    *mat.Dense
-	// criticTrace *mat.Dense
+	// Eligibility traces
+	decay       float64
+	meanTrace   *mat.VecDense
+	stdTrace    *mat.VecDense
+	criticTrace *mat.VecDense
 
 	step               timestep.TimeStep
 	action             mat.Vector
@@ -28,49 +29,38 @@ type OnlineGaussianLearner struct {
 	criticLearningRate float64
 }
 
-func NewOnlineGaussianLearner(weights map[string]*mat.Dense,
-	actorLearningRate, criticLearningRate float64) *OnlineGaussianLearner {
+func NewGaussianLearner(gaussian *policy.Gaussian,
+	actorLearningRate, criticLearningRate, decay float64) (*GaussianLearner, error) {
 	step := timestep.TimeStep{}
 
-	// Get the weights for the mean
-	meanWeightsMat, ok := weights[policy.MeanWeightsKey]
-	if !ok {
-		panic("no weights for predicing the mean")
-	}
-	r, c := meanWeightsMat.Dims()
-	if r != 1 {
-		panic("can only have a single set of weights")
-	}
-	meanWeights := mat.NewVecDense(c, meanWeightsMat.RawMatrix().Data)
+	learner := GaussianLearner{nil, nil, nil, decay, nil, nil, nil, step, nil,
+		step, actorLearningRate, criticLearningRate}
 
-	// Get the weights for the variance
-	stdWeightsMat, ok := weights[policy.StdWeightsKey]
-	if !ok {
-		panic("no weights for predicing the standard deviation")
-	}
-	r, c = stdWeightsMat.Dims()
-	if r != 1 {
-		panic("can only have a single set of weights")
-	}
-	stdWeights := mat.NewVecDense(c, stdWeightsMat.RawMatrix().Data)
+	weights := gaussian.Weights()
 
-	// Critic weights
-	criticWeights := mat.NewVecDense(c, nil)
+	// Policy has no concept of a critic, so init the critic weights
+	// before setting
+	r, c := weights[policy.MeanWeightsKey].Dims()
+	criticWeights := mat.NewDense(r, c, nil)
+	weights[policy.CriticWeightsKey] = criticWeights
+	err := learner.SetWeights(weights)
 
-	learner := OnlineGaussianLearner{meanWeights, stdWeights, criticWeights,
-		step, nil, step, actorLearningRate, criticLearningRate}
+	// Set up eligibility traces initialized to 0
+	learner.meanTrace = mat.NewVecDense(learner.meanWeights.Len(), nil)
+	learner.stdTrace = mat.NewVecDense(learner.stdWeights.Len(), nil)
+	learner.criticTrace = mat.NewVecDense(learner.criticWeights.Len(), nil)
 
-	return &learner
+	return &learner, err
 }
 
-func (g *OnlineGaussianLearner) TdError(t timestep.Transition) float64 {
+func (g *GaussianLearner) TdError(t timestep.Transition) float64 {
 	stateValue := mat.Dot(g.criticWeights, t.State)
 	nextStateValue := mat.Dot(g.criticWeights, t.NextState)
 
 	return t.Reward + t.Discount*nextStateValue - stateValue
 }
 
-func (g *OnlineGaussianLearner) Step() {
+func (g *GaussianLearner) Step() {
 	discount := g.nextStep.Discount
 	state := g.step.Observation.(*mat.VecDense)
 	nextState := g.nextStep.Observation
@@ -82,10 +72,11 @@ func (g *OnlineGaussianLearner) Step() {
 	tdError := reward + discount*nextStateValue - stateValue
 
 	// Update the critic
+	g.criticTrace.AddScaledVec(state, discount*g.decay, g.criticTrace)
 	g.criticWeights.AddScaledVec(g.criticWeights, g.criticLearningRate*tdError,
-		state)
+		g.criticTrace)
 
-	// Actor gradients
+	// Actor gradient
 	std := math.Exp(mat.Dot(g.stdWeights, state))
 	mean := mat.Dot(g.meanWeights, state)
 
@@ -96,17 +87,26 @@ func (g *OnlineGaussianLearner) Step() {
 
 	action := g.action.AtVec(0)
 	meanGradScale := (1 / (std * std)) * (action - mean)
-	meanGradScale *= (g.actorLearningRate * tdError)
+	meanGradScale *= tdError
 	stdGradScale := math.Pow(((action-mean)/std), 2) - 1.0
-	stdGradScale *= (g.actorLearningRate * tdError)
+	stdGradScale *= tdError
+
+	// Compute actor gradients
+	meanGrad := mat.NewVecDense(state.Len(), state.RawVector().Data)
+	meanGrad.ScaleVec(meanGradScale, meanGrad)
+	stdGrad := mat.NewVecDense(state.Len(), state.RawVector().Data)
+	stdGrad.ScaleVec(stdGradScale, stdGrad)
+
+	// Update actor traces
+	g.meanTrace.AddScaledVec(g.meanTrace, discount*g.decay, meanGrad)
+	g.stdTrace.AddScaledVec(g.stdTrace, discount*g.decay, stdGrad)
 
 	// Update actor
-	g.meanWeights.AddScaledVec(g.meanWeights, meanGradScale, state)
-	g.stdWeights.AddScaledVec(g.stdWeights, stdGradScale, state)
-
+	g.meanWeights.AddScaledVec(g.meanWeights, g.actorLearningRate, g.meanTrace)
+	g.stdWeights.AddScaledVec(g.stdWeights, g.actorLearningRate/math.Pow(std, 2), g.stdTrace)
 }
 
-func (g *OnlineGaussianLearner) ObserveFirst(t timestep.TimeStep) {
+func (g *GaussianLearner) ObserveFirst(t timestep.TimeStep) {
 	if !t.First() {
 		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
 			"called on the first timestep (current timestep = %d)", t.Number)
@@ -115,14 +115,14 @@ func (g *OnlineGaussianLearner) ObserveFirst(t timestep.TimeStep) {
 	g.nextStep = t
 }
 
-func (g *OnlineGaussianLearner) Observe(action mat.Vector,
+func (g *GaussianLearner) Observe(action mat.Vector,
 	nextStep timestep.TimeStep) {
 	g.step = g.nextStep
 	g.action = action
 	g.nextStep = nextStep
 }
 
-func (g *OnlineGaussianLearner) SetWeights(weights map[string]*mat.Dense) error {
+func (g *GaussianLearner) SetWeights(weights map[string]*mat.Dense) error {
 	// Set the weights for the mean
 	meanWeightsMat, ok := weights[policy.MeanWeightsKey]
 	if !ok {
@@ -165,7 +165,7 @@ func (g *OnlineGaussianLearner) SetWeights(weights map[string]*mat.Dense) error 
 	return nil
 }
 
-func (g *OnlineGaussianLearner) Weights() map[string]*mat.Dense {
+func (g *GaussianLearner) Weights() map[string]*mat.Dense {
 	weights := make(map[string]*mat.Dense)
 
 	// Return the mean weights

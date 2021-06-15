@@ -3,6 +3,7 @@ package policy
 
 import (
 	"fmt"
+	"math"
 
 	"golang.org/x/exp/rand"
 
@@ -11,6 +12,7 @@ import (
 	"gonum.org/v1/gonum/stat/samplemv"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/timestep"
+	"sfneuman.com/golearn/utils/matutils"
 )
 
 const (
@@ -52,10 +54,19 @@ func (g *Gaussian) SelectAction(t timestep.TimeStep) mat.Vector {
 	// Get the predicted variance of the policy
 	stdVec := mat.NewVecDense(g.actionDims, nil)
 	stdVec.MulVec(g.stdWeights, obs)
-	std := mat.NewDiagDense(stdVec.Len(), stdVec.RawVector().Data)
+	for i := 0; i < stdVec.Len(); i++ {
+		std := math.Exp(stdVec.AtVec(i))
+		stdVec.SetVec(i, std)
+	}
 
 	// Generate the Gaussian policy and sampler
-	dist, _ := distmv.NewNormal(mean.RawVector().Data, std, g.source)
+	std := mat.NewDiagDense(stdVec.Len(), stdVec.RawVector().Data)
+	dist, ok := distmv.NewNormal(mean.RawVector().Data, std, g.source)
+	if !ok {
+		msg := fmt.Sprintf("*Normal has non-positive-definite covariance %v",
+			matutils.Format(std))
+		panic(msg)
+	}
 	sampler := samplemv.IID{Dist: dist}
 
 	// Sample an action
