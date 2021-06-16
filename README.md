@@ -235,7 +235,7 @@ tracked.
 
 - [ ] Agents should have `EndEpisode()` method for cleanup on episode end (e.g. resetting eligibility traces)
 - [ ] Agent should have `Train()` and `Eval()` methods for setting agent to training or evaluation mode
-- [ ] Since Learners operate on specific policies (e.g. GaussianLearner operates on the Gaussian Policy), there is no need for the `Weights()` and `SetWeights()` functions. Just make the weights of the policy public and access them through the learner.
+
 
 
 Experience Replay:
