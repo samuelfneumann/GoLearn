@@ -7,7 +7,6 @@ import (
 	"sfneuman.com/golearn/environment/gridworld"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/trackers"
-	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
@@ -42,7 +41,7 @@ func Gridworld() {
 
 	// Create the Q-learning struct which will learn on this gridworld
 	// Create the QLearning configuration
-	args := spec.QLearning{E: 0.25, LearningRate: 0.01}
+	args := qlearning.Config{Epsilon: 0.25, LearningRate: 0.01}
 
 	// To create the Q-learning struct, we defined an initialization
 	// method for the Linear Q-learning algorithm's weights.

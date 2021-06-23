@@ -10,7 +10,6 @@ import (
 	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/trackers"
-	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
@@ -44,7 +43,7 @@ func main() {
 	init := weights.NewLinearMV(rand)
 
 	// Create the learning algorithm
-	args := spec.ESarsa{BehaviourE: 0.1, TargetE: 0.05, LearningRate: 0.05}
+	args := esarsa.Config{BehaviourE: 0.1, TargetE: 0.05, LearningRate: 0.05}
 	e, err := esarsa.New(tm, args, init, seed)
 	if err != nil {
 		panic(err)

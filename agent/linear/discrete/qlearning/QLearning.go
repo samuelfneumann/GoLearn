@@ -16,6 +16,12 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
+// Config represents a configuration for the QLearning agent
+type Config struct {
+	Epsilon      float64 // epislon for behaviour policy
+	LearningRate float64
+}
+
 // QLearning implements the online Q-Learning algorithm. Actions selected by
 // this algorithm will always be enumerated as (0, 1, 2, ... N) where
 // N is the maximum possible action.
@@ -29,7 +35,7 @@ type QLearning struct {
 // New creates a new QLearning struct. The agent spec agent should be
 // a spec.QLearning. If the agent spec is not a spec.QLearning, New
 // will panic.
-func New(env environment.Environment, agent spec.Agent,
+func New(env environment.Environment, config Config,
 	init weights.Initializer, seed uint64) (*QLearning, error) {
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
@@ -45,15 +51,8 @@ func New(env environment.Environment, agent spec.Agent,
 			"enumerated starting from 0")
 	}
 
-	agent = agent.(spec.QLearning) // Ensure we have a QLearning spec
-
 	// Get the behaviour policy
-	agentSpec := agent.Spec()
-	e, ok := agentSpec[spec.BehaviourE]
-	if !ok {
-		err := fmt.Errorf("qlearning: no behaviour epsilon specified")
-		return &QLearning{}, err
-	}
+	e := config.Epsilon
 	behaviour, err := policy.NewEGreedy(e, seed, env)
 	if err != nil {
 		return &QLearning{}, fmt.Errorf("qlearning: invalid behaviour "+
@@ -68,11 +67,7 @@ func New(env environment.Environment, agent spec.Agent,
 	}
 
 	// Get the learning rate
-	learningRate, ok := agentSpec[spec.LearningRate]
-	if !ok {
-		err := fmt.Errorf("qlearning: no learning rate specified")
-		return &QLearning{}, err
-	}
+	learningRate := config.LearningRate
 
 	// Ensure both policies and learner reference the same weights
 	weights := behaviour.Weights()

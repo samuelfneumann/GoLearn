@@ -11,6 +11,13 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
+// Config represents a configuration for an Actor Critic agent
+type Config struct {
+	ActorLearningRate  float64
+	CriticLearningRate float64
+	Decay              float64
+}
+
 // LinearGaussian implements the Linear Gaussian Actor Critic algorithm:
 //
 // https://hal.inria.fr/hal-00764281/PDF/DegrisACC2012.pdf
@@ -28,7 +35,7 @@ type LinearGaussian struct {
 // the linear function approximators (actor and critic) are initialized
 // using the init Initializer argument. The elgibility traces for the
 // algorithm are always initialized to 0.
-func NewLinearGaussian(env environment.Environment, agent spec.Agent,
+func NewLinearGaussian(env environment.Environment, config Config,
 	init weights.Initializer, seed uint64) (*LinearGaussian, error) {
 	// Ensure continuous action environment is used
 	actionSpec := env.ActionSpec()
@@ -40,30 +47,14 @@ func NewLinearGaussian(env environment.Environment, agent spec.Agent,
 	p := policy.NewGaussian(seed, env)
 	weights := p.Weights()
 
-	// Ensure a compatible configuration was given
-	agent = agent.(spec.LinearGaussianActorCritic)
-	agentSpec := agent.Spec()
-
 	// Get the actor learning rate
-	actorLearningRate, ok := agentSpec[spec.ActorLearningRate]
-	if !ok {
-		err := fmt.Errorf("new: no actor learning rate specified")
-		return &LinearGaussian{}, err
-	}
+	actorLearningRate := config.ActorLearningRate
 
 	// Get the critic learning rate
-	criticLearningRate, ok := agentSpec[spec.CriticLearningRate]
-	if !ok {
-		err := fmt.Errorf("new: no critic learning rate specified")
-		return &LinearGaussian{}, err
-	}
+	criticLearningRate := config.CriticLearningRate
 
 	// Get the eligibility trace decay rate
-	decay, ok := agentSpec[spec.Decay]
-	if !ok {
-		err := fmt.Errorf("new: no decay rate specified")
-		return &LinearGaussian{}, err
-	}
+	decay := config.Decay
 
 	// Create the Gaussian learner ot learn the Gaussian policy
 	l, err := NewGaussianLearner(p, actorLearningRate,
