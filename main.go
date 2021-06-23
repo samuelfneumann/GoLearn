@@ -32,7 +32,7 @@ func main() {
 		Activations:  []policy.Activation{gorgonia.Rectify, gorgonia.Rectify},
 		InitWFn:      gorgonia.GlorotU(1.0),
 		LearningRate: 0.0001,
-		epsilon:      0.1,
+		Epsilon:      0.1,
 	}
 	q, err := deepq.New(m, args, seed)
 	if err != nil {
