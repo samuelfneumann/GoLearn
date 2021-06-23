@@ -9,28 +9,11 @@ import (
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
+
+	env "sfneuman.com/golearn/environment"
 )
 
-type Activation func(x *G.Node) (*G.Node, error)
-
-type FCLayer struct {
-	Weights *G.Node
-	Bias    *G.Node
-	Act     Activation
-}
-
-func (f *FCLayer) fwd(x *G.Node) (*G.Node, error) {
-	xw := G.Must(G.Mul(f.Weights, x))
-	if f.Bias != nil {
-		xw = G.Must(G.Add(f.Bias, xw))
-	}
-	if f.Act == nil {
-		return xw, nil
-	}
-	return f.Act(xw)
-}
-
-type EGreedyMLP struct {
+type MultiHeadEGreedyMLP struct {
 	g          *G.ExprGraph
 	l          []FCLayer
 	input      *G.Node
@@ -38,43 +21,187 @@ type EGreedyMLP struct {
 	numActions int
 	numInputs  int
 
-	pred    *G.Node
-	predVal G.Value
+	Prediction *G.Node
+	predVal    G.Value
+
+	rng  *rand.Rand
+	seed int64
 }
 
-func NewEGreedyMLP(epsilon float64, numActions int, input *G.Node, g *G.ExprGraph) *EGreedyMLP {
-	if !input.IsVector() {
-		panic("not implemented")
-	}
-	features := input.Shape()[len(input.Shape())-1]
-	l := []FCLayer{
-		{Weights: G.NewMatrix(g, tensor.Float64, G.WithShape(features, numActions),
-			G.WithName("L0W"), G.WithInit(G.GlorotU(1.0))),
-		// Bias: G.NewVector(g, tensor.Float64, G.WithShape(numActions), G.WithName("L0B"), G.WithInit(G.GlorotU(1.0))),
-		// Act:  G.Tanh,
-		},
+// NewEGreedyMLP creates and returns a new EGreedyMLP populated in the graph g
+func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
+	batch int, g *G.ExprGraph, hiddenSizes []int, biases []bool,
+	init G.InitWFn, activations []Activation,
+	seed int64) (*MultiHeadEGreedyMLP, error) {
+	// Ensure we have one activation per layer
+	if len(hiddenSizes) != len(activations) {
+		msg := "newegreedymlp: invalid number of activations\n\twant(%d)" +
+			"\n\thave(%d)"
+		return nil, fmt.Errorf(msg, len(hiddenSizes), len(activations))
 	}
 
-	fmt.Println("l:", l)
+	// Calculate the number of actions and state features
+	numActions := int(env.ActionSpec().UpperBound.AtVec(0)) + 1
+	features := env.ObservationSpec().Shape.Len()
 
-	network := EGreedyMLP{
+	// Set up the input node
+	input := G.NewMatrix(g, tensor.Float64, G.WithShape(batch, features),
+		G.WithName("input"), G.WithInit(G.Zeroes()))
+
+	// If no given hidden layers, then use a single linear layer so that
+	// the output has numActions heads
+	if len(hiddenSizes) == 0 {
+		hiddenSizes = []int{numActions}
+		biases = []bool{true}
+		activations = []Activation{nil}
+	} else {
+		// Append the number of actions to hiddenSizes so that the MLP has
+		// numActions output heads
+		hiddenSizes = append(hiddenSizes, numActions)
+		biases = append(biases, false)
+		activations = append(activations, nil)
+	}
+
+	layers := make([]FCLayer, 0, len(hiddenSizes))
+	for i := range hiddenSizes {
+		var Weights *G.Node
+		if i == 0 {
+			// Create the weights
+			weightName := fmt.Sprintf("L%dW", i)
+			Weights = G.NewMatrix(
+				g,
+				tensor.Float64,
+				G.WithShape(features, hiddenSizes[i]),
+				G.WithName(weightName),
+				G.WithInit(init),
+			)
+		} else {
+			weightName := fmt.Sprintf("L%dW", i)
+			Weights = G.NewMatrix(
+				g,
+				tensor.Float64,
+				G.WithShape(hiddenSizes[i-1], hiddenSizes[i]),
+				G.WithName(weightName),
+				G.WithInit(init),
+			)
+
+		}
+
+		// Create the bias unit if applicable
+		var Bias *G.Node
+		if biases[i] {
+			biasName := fmt.Sprintf("L%dB", i)
+			Bias = G.NewVector(
+				g,
+				tensor.Float64,
+				G.WithShape(hiddenSizes[i]),
+				G.WithName(biasName),
+				G.WithInit(init),
+			)
+		}
+
+		// Create the layer
+		layer := FCLayer{
+			Weights: Weights,
+			Bias:    Bias,
+			Act:     activations[i],
+		}
+		layers = append(layers, layer)
+	}
+
+	// Create RNG for sampling actions
+	source := rand.NewSource(seed)
+	rng := rand.New(source)
+
+	network := MultiHeadEGreedyMLP{
 		g:          g,
-		l:          l,
+		l:          layers,
 		input:      input,
 		epsilon:    epsilon,
 		numActions: numActions,
 		numInputs:  features,
+		rng:        rng,
+		seed:       seed,
 	}
+
 	_, err := network.fwd(input)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return &network
+	return &network, nil
 }
 
-// SelectAction assume that VM that contains the policy has been run
-func (e *EGreedyMLP) SelectAction(obs mat.VecDense) mat.Vector {
+func (e *MultiHeadEGreedyMLP) Graph() *G.ExprGraph {
+	return e.g
+}
+
+func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
+	graph := G.NewGraph()
+	// Copy fully connected layers
+	l := make([]FCLayer, len(e.l))
+	for i := range e.l {
+		l[i] = e.l[i].CloneTo(graph)
+	}
+
+	inputShape := e.input.Shape()
+	var input *G.Node
+	if e.input.IsVec() {
+
+		input = G.NewVector(graph, tensor.Float64, G.WithShape(inputShape...), G.WithName("input"), G.WithInit(G.Zeroes()))
+	} else if e.input.IsMatrix() {
+		input = G.NewMatrix(graph, tensor.Float64, G.WithShape(inputShape...), G.WithName("input"), G.WithInit(G.Zeroes()))
+	} else {
+		panic("clone: invalid input type")
+	}
+
+	source := rand.NewSource(e.seed)
+	rng := rand.New(source)
+
+	network := MultiHeadEGreedyMLP{
+		g:          graph,
+		l:          l,
+		input:      input,
+		epsilon:    e.epsilon,
+		numActions: e.numActions,
+		numInputs:  e.numInputs,
+		rng:        rng,
+		seed:       e.seed,
+	}
+
+	_, err := network.fwd(input)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ioutil.WriteFile("clone2.dot", []byte(graph.ToDot()), 0644)
+
+	return &network, nil
+}
+
+func (e *MultiHeadEGreedyMLP) SetEpsilon(ε float64) {
+	e.epsilon = ε
+}
+
+func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
+	return e.epsilon
+}
+
+func (e *MultiHeadEGreedyMLP) SetInput(input []float64) error {
+	if len(input)%e.numInputs != 0 {
+		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)\n\thave(%v)",
+			e.numInputs, len(input))
+		panic(msg)
+	}
+	inputTensor := tensor.New(tensor.WithBacking(input), tensor.WithShape(e.input.Shape()...))
+	return G.Let(e.input, inputTensor)
+}
+
+// Assumes that the vm containing the policy has already been run
+func (e *MultiHeadEGreedyMLP) SelectAction() mat.Vector {
+	// fmt.Println(e.l[1].Weights.Value())
+	if e.predVal == nil {
+		log.Fatal("vm must be run before selecting an action")
+	}
 	actionValues := e.predVal.Data().([]float64)
 	probability := rand.Float64()
 
@@ -103,7 +230,7 @@ func (e *EGreedyMLP) SelectAction(obs mat.VecDense) mat.Vector {
 	return mat.NewVecDense(1, []float64{float64(maxInd[0])})
 }
 
-func (e *EGreedyMLP) Set(source *EGreedyMLP) error {
+func (e *MultiHeadEGreedyMLP) Set(source *MultiHeadEGreedyMLP) error {
 	sourceNodes := source.Learnables()
 	nodes := e.Learnables()
 	for i, destLearnable := range nodes {
@@ -116,7 +243,7 @@ func (e *EGreedyMLP) Set(source *EGreedyMLP) error {
 	return nil
 }
 
-func (e *EGreedyMLP) Polyak(source *EGreedyMLP, tau float64) error {
+func (e *MultiHeadEGreedyMLP) Polyak(source *MultiHeadEGreedyMLP, tau float64) error {
 	sourceNodes := source.Learnables()
 	nodes := e.Learnables()
 	for i := range nodes {
@@ -144,7 +271,7 @@ func (e *EGreedyMLP) Polyak(source *EGreedyMLP, tau float64) error {
 	return nil
 }
 
-func (e *EGreedyMLP) Learnables() G.Nodes {
+func (e *MultiHeadEGreedyMLP) Learnables() G.Nodes {
 	learnables := make([]*G.Node, 0, 2*len(e.l))
 	for i := range e.l {
 		learnables = append(learnables, e.l[i].Weights)
@@ -155,7 +282,7 @@ func (e *EGreedyMLP) Learnables() G.Nodes {
 	return G.Nodes(learnables)
 }
 
-func (e *EGreedyMLP) Model() []G.ValueGrad {
+func (e *MultiHeadEGreedyMLP) Model() []G.ValueGrad {
 	var model []G.ValueGrad = make([]G.ValueGrad, 0, 2*len(e.l))
 	for i := range e.l {
 		model = append(model, e.l[i].Weights)
@@ -167,9 +294,9 @@ func (e *EGreedyMLP) Model() []G.ValueGrad {
 }
 
 // Fwd performs the forward pass of the neural net on the input node
-func (e *EGreedyMLP) fwd(input *G.Node) (*G.Node, error) {
+func (e *MultiHeadEGreedyMLP) fwd(input *G.Node) (*G.Node, error) {
 	inputShape := input.Shape()[len(input.Shape())-1]
-	if inputShape != e.numInputs {
+	if inputShape%e.numInputs != 0 {
 		return nil, fmt.Errorf("invalid shape for input to neural net:"+
 			" \n\twant(%v) \n\thave(%v)", e.numInputs, inputShape)
 	}
@@ -177,133 +304,16 @@ func (e *EGreedyMLP) fwd(input *G.Node) (*G.Node, error) {
 	pred := input
 	var err error
 	for _, l := range e.l {
-		if pred, err = l.fwd(pred); err != nil {
+		if pred, err = l.Fwd(pred); err != nil {
 			log.Fatal(err)
 		}
 	}
-	e.pred = pred
-	G.Read(e.pred, &e.predVal)
+	e.Prediction = pred
+	G.Read(e.Prediction, &e.predVal)
 
 	return pred, nil
 }
 
-func (e *EGreedyMLP) Output() G.Value {
+func (e *MultiHeadEGreedyMLP) Output() G.Value {
 	return e.predVal
 }
-
-type Learner struct {
-	policy       *EGreedyMLP
-	targetPolicy *EGreedyMLP
-	updateTarget *G.Node
-	vm           G.VM
-	vmNext       G.VM
-	solver       G.Solver
-
-	x, xNext *G.Node // state/nextState inputs
-
-	prevState  *mat.VecDense
-	prevAction int
-	nextState  *mat.VecDense
-	nextAction int
-
-	selectedAction *G.Node
-}
-
-func NewLearner() *Learner {
-	g := G.NewGraph()
-	x := G.NewVector(g, tensor.Float64, G.WithShape(4), G.WithName("X"), G.WithInit(G.Zeroes()))
-	policy := NewEGreedyMLP(0.1, 4, x, g)
-	updateTarget := G.NewScalar(g, tensor.Float64, G.WithName("updateTarget"))
-	selectedAction := G.NewVector(g, tensor.Float64, G.WithName("selectedActions"), G.WithShape(policy.numActions))
-
-	gTarget := G.NewGraph()
-	xNext := G.NewVector(gTarget, tensor.Float64, G.WithShape(4), G.WithName("xNext"), G.WithInit(G.Zeroes()))
-	targetPolicy := NewEGreedyMLP(0.0, 4, xNext, gTarget)
-
-	prevAction := 1
-	prevState := mat.NewVecDense(4, []float64{1, 3, 12, 111})
-	nextState := mat.NewVecDense(4, []float64{1, 1, 2, 1})
-	nextAction := 2
-
-	selectedActionValue := G.Must(G.Mul(policy.pred, selectedAction))
-	losses := G.Must(G.Sub(updateTarget, selectedActionValue))
-	cost := G.Must(G.Mean(losses))
-	G.Grad(cost, policy.Learnables()...)
-
-	vm := G.NewTapeMachine(g, G.BindDualValues(policy.Learnables()...))
-	vmNext := G.NewTapeMachine(gTarget)
-	solver := G.NewVanillaSolver()
-	return &Learner{policy, targetPolicy, updateTarget, vm, vmNext, solver, x, xNext, prevState, prevAction, nextState,
-		nextAction, selectedAction}
-}
-
-func (l *Learner) Step() {
-	data := tensor.New(tensor.WithBacking(l.prevState.RawVector().Data))
-	err := G.Let(l.x, data)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Value:", l.x.Value())
-
-	nextData := tensor.New(tensor.WithBacking(l.nextState.RawVector().Data))
-	err = G.Let(l.xNext, nextData)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Value:", l.xNext.Value())
-	fmt.Println("Weights before polyak:", l.targetPolicy.Learnables()[0].Value())
-
-	l.vmNext.RunAll()
-
-	updateTarget := l.targetPolicy.Output()
-	fmt.Println("Update target:", updateTarget.Data().([]float64)[l.nextAction])
-	G.Let(l.updateTarget, updateTarget.Data().([]float64)[l.nextAction])
-	fmt.Println("Update target:", l.updateTarget.Value())
-
-	action := make([]float64, l.policy.numActions)
-	action[l.prevAction] = 1.0
-	selectedAction := tensor.New(tensor.WithBacking(action))
-	G.Let(l.selectedAction, selectedAction)
-
-	l.vmNext.Reset()
-
-	l.vm.RunAll()
-	fmt.Println(l.policy.Model())
-	l.solver.Step(l.policy.Model())
-	l.vm.Reset()
-
-	l.targetPolicy.Set(l.policy)
-}
-
-func main() {
-	l := NewLearner()
-	l.Step()
-
-	ioutil.WriteFile("simple_graphLearner.dot", []byte(l.policy.g.ToDot()), 0644)
-
-	// =========================================
-
-	// solver := G.NewVanillaSolver(G.WithLearnRate(0.001))
-
-	// g := G.NewGraph()
-	// xNext := G.NewVector(g, tensor.Float64, G.WithShape(4), G.WithName("xNext"), G.WithInit(G.Zeroes()))
-	// x := G.NewVector(g, tensor.Float64, G.WithShape(4), G.WithName("X"), G.WithInit(G.Zeroes()))
-	// W := G.NewVector(g, tensor.Float64, G.WithShape(4),
-	// 	G.WithName("L0W"), G.WithInit(G.GlorotU(1.0)))
-	// val, _ := G.Mul(x, W)
-	// grads, _ := G.Grad(val, W)
-	// nextVal, _ := G.Mul(xNext, W)
-	// fmt.Println(nextVal)
-	// s := G.Must(G.Sub(val, nextVal))
-	// for _, grad := range grads {
-	// 	G.Must(G.HadamardProd(grad, s))
-	// }
-
-	// model := []G.ValueGrad{W}
-	// vm := G.NewTapeMachine(g, G.BindDualValues(W))
-	// vm.RunAll()
-	// solver.Step(model)
-
-	// ioutil.WriteFile("simple_graph.dot", []byte(g.ToDot()), 0644)
-}
-
