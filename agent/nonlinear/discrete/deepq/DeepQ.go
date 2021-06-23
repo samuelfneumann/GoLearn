@@ -140,7 +140,7 @@ func New(env environment.Environment, config Config, seed int64) (*DeepQ, error)
 
 	// pred := G.Must(G.Ravel(policy.Prediction))
 	selectedAction := G.NewMatrix(g, tensor.Float64, G.WithName("actionSelected"), G.WithShape(batchSize, numActions))
-	selectedActionValue := G.Must(G.HadamardProd(policy.Prediction, selectedAction))
+	selectedActionValue := G.Must(G.HadamardProd(policy.Prediction(), selectedAction))
 	selectedActionValue = G.Must(G.Sum(selectedActionValue))
 
 	// Compute the TD error
@@ -235,7 +235,6 @@ func (d *DeepQ) Step() {
 	d.vmNext.Reset()
 
 	// Run the learning step
-	// ioutil.WriteFile("simple_graphLearner.dot", []byte(d.policy.Graph().ToDot()), 0644)
 	d.vm.RunAll()
 	d.solver.Step(d.policy.Model())
 	d.vm.Reset()

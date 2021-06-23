@@ -13,6 +13,7 @@ import (
 	env "sfneuman.com/golearn/environment"
 )
 
+// Weights are seeded by Unix time in nanoseconds
 type MultiHeadEGreedyMLP struct {
 	g          *G.ExprGraph
 	l          []FCLayer
@@ -21,7 +22,7 @@ type MultiHeadEGreedyMLP struct {
 	numActions int
 	numInputs  int
 
-	Prediction *G.Node
+	prediction *G.Node
 	predVal    G.Value
 
 	rng  *rand.Rand
@@ -311,12 +312,16 @@ func (e *MultiHeadEGreedyMLP) fwd(input *G.Node) (*G.Node, error) {
 			log.Fatal(err)
 		}
 	}
-	e.Prediction = pred
-	G.Read(e.Prediction, &e.predVal)
+	e.prediction = pred
+	G.Read(e.prediction, &e.predVal)
 
 	return pred, nil
 }
 
 func (e *MultiHeadEGreedyMLP) Output() G.Value {
 	return e.predVal
+}
+
+func (e *MultiHeadEGreedyMLP) Prediction() *G.Node {
+	return e.prediction
 }
