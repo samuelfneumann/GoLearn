@@ -197,7 +197,7 @@ func (e *MultiHeadEGreedyMLP) SetInput(input []float64) error {
 }
 
 // Assumes that the vm containing the policy has already been run
-func (e *MultiHeadEGreedyMLP) SelectAction() mat.Vector {
+func (e *MultiHeadEGreedyMLP) SelectAction() (mat.Vector, float64) {
 	// fmt.Println(e.l[1].Weights.Value())
 	if e.predVal == nil {
 		log.Fatal("vm must be run before selecting an action")
@@ -207,8 +207,9 @@ func (e *MultiHeadEGreedyMLP) SelectAction() mat.Vector {
 
 	// With probability epsilon return a random action
 	if probability < e.epsilon {
-		action := float64(rand.Int() % e.numActions)
-		return mat.NewVecDense(1, []float64{action})
+		action := rand.Int() % e.numActions
+		return mat.NewVecDense(1, []float64{float64(action)}),
+			actionValues[action]
 	}
 
 	// Return the max value action
@@ -227,7 +228,9 @@ func (e *MultiHeadEGreedyMLP) SelectAction() mat.Vector {
 		swap := func(i, j int) { maxInd[i], maxInd[j] = maxInd[j], maxInd[i] }
 		rand.Shuffle(len(maxInd), swap)
 	}
-	return mat.NewVecDense(1, []float64{float64(maxInd[0])})
+	action := maxInd[0]
+	return mat.NewVecDense(1, []float64{float64(action)}),
+		actionValues[action]
 }
 
 func (e *MultiHeadEGreedyMLP) Set(source *MultiHeadEGreedyMLP) error {
