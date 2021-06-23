@@ -2,7 +2,6 @@ package policy
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 
@@ -174,7 +173,6 @@ func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ioutil.WriteFile("clone2.dot", []byte(graph.ToDot()), 0644)
 
 	return &network, nil
 }
