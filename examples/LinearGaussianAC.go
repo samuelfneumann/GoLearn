@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/agent/linear/discrete/esarsa"
+	"sfneuman.com/golearn/agent/linear/continuous/actorcritic"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/environment/wrappers"
@@ -13,15 +13,15 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
-func DifferentialESarsa() {
+func LinearGaussianActorCritic() {
 	var seed uint64 = 192382
 
 	// Create the environment
 	bounds := r1.Interval{Min: -0.01, Max: 0.01}
 
 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, seed)
-	task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
-	m, _ := mountaincar.NewDiscrete(task, 1.0)
+	task := mountaincar.NewGoal(s, 1000, mountaincar.GoalPosition)
+	m, _ := mountaincar.NewContinuous(task, 1.0)
 
 	// Create the TileCoding env wrapper
 	numTilings := 10
@@ -32,32 +32,34 @@ func DifferentialESarsa() {
 	}
 	tm, _ := wrappers.NewTileCoding(m, tilings, seed)
 
-	// Create the average reward environment wrapper
 	ttm, _ := wrappers.NewAverageReward(tm, 0.0, 0.01, true)
 
 	// Zero RNG
-	weightSize := make([]float64, tm.ObservationSpec().Shape.Len())
-	rand := weights.NewZeroMV(weightSize)
+	rand := weights.NewZeroUV()
 
 	// Create the weight initializer with the RNG
-	init := weights.NewLinearMV(rand)
+	init := weights.NewLinearUV(rand)
 
 	// Create the learning algorithm
-	args := esarsa.Config{BehaviourE: 0.1, TargetE: 0.05, LearningRate: 0.05}
-	e, err := esarsa.New(tm, args, init, seed)
+	args := actorcritic.Config{
+		ActorLearningRate:  0.001,
+		CriticLearningRate: 0.01,
+		Decay:              0.5,
+	}
+	q, err := actorcritic.NewLinearGaussian(tm, args, init, seed)
 	if err != nil {
 		panic(err)
 	}
 
-	// Register learner with average reward environment so that the
-	// TDError of the learner can be used to update the average reward
-	ttm.Register(e)
+	// Register learner with average reward
+	ttm.Register(q)
 
 	// Experiment
-	saver := trackers.NewReturn("./data.bin")
-	exp := experiment.NewOnline(ttm, e, 100_000, saver)
-	exp.Run()
-	exp.Save()
+	var tracker trackers.Tracker = trackers.NewReturn("./data.bin")
+	tracker = trackers.Register(tracker, m)
+	e := experiment.NewOnline(ttm, q, 1_000_000, tracker)
+	e.Run()
+	e.Save()
 
 	data := trackers.LoadData("./data.bin")
 	fmt.Println(data[len(data)-10:])
