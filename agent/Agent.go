@@ -40,8 +40,26 @@ type Policy interface {
 	SelectAction(t timestep.TimeStep) mat.Vector
 }
 
-// type ManualPolicy interface {
+// type LinearPolicy interface {
 // 	Policy
 // 	Weights() map[string]*mat.Dense
 // 	SetWeights(map[string]*mat.Dense) error
+// }
+
+// type NNPolicy interface {
+// 	Policy
+// 	Prediction() *gorgonia.Node
+// 	SetInput([]float64)
+// 	BatchSize() int
+// 	Features() []int
+// }
+
+// type DiscretePolicy interface {
+// 	NNPolicy
+// 	NumActions()
+// }
+
+// type ContinuousPolicy interface {
+// 	NNPolicy
+// 	Dims() []int
 // }
