@@ -38,6 +38,10 @@ type Learner interface {
 // makes to the weights are reflected in the actions the Policy chooses
 type Policy interface {
 	SelectAction(t timestep.TimeStep) mat.Vector
-	Weights() map[string]*mat.Dense
-	SetWeights(map[string]*mat.Dense) error
 }
+
+// type ManualPolicy interface {
+// 	Policy
+// 	Weights() map[string]*mat.Dense
+// 	SetWeights(map[string]*mat.Dense) error
+// }
