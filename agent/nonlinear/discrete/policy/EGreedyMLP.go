@@ -1,3 +1,6 @@
+// Package policy implements policies using function approximation using
+// Gorgonia. Many of these policies use nonlinear function
+// aprpoximation.
 package policy
 
 import (
@@ -10,16 +13,42 @@ import (
 	"gorgonia.org/tensor"
 
 	env "sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/utils/floatutils"
 )
 
-// Weights are seeded by Unix time in nanoseconds
+// MultiHeadEGreedyMLP implements an epsilon greedy policy using a
+// feedforward neural network/MLP. Given an environment with N actions,
+// the neural network will produce N outputs, ach predicting the
+// value of a distinct action.
+//
+// MultiHeadEGreedyMLP simply populates a gorgonia.ExprGraph with
+// the neural network function approximator and selects actions
+// based on the output of this neural network. The struct does not
+// have a vm of its own. An external G.VM should be used to run the
+// computational graph of the policy externally. The VM should always
+// be run before selecting an action with the policy.
+//
+// For example, given an observation vector obs, we should first call
+// the SetInput() function to set the input to the policy as this
+// observation. Then, we can run the VM to get a prediction from the
+// policy. The policy will predict N action values given N actions.
+// At this point, the SelectAction() function can be called which
+// will look through these action values and select one based on the
+// policy. The way to get an action from the policy is summarized as:
+//
+//		Set up VM with policy's graph:	vm = NewVM(policy.Graph())
+//		Get state observation vector:	obs
+//		Set input to policy's network:	policy.SetInput(obs)
+//		Predict the action values:		vm.RunAll()
+//		Select an action:				action = policy.SelectAction()
 type MultiHeadEGreedyMLP struct {
 	g          *G.ExprGraph
-	l          []FCLayer
+	layers     []FCLayer
 	input      *G.Node
 	epsilon    float64
 	numActions int
 	numInputs  int
+	batchSize  int
 
 	prediction *G.Node
 	predVal    G.Value
@@ -28,16 +57,40 @@ type MultiHeadEGreedyMLP struct {
 	seed int64
 }
 
-// NewEGreedyMLP creates and returns a new EGreedyMLP populated in the graph g
+// NewMultiHeadEGreedyMLP creates and returns a new MultiHeadEGreedyMLP
+// The hiddenSizes parameter defines the number of nodes in each hidden
+// layer. The biases parameter outlines which layers should include
+// bias units. The activations parameter determines the activation
+// function for each layer. The batch parameter determines the number
+// of inputs in a batch.
+//
+// Note that this constructor will always add an additional hidden
+// layer (with a bias unit and no activation) such that the number of
+// network outputs equals the number of actions in the environment.
+// That is, regardless of the constructor arguments, an additional,
+// final linear layer is added so that the output of the network
+// equals the number of environmental actions.
+//
+//
+// Because of this, it is easy to create a linear EGreedy policy by
+// setting hiddenSizes to []int{}, biases to []bool{}, and activations
+// to []Activation{}.
 func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	batch int, g *G.ExprGraph, hiddenSizes []int, biases []bool,
 	init G.InitWFn, activations []Activation,
 	seed int64) (*MultiHeadEGreedyMLP, error) {
 	// Ensure we have one activation per layer
 	if len(hiddenSizes) != len(activations) {
-		msg := "newegreedymlp: invalid number of activations\n\twant(%d)" +
-			"\n\thave(%d)"
+		msg := "newmultiheadegreedymlp: invalid number of activations" +
+			"\n\twant(%d)\n\thave(%d)"
 		return nil, fmt.Errorf(msg, len(hiddenSizes), len(activations))
+	}
+
+	// Ensure one bias bool per layer
+	if len(hiddenSizes) != len(biases) {
+		msg := "newmultiheadegreedymlp: invalid number of biases\n\twant(%d)" +
+			"\n\thave(%d)"
+		return nil, fmt.Errorf(msg, len(hiddenSizes), len(biases))
 	}
 
 	// Calculate the number of actions and state features
@@ -50,23 +103,17 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 
 	// If no given hidden layers, then use a single linear layer so that
 	// the output has numActions heads
-	if len(hiddenSizes) == 0 {
-		hiddenSizes = []int{numActions}
-		biases = []bool{true}
-		activations = []Activation{nil}
-	} else {
-		// Append the number of actions to hiddenSizes so that the MLP has
-		// numActions output heads
-		hiddenSizes = append(hiddenSizes, numActions)
-		biases = append(biases, false)
-		activations = append(activations, nil)
-	}
+	hiddenSizes = append(hiddenSizes, numActions)
+	biases = append(biases, true)
+	activations = append(activations, nil)
 
+	// Create the fully connected layers
 	layers := make([]FCLayer, 0, len(hiddenSizes))
 	for i := range hiddenSizes {
+		// Create the weights for the layer
 		var Weights *G.Node
 		if i == 0 {
-			// Create the weights
+			// First layer
 			weightName := fmt.Sprintf("L%dW", i)
 			Weights = G.NewMatrix(
 				g,
@@ -76,6 +123,7 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 				G.WithInit(init),
 			)
 		} else {
+			// Layers other than the first
 			weightName := fmt.Sprintf("L%dW", i)
 			Weights = G.NewMatrix(
 				g,
@@ -87,7 +135,7 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 
 		}
 
-		// Create the bias unit if applicable
+		// Create the bias unit for the layer
 		var Bias *G.Node
 		if biases[i] {
 			biasName := fmt.Sprintf("L%dB", i)
@@ -100,7 +148,7 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 			)
 		}
 
-		// Create the layer
+		// Create the fully connected layer
 		layer := FCLayer{
 			Weights: Weights,
 			Bias:    Bias,
@@ -113,17 +161,18 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	source := rand.NewSource(seed)
 	rng := rand.New(source)
 
+	// Create the network and run the forward pass on the input node
 	network := MultiHeadEGreedyMLP{
 		g:          g,
-		l:          layers,
+		layers:     layers,
 		input:      input,
 		epsilon:    epsilon,
 		numActions: numActions,
 		numInputs:  features,
+		batchSize:  batch,
 		rng:        rng,
 		seed:       seed,
 	}
-
 	_, err := network.fwd(input)
 	if err != nil {
 		log.Fatal(err)
@@ -132,43 +181,52 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	return &network, nil
 }
 
+// Graph returns the computational graph of the MultiHeadEGreedyMLP.
 func (e *MultiHeadEGreedyMLP) Graph() *G.ExprGraph {
 	return e.g
 }
 
+// Clone clones a MultiHeadEGreedyMLP.
 func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
 	graph := G.NewGraph()
+
 	// Copy fully connected layers
-	l := make([]FCLayer, len(e.l))
-	for i := range e.l {
-		l[i] = e.l[i].CloneTo(graph)
+	l := make([]FCLayer, len(e.layers))
+	for i := range e.layers {
+		l[i] = e.layers[i].CloneTo(graph)
 	}
 
+	// Create the input node
 	inputShape := e.input.Shape()
 	var input *G.Node
-	if e.input.IsVec() {
-
-		input = G.NewVector(graph, tensor.Float64, G.WithShape(inputShape...), G.WithName("input"), G.WithInit(G.Zeroes()))
-	} else if e.input.IsMatrix() {
-		input = G.NewMatrix(graph, tensor.Float64, G.WithShape(inputShape...), G.WithName("input"), G.WithInit(G.Zeroes()))
+	if e.input.IsMatrix() {
+		input = G.NewMatrix(
+			graph,
+			tensor.Float64,
+			G.WithShape(inputShape...),
+			G.WithName("input"),
+			G.WithInit(G.Zeroes()),
+		)
 	} else {
 		panic("clone: invalid input type")
 	}
 
+	// Create RNG for sampling actions
 	source := rand.NewSource(e.seed)
 	rng := rand.New(source)
 
+	// Create the network and run the forward pass on the input node
 	network := MultiHeadEGreedyMLP{
 		g:          graph,
-		l:          l,
+		layers:     l,
 		input:      input,
 		epsilon:    e.epsilon,
 		numActions: e.numActions,
 		numInputs:  e.numInputs,
+		batchSize:  e.batchSize,
 		rng:        rng,
 		seed:       e.seed,
 	}
-
 	_, err := network.fwd(input)
 	if err != nil {
 		log.Fatal(err)
@@ -177,64 +235,64 @@ func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
 	return &network, nil
 }
 
+// SetEpsilon sets the value for epsilon in the epsilon greedy policy.
 func (e *MultiHeadEGreedyMLP) SetEpsilon(ε float64) {
 	e.epsilon = ε
 }
 
+// Epsilon gets the value of epsilon for the policy.
 func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
 	return e.epsilon
 }
 
+// SetInput sets the value of the input node before running the forward
+// pass.
 func (e *MultiHeadEGreedyMLP) SetInput(input []float64) error {
-	if len(input)%e.numInputs != 0 {
-		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)\n\thave(%v)",
-			e.numInputs, len(input))
+	if len(input) != e.numInputs*e.batchSize {
+		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)"+
+			"\n\thave(%v)", e.numInputs, len(input))
 		panic(msg)
 	}
-	inputTensor := tensor.New(tensor.WithBacking(input), tensor.WithShape(e.input.Shape()...))
+	inputTensor := tensor.New(
+		tensor.WithBacking(input),
+		tensor.WithShape(e.input.Shape()...),
+	)
 	return G.Let(e.input, inputTensor)
 }
 
-// Assumes that the vm containing the policy has already been run
+// SelectAction selects an action according to the action values
+// generated from the last run of the computational graph. This
+// funtion returns the action selected as well as the approximated value
+// of that action.
 func (e *MultiHeadEGreedyMLP) SelectAction() (mat.Vector, float64) {
-	// fmt.Println(e.l[1].Weights.Value())
 	if e.predVal == nil {
 		log.Fatal("vm must be run before selecting an action")
 	}
+
+	// Get the action values from the last run of the computational graph
 	actionValues := e.predVal.Data().([]float64)
-	probability := rand.Float64()
 
 	// With probability epsilon return a random action
-	if probability < e.epsilon {
+	if probability := rand.Float64(); probability < e.epsilon {
 		action := rand.Int() % e.numActions
 		return mat.NewVecDense(1, []float64{float64(action)}),
 			actionValues[action]
 	}
 
-	// Return the max value action
-	maxValue, maxInd := actionValues[0], []int{0}
-	for i, val := range actionValues {
-		if val > maxValue {
-			maxValue = val
-			maxInd = []int{i}
-		} else if val == maxValue {
-			maxInd = append(maxInd, i)
-		}
-	}
+	// Get the actions of maximum value
+	_, maxIndices := floatutils.Max(actionValues)
 
 	// If multiple actions have max value, return a random max-valued action
-	if len(maxInd) > 1 {
-		swap := func(i, j int) { maxInd[i], maxInd[j] = maxInd[j], maxInd[i] }
-		rand.Shuffle(len(maxInd), swap)
-	}
-	action := maxInd[0]
+	action := maxIndices[e.rng.Int()%len(maxIndices)]
 	return mat.NewVecDense(1, []float64{float64(action)}),
 		actionValues[action]
 }
 
-func (e *MultiHeadEGreedyMLP) Set(source *MultiHeadEGreedyMLP) error {
+// Set sets the weights of a MultiHeadEGreedyMLP to be equal to the
+// weights of another MultiHeadEGreedyMLP
+func (dest *MultiHeadEGreedyMLP) Set(source *MultiHeadEGreedyMLP) error {
 	sourceNodes := source.Learnables()
-	nodes := e.Learnables()
+	nodes := dest.Learnables()
 	for i, destLearnable := range nodes {
 		sourceLearnable := sourceNodes[i].Clone()
 		err := G.Let(destLearnable, sourceLearnable.(*G.Node).Value())
@@ -245,9 +303,13 @@ func (e *MultiHeadEGreedyMLP) Set(source *MultiHeadEGreedyMLP) error {
 	return nil
 }
 
-func (e *MultiHeadEGreedyMLP) Polyak(source *MultiHeadEGreedyMLP, tau float64) error {
+// Polyak sets the weights of a MultiHeadEGreedyMLP to be a polyak
+// average between its existing weights and the weights of another
+// MultiHeadEGreedyMLP
+func (dest *MultiHeadEGreedyMLP) Polyak(source *MultiHeadEGreedyMLP,
+	tau float64) error {
 	sourceNodes := source.Learnables()
-	nodes := e.Learnables()
+	nodes := dest.Learnables()
 	for i := range nodes {
 		weights := nodes[i].Value().(*tensor.Dense)
 		sourceWeights := sourceNodes[i].Value().(*tensor.Dense)
@@ -273,29 +335,34 @@ func (e *MultiHeadEGreedyMLP) Polyak(source *MultiHeadEGreedyMLP, tau float64) e
 	return nil
 }
 
+// Learnables returns the learnable nodes in a MultiHeadEGreedyMLP
 func (e *MultiHeadEGreedyMLP) Learnables() G.Nodes {
-	learnables := make([]*G.Node, 0, 2*len(e.l))
-	for i := range e.l {
-		learnables = append(learnables, e.l[i].Weights)
-		if bias := e.l[i].Bias; bias != nil {
+	learnables := make([]*G.Node, 0, 2*len(e.layers))
+
+	for i := range e.layers {
+		learnables = append(learnables, e.layers[i].Weights)
+		if bias := e.layers[i].Bias; bias != nil {
 			learnables = append(learnables, bias)
 		}
 	}
 	return G.Nodes(learnables)
 }
 
+// Model returns the learnables nodes with their gradients.
 func (e *MultiHeadEGreedyMLP) Model() []G.ValueGrad {
-	var model []G.ValueGrad = make([]G.ValueGrad, 0, 2*len(e.l))
-	for i := range e.l {
-		model = append(model, e.l[i].Weights)
-		if bias := e.l[i].Bias; bias != nil {
+	var model []G.ValueGrad = make([]G.ValueGrad, 0, 2*len(e.layers))
+
+	for i := range e.layers {
+		model = append(model, e.layers[i].Weights)
+		if bias := e.layers[i].Bias; bias != nil {
 			model = append(model, bias)
 		}
 	}
 	return model
 }
 
-// Fwd performs the forward pass of the neural net on the input node
+// Fwd performs the forward pass of the MultiHeadEGreedyMLP on the input
+// node
 func (e *MultiHeadEGreedyMLP) fwd(input *G.Node) (*G.Node, error) {
 	inputShape := input.Shape()[len(input.Shape())-1]
 	if inputShape%e.numInputs != 0 {
@@ -305,7 +372,7 @@ func (e *MultiHeadEGreedyMLP) fwd(input *G.Node) (*G.Node, error) {
 
 	pred := input
 	var err error
-	for _, l := range e.l {
+	for _, l := range e.layers {
 		if pred, err = l.Fwd(pred); err != nil {
 			log.Fatal(err)
 		}
@@ -316,10 +383,15 @@ func (e *MultiHeadEGreedyMLP) fwd(input *G.Node) (*G.Node, error) {
 	return pred, nil
 }
 
+// Output returns the output of the MultiHeadEGreedyMLP. The output is
+// a vector of N dimensions, where each dimension corresponds to an
+// environmental action.
 func (e *MultiHeadEGreedyMLP) Output() G.Value {
 	return e.predVal
 }
 
+// Prediction returns the node of the computational graph the stores
+// the output of the MultiHeadEGreedyMLP
 func (e *MultiHeadEGreedyMLP) Prediction() *G.Node {
 	return e.prediction
 }

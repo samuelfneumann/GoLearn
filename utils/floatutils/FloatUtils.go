@@ -20,3 +20,19 @@ func Clip(value, min, max float64) float64 {
 func ClipInterval(value float64, interval r1.Interval) float64 {
 	return Clip(value, interval.Min, interval.Max)
 }
+
+// Max gets the maximum value and indices of the maximum values in
+// a slice of float64.
+func Max(values []float64) (max float64, indices []int) {
+	max, indices = values[0], []int{0}
+
+	for i, value := range values {
+		if value > max {
+			max = value
+			indices = []int{i}
+		} else if value == max {
+			indices = append(indices, i)
+		}
+	}
+	return
+}
