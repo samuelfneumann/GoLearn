@@ -25,6 +25,9 @@ type Config struct {
 	Epsilon      float64
 }
 
+// NewQLearning returns a DeepQ agent that uses Q-learning.
+// That is, the algorithm uses linear function approximation to learn
+// online with no target networks.
 func NewQlearning(env environment.Environment, config qlearning.Config,
 	seed int64, InitWFn G.InitWFn) (*DeepQ, error) {
 	deepQConfig := Config{
@@ -38,11 +41,14 @@ func NewQlearning(env environment.Environment, config qlearning.Config,
 	return New(env, deepQConfig, seed)
 }
 
+// DeepQ implements the deep Q-learning algorithm. This algorithm is
+// conceptually similar to DQN, but uses the MSE loss.
 type DeepQ struct {
-	policy    *policy.MultiHeadEGreedyMLP // policy being learned
+	policy *policy.MultiHeadEGreedyMLP // behaviour policy
+	// trainNet  *policy.MultiHeadEGreedyMLp
 	targetNet *policy.MultiHeadEGreedyMLP // policy providing the update target
 
-	selectedAction *G.Node
+	selectedAction *G.Node // Action selected at the previous state
 	numActions     int
 
 	// nextStateActionValues is the input node in the graph of policy that
@@ -56,22 +62,22 @@ type DeepQ struct {
 	discounts             *G.Node
 
 	// VMs and solver for running the computational graphs
-	vm     G.VM
-	vmNext G.VM
-	solver G.Solver
+	vm G.VM
+	// trainVM  G.VM
+	targetVM G.VM
+	solver   G.Solver
 
 	prevStep   ts.TimeStep
 	prevAction int
 	nextStep   ts.TimeStep
 
 	learningRate float64
-	batchSize    int // Should always be 1 for DeepQ
-
-	costVal G.Value
-	cost    *G.Node
+	batchSize    int
 }
 
-func New(env environment.Environment, config Config, seed int64) (*DeepQ, error) {
+// New creates and returns a new DeepQ agent
+func New(env environment.Environment, config Config,
+	seed int64) (*DeepQ, error) {
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
 		return &DeepQ{}, fmt.Errorf("deepq: cannot use non-discrete " +
@@ -110,9 +116,18 @@ func New(env environment.Environment, config Config, seed int64) (*DeepQ, error)
 
 	g := G.NewGraph()
 
-	// SelectAction network
-	policy, _ := policy.NewMultiHeadEGreedyMLP(ε, env, batchSize, g, hiddenSizes, biases,
-		init, activations, seed)
+	// Behaviour network
+	policy, _ := policy.NewMultiHeadEGreedyMLP(
+		ε,
+		env,
+		batchSize,
+		g,
+		hiddenSizes,
+		biases,
+		init,
+		activations,
+		seed,
+	)
 
 	// Clone the policy network to create a target net which gives the
 	// update target
@@ -123,8 +138,7 @@ func New(env environment.Environment, config Config, seed int64) (*DeepQ, error)
 	}
 	gTarget := targetNet.Graph()
 
-	// Create node that accepts the update target: r + γQ(s', a') for
-	// each a' in s'
+	// Create nodes to compute the update target: r + γ * max[Q(s', a')]
 	nextStateActionValues := G.NewMatrix(g, tensor.Float64,
 		G.WithShape(batchSize, numActions), G.WithName("targetActionVals"))
 	rewards := G.NewVector(g, tensor.Float64, G.WithShape(batchSize),
@@ -132,39 +146,47 @@ func New(env environment.Environment, config Config, seed int64) (*DeepQ, error)
 	discounts := G.NewVector(g, tensor.Float64, G.WithShape(batchSize),
 		G.WithName("discount"))
 
+	// Compute the update target
 	updateTarget := G.Must(G.Max(nextStateActionValues, 1))
-	updateTarget = G.Must(G.BroadcastHadamardProd(updateTarget,
-		discounts, nil, []byte{0}))
-	updateTarget = G.Must(G.BroadcastAdd(updateTarget, rewards, nil,
-		[]byte{0}))
+	updateTarget = G.Must(G.HadamardProd(updateTarget, discounts))
+	updateTarget = G.Must(G.Add(updateTarget, rewards))
 
-	// pred := G.Must(G.Ravel(policy.Prediction))
-	selectedAction := G.NewMatrix(g, tensor.Float64, G.WithName("actionSelected"), G.WithShape(batchSize, numActions))
-	selectedActionValue := G.Must(G.HadamardProd(policy.Prediction(), selectedAction))
-	selectedActionValue = G.Must(G.Sum(selectedActionValue))
+	// Action selected by the policy in the previous state. This is
+	// needed to compute the loss using the correct action value since
+	// the network outputs N action values, one for each environmental
+	// action
+	selectedAction := G.NewMatrix(
+		g,
+		tensor.Float64,
+		G.WithName("actionSelected"),
+		G.WithShape(batchSize, numActions),
+	)
+	selectedActionValue := G.Must(G.HadamardProd(policy.Prediction(), // ! This will change when ER is added
+		selectedAction))
+	selectedActionValue = G.Must(G.Sum(selectedActionValue)) // ! When ER is added: along = 1
 
-	// Compute the TD error
+	// Compute the Mean Squarred TD error
 	losses := G.Must(G.Sub(updateTarget, selectedActionValue))
 	losses = G.Must(G.Square(losses))
 	cost := G.Must(G.Mean(losses))
 
-	var costVal G.Value
-	G.Read(cost, &costVal)
-
-	// Compute the gradient with respect to the TD error loss
+	// Compute the gradient with respect to the Mean Squarred TD error
 	_, err = G.Grad(cost, policy.Learnables()...)
 	if err != nil {
 		msg := fmt.Sprintf("new: could not compute gradient: %v", err)
 		panic(msg)
 	}
 
+	// Create the VMs and solver for running the policy
 	vm := G.NewTapeMachine(g, G.BindDualValues(policy.Learnables()...))
-	vmNext := G.NewTapeMachine(gTarget)
+	targetVM := G.NewTapeMachine(gTarget)
 	solver := G.NewAdamSolver(G.WithLearnRate(learningRate))
-	return &DeepQ{policy, targetNet, selectedAction, numActions, nextStateActionValues, rewards, discounts, vm, vmNext, solver,
-		ts.TimeStep{}, 0, ts.TimeStep{}, learningRate, batchSize, costVal, cost}, nil
+
+	return &DeepQ{policy, targetNet, selectedAction, numActions, nextStateActionValues, rewards, discounts, vm, targetVM, solver,
+		ts.TimeStep{}, 0, ts.TimeStep{}, learningRate, batchSize}, nil
 }
 
+// ObserveFirst observes and records the first episodic timestep
 func (d *DeepQ) ObserveFirst(t ts.TimeStep) {
 	if !t.First() {
 		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
@@ -174,6 +196,7 @@ func (d *DeepQ) ObserveFirst(t ts.TimeStep) {
 	d.nextStep = t
 }
 
+// Observe observes and records any timestep other than the first timestep
 func (d *DeepQ) Observe(action mat.Vector, nextStep ts.TimeStep) {
 	if action.Len() != 1 {
 		fmt.Fprintf(os.Stderr, "Warning: value-based methods should not "+
@@ -184,6 +207,7 @@ func (d *DeepQ) Observe(action mat.Vector, nextStep ts.TimeStep) {
 	d.nextStep = nextStep
 }
 
+// Step updates the weights of the Agent's Policies.
 func (d *DeepQ) Step() {
 	selectedAction := make([]float64, d.numActions)
 	selectedAction[d.prevAction] = 1.0
@@ -205,7 +229,7 @@ func (d *DeepQ) Step() {
 	}
 
 	// Compute the next state-action values
-	d.vmNext.RunAll()
+	d.targetVM.RunAll()
 
 	// Set the action values for the actions in the next state
 	err = G.Let(d.nextStateActionValues, d.targetNet.Output())
@@ -232,7 +256,7 @@ func (d *DeepQ) Step() {
 		panic(fmt.Sprintf("step: could not set discount: %v", err))
 	}
 
-	d.vmNext.Reset()
+	d.targetVM.Reset()
 
 	// Run the learning step
 	d.vm.RunAll()
@@ -244,6 +268,8 @@ func (d *DeepQ) Step() {
 	d.targetNet.Set(d.policy)
 }
 
+// SelectAction runs the necessary VMs and then returns an action
+// selected by the behaviour policy.
 func (d *DeepQ) SelectAction(t ts.TimeStep) mat.Vector {
 	obs := t.Observation.(*mat.VecDense).RawVector().Data
 	err := d.policy.SetInput(obs)
@@ -262,6 +288,8 @@ func (d *DeepQ) SelectAction(t ts.TimeStep) mat.Vector {
 	return action
 }
 
+// TdError calculates the TD error generated by the learner on some
+// transition.
 func (d *DeepQ) TdError(t ts.Transition) float64 {
 	state := t.State
 	d.policy.SetInput(state.(*mat.VecDense).RawVector().Data)
@@ -269,22 +297,13 @@ func (d *DeepQ) TdError(t ts.Transition) float64 {
 	nextState := t.NextState
 	d.targetNet.SetInput(nextState.(*mat.VecDense).RawVector().Data)
 
-	d.vmNext.RunAll()
+	d.targetVM.RunAll()
 	_, nextActionValue := d.targetNet.SelectAction()
-	d.vmNext.Reset()
+	d.targetVM.Reset()
 
 	d.vm.RunAll()
 	_, actionValue := d.policy.SelectAction()
 	d.vm.Reset()
 
 	return t.Reward + t.Discount*nextActionValue - actionValue
-}
-
-// ! These need to be removed...
-func (d *DeepQ) Weights() map[string]*mat.Dense {
-	return nil
-}
-
-func (d *DeepQ) SetWeights(map[string]*mat.Dense) error {
-	return nil
 }
