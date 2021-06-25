@@ -36,13 +36,13 @@ type Transition struct {
 	Action     *mat.VecDense
 	Reward     float64
 	Discount   float64
-	NextState  mat.Vector
-	NextAction mat.Vector
+	NextState  *mat.VecDense
+	NextAction *mat.VecDense
 }
 
 // NewTransition creates and returns a new transition struct
 func NewTransition(step TimeStep, action *mat.VecDense, nextStep TimeStep,
-	nextAction mat.Vector) Transition {
+	nextAction *mat.VecDense) Transition {
 	state := step.Observation
 	reward := nextStep.Reward // reward for the action argument
 	discount := nextStep.Discount
