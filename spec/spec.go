@@ -57,21 +57,3 @@ func NewEnvironment(shape mat.Vector, t SpecType, lowerBound,
 	}
 	return Environment{shape, t, lowerBound, upperBound, cardinality}
 }
-
-// Key implements keys for agent configuration maps
-type Key string
-
-const (
-	TargetE            Key = "TargetEpsilon"
-	BehaviourE         Key = "BehaviourEpsilon"
-	LearningRate       Key = "LearningRate"
-	ActorLearningRate  Key = "ActorLearningRate"
-	CriticLearningRate Key = "CriticLearningRate"
-	Decay              Key = "Decay"
-)
-
-// Agent defines an agent specification, which uniquely determines all
-// the hyperparameters/configurations of a single agent.
-type Agent interface {
-	Spec() map[Key]float64 // Configuration for an agent
-}
