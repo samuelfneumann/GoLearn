@@ -42,13 +42,14 @@ import (
 //		Predict the action values:		vm.RunAll()
 //		Select an action:				action = policy.SelectAction()
 type MultiHeadEGreedyMLP struct {
-	g          *G.ExprGraph
-	layers     []FCLayer
-	input      *G.Node
-	epsilon    float64
-	numActions int
-	numInputs  int
-	batchSize  int
+	g           *G.ExprGraph
+	layers      []FCLayer
+	input       *G.Node
+	inputTensor *tensor.Dense
+	epsilon     float64
+	numActions  int
+	numInputs   int
+	batchSize   int
 
 	prediction *G.Node
 	predVal    G.Value
@@ -100,6 +101,10 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	// Set up the input node
 	input := G.NewMatrix(g, tensor.Float64, G.WithShape(batch, features),
 		G.WithName("input"), G.WithInit(G.Zeroes()))
+	inputTensor := tensor.New(
+		tensor.Of(tensor.Float64),
+		tensor.WithShape(batch, features),
+	)
 
 	// If no given hidden layers, then use a single linear layer so that
 	// the output has numActions heads
@@ -163,15 +168,16 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 
 	// Create the network and run the forward pass on the input node
 	network := MultiHeadEGreedyMLP{
-		g:          g,
-		layers:     layers,
-		input:      input,
-		epsilon:    epsilon,
-		numActions: numActions,
-		numInputs:  features,
-		batchSize:  batch,
-		rng:        rng,
-		seed:       seed,
+		g:           g,
+		layers:      layers,
+		input:       input,
+		inputTensor: inputTensor,
+		epsilon:     epsilon,
+		numActions:  numActions,
+		numInputs:   features,
+		batchSize:   batch,
+		rng:         rng,
+		seed:        seed,
 	}
 	_, err := network.fwd(input)
 	if err != nil {
@@ -217,15 +223,16 @@ func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
 
 	// Create the network and run the forward pass on the input node
 	network := MultiHeadEGreedyMLP{
-		g:          graph,
-		layers:     l,
-		input:      input,
-		epsilon:    e.epsilon,
-		numActions: e.numActions,
-		numInputs:  e.numInputs,
-		batchSize:  e.batchSize,
-		rng:        rng,
-		seed:       e.seed,
+		g:           graph,
+		layers:      l,
+		input:       input,
+		inputTensor: e.inputTensor.Clone().(*tensor.Dense),
+		epsilon:     e.epsilon,
+		numActions:  e.numActions,
+		numInputs:   e.numInputs,
+		batchSize:   e.batchSize,
+		rng:         rng,
+		seed:        e.seed,
 	}
 	_, err := network.fwd(input)
 	if err != nil {
@@ -253,11 +260,9 @@ func (e *MultiHeadEGreedyMLP) SetInput(input []float64) error {
 			"\n\thave(%v)", e.numInputs, len(input))
 		panic(msg)
 	}
-	inputTensor := tensor.New(
-		tensor.WithBacking(input),
-		tensor.WithShape(e.input.Shape()...),
-	)
-	return G.Let(e.input, inputTensor)
+
+	copy(e.inputTensor.Data().([]float64), input)
+	return G.Let(e.input, e.inputTensor)
 }
 
 // SelectAction selects an action according to the action values
