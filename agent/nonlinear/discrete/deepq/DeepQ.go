@@ -308,7 +308,7 @@ func (d *DeepQ) TdError(t ts.Transition) float64 {
 	d.policy.SetInput(state.RawVector().Data)
 
 	nextState := t.NextState
-	d.targetNet.SetInput(nextState.(*mat.VecDense).RawVector().Data)
+	d.targetNet.SetInput(nextState.RawVector().Data)
 
 	d.targetVM.RunAll()
 	_, nextActionValue := d.targetNet.SelectAction()
