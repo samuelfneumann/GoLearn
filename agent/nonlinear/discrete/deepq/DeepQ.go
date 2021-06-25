@@ -48,9 +48,8 @@ type DeepQ struct {
 	// trainNet  *policy.MultiHeadEGreedyMLp
 	targetNet *policy.MultiHeadEGreedyMLP // policy providing the update target
 
-	selectedAction   *G.Node // Actions selected at the previous states in the batch
-	batchPrevActions *tensor.Dense
-	numActions       int
+	selectedAction *G.Node // Actions selected at the previous states in the batch
+	numActions     int
 
 	// nextStateActionValues is the input node in the graph of policy that
 	// is given the action values of the next state. For update:
@@ -166,16 +165,6 @@ func New(env environment.Environment, config Config,
 		selectedAction))
 	selectedActionValue = G.Must(G.Sum(selectedActionValue)) // ! When ER is added: along = 1
 
-	// prevAction is the tensor used to set the value of selectedAction
-	// We store the tensor and backing slice for computational
-	// efficiency so that we don't have to create a new tensor for the
-	// actions selected in the batch each time the computational graph is run
-	// selectedActionSlice := make([]float64, batchSize*numActions)
-	prevAction := tensor.New(
-		tensor.Of(tensor.Float64),
-		tensor.WithShape(selectedAction.Shape()...),
-	)
-
 	// Compute the Mean Squarred TD error
 	losses := G.Must(G.Sub(updateTarget, selectedActionValue))
 	losses = G.Must(G.Square(losses))
@@ -193,7 +182,7 @@ func New(env environment.Environment, config Config,
 	targetVM := G.NewTapeMachine(gTarget)
 	solver := G.NewAdamSolver(G.WithLearnRate(learningRate))
 
-	return &DeepQ{policy, targetNet, selectedAction, prevAction, numActions, nextStateActionValues, rewards, discounts, vm, targetVM, solver,
+	return &DeepQ{policy, targetNet, selectedAction, numActions, nextStateActionValues, rewards, discounts, vm, targetVM, solver,
 		ts.TimeStep{}, 0, ts.TimeStep{}, learningRate, batchSize}, nil
 }
 
@@ -224,8 +213,11 @@ func (d *DeepQ) Step() {
 	// need to be re-initialized at each timestep
 	selectedActionSlice := make([]float64, d.numActions*d.batchSize)
 	selectedActionSlice[d.prevAction] = 1.0 // ! needs to be adjusted for batches
-	copy(d.batchPrevActions.Data().([]float64), selectedActionSlice)
-	G.Let(d.selectedAction, d.batchPrevActions)
+	prevActions := tensor.New(
+		tensor.WithShape(d.batchSize, d.numActions),
+		tensor.WithBacking(selectedActionSlice),
+	)
+	G.Let(d.selectedAction, prevActions)
 
 	prevObs := d.prevStep.Observation.RawVector().Data
 	err := d.policy.SetInput(prevObs)
