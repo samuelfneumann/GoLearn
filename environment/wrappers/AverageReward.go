@@ -58,7 +58,7 @@ type AverageReward struct {
 	// it stores the last state S_{t} that the last action A_{t}/lastAction
 	// was taken in
 	secondLastStep timestep.TimeStep
-	lastAction     mat.Vector
+	lastAction     *mat.VecDense
 }
 
 // NewAverageReward creates and returns a new AverageReward Environment
@@ -116,7 +116,7 @@ func (a *AverageReward) Register(l agent.Learner) {
 // Step takes one environmental step given action a and returns the next
 // timestep as a timestep.TimeStep and a bool indicating whether or not
 // the episode has ended.
-func (a *AverageReward) Step(action mat.Vector) (timestep.TimeStep, bool) {
+func (a *AverageReward) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	// If using the TD error to update the average reward estimate, then
 	// Register() must have been called first.
 	if a.learner == nil && a.useTDError {

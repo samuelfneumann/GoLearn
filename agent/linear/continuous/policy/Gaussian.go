@@ -68,7 +68,7 @@ func (g *Gaussian) Mean(obs mat.Vector) mat.Vector {
 }
 
 // SelectAction selects an action from the policy for a given timestep
-func (g *Gaussian) SelectAction(t timestep.TimeStep) mat.Vector {
+func (g *Gaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	obs := t.Observation
 
 	// Get the predicted mean the policy

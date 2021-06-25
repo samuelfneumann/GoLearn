@@ -9,7 +9,7 @@ import (
 
 // SingleStart represents a single starting position in a GridWorld
 type SingleStart struct {
-	state mat.Vector
+	state *mat.VecDense
 	r, c  int
 }
 
@@ -26,6 +26,6 @@ func NewSingleStart(x, y, r, c int) (environment.Starter, error) {
 }
 
 // Start returns the starting state for a SingleStart
-func (s *SingleStart) Start() mat.Vector {
+func (s *SingleStart) Start() *mat.VecDense {
 	return s.state
 }

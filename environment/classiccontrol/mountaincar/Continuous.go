@@ -62,7 +62,7 @@ func (m *Continuous) ActionSpec() spec.Environment {
 // consisting of the horizontal force to apply to the cart. Actions
 // outside the legal range of [-2, 2] are clipped to stay within this
 // range.
-func (m *Continuous) Step(a mat.Vector) (ts.TimeStep, bool) {
+func (m *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
 		panic("Actions should be 1-dimensional")

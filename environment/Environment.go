@@ -14,7 +14,7 @@ import (
 // Starter implements a distribution of starting states and samples starting
 // states for environments
 type Starter interface {
-	Start() mat.Vector
+	Start() *mat.VecDense
 }
 
 // Ender determines when the agent-environment interaction ends an episode
@@ -42,7 +42,7 @@ type Task interface {
 type Environment interface {
 	Task
 	Reset() timestep.TimeStep // Resets between episodes
-	Step(action mat.Vector) (timestep.TimeStep, bool)
+	Step(action *mat.VecDense) (timestep.TimeStep, bool)
 	DiscountSpec() spec.Environment
 	ObservationSpec() spec.Environment
 	ActionSpec() spec.Environment

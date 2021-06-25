@@ -65,7 +65,7 @@ func (c *Discrete) ActionSpec() spec.Environment {
 // direction to apply horizontal force to the cart or whether to apply
 // no force to the cart. Legal actions are in the set {0, 1, 2}.
 // Actions outside this range will cause the environment to panic.
-func (c *Discrete) Step(a mat.Vector) (ts.TimeStep, bool) {
+func (c *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
 		panic("Actions should be 1-dimensional")

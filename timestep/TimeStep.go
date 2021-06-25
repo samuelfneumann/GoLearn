@@ -32,8 +32,8 @@ func (s StepType) String() string {
 // Transition packages together a SARSA tuple (S_{t}, A_{t}, R_{t+1},
 // S_{t+1}, A_{t+1})
 type Transition struct {
-	State      mat.Vector
-	Action     mat.Vector
+	State      *mat.VecDense
+	Action     *mat.VecDense
 	Reward     float64
 	Discount   float64
 	NextState  mat.Vector
@@ -41,7 +41,7 @@ type Transition struct {
 }
 
 // NewTransition creates and returns a new transition struct
-func NewTransition(step TimeStep, action mat.Vector, nextStep TimeStep,
+func NewTransition(step TimeStep, action *mat.VecDense, nextStep TimeStep,
 	nextAction mat.Vector) Transition {
 	state := step.Observation
 	reward := nextStep.Reward // reward for the action argument
@@ -59,12 +59,12 @@ type TimeStep struct {
 	StepType    StepType
 	Reward      float64
 	Discount    float64
-	Observation mat.Vector
+	Observation *mat.VecDense
 	Number      int
 }
 
 // New constructs a new TimeStep
-func New(t StepType, r, d float64, o mat.Vector, n int) TimeStep {
+func New(t StepType, r, d float64, o *mat.VecDense, n int) TimeStep {
 	return TimeStep{t, r, d, o, n}
 }
 

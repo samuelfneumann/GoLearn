@@ -74,10 +74,10 @@ func (g *GridWorld) Reset() timestep.TimeStep {
 	return startStep
 }
 
-func (g *GridWorld) NextObs(action mat.Vector) mat.Vector {
+func (g *GridWorld) NextObs(action *mat.VecDense) *mat.VecDense {
 	direction := action.AtVec(0)
 	x, y := g.Coordinates()
-	var newPosition mat.Vector
+	var newPosition *mat.VecDense
 
 	// Move the current position
 	switch direction {
@@ -114,7 +114,7 @@ func (g *GridWorld) NextObs(action mat.Vector) mat.Vector {
 }
 
 // Step takes an action in the environemnt
-func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
+func (g *GridWorld) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	newPosition := g.NextObs(action)
 	g.position = g.vToInd(newPosition)
 
@@ -133,12 +133,12 @@ func (g *GridWorld) Step(action mat.Vector) (timestep.TimeStep, bool) {
 }
 
 // cToV converts coordinates (x, y) to a vector
-func (g *GridWorld) cToV(x, y int) mat.Vector {
+func (g *GridWorld) cToV(x, y int) *mat.VecDense {
 	return cToV(x, y, g.r, g.c)
 }
 
 // cToV converts a coordinate (x, y) into a vector
-func cToV(x, y, r, c int) mat.Vector {
+func cToV(x, y, r, c int) *mat.VecDense {
 	vec := mat.NewVecDense(r*c, nil)
 	ind := cToInd(x, y, c)
 	vec.SetVec(ind, 1.0)
@@ -173,7 +173,7 @@ func vToInd(v mat.Vector, r, c int) int {
 
 // vToInd gets the index of the 1.0 in a GridWorld's one-hot vector
 // representation
-func (g *GridWorld) vToInd(v mat.Vector) int {
+func (g *GridWorld) vToInd(v *mat.VecDense) int {
 	return vToInd(v, g.r, g.c)
 }
 

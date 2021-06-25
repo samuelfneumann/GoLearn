@@ -63,7 +63,7 @@ func (t *TileCoding) Reset() ts.TimeStep {
 // Step takes one environmental step given action a and returns the next
 // state as a timestep.TimeStep and a bool indicating whether or not the
 // episode has ended
-func (t *TileCoding) Step(a mat.Vector) (ts.TimeStep, bool) {
+func (t *TileCoding) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Get the next step from the environment
 	step, last := t.Environment.Step(a)
 

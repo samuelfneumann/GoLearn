@@ -103,7 +103,7 @@ func (p *Pendulum) Reset() timestep.TimeStep {
 
 // NextState computes the next state of the environment given a timestep and
 // an action a
-func (p *Pendulum) NextState(t timestep.TimeStep, a mat.Vector) mat.Vector {
+func (p *Pendulum) NextState(t timestep.TimeStep, a mat.Vector) *mat.VecDense {
 	if a.Len() != 1 {
 		panic("only 1D actions are allowed")
 	}

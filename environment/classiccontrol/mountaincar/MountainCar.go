@@ -122,7 +122,7 @@ func (m *base) Reset() ts.TimeStep {
 }
 
 // NextState calculates the next state in the environment given action a
-func (m *base) nextState(force float64) mat.Vector {
+func (m *base) nextState(force float64) *mat.VecDense {
 	// Get the current state
 	state := m.lastStep.Observation
 	position, velocity := state.AtVec(0), state.AtVec(1)
@@ -157,7 +157,7 @@ func (m *base) nextState(force float64) mat.Vector {
 // The result of that function is then passed to this function as
 // well as the action taken, which is needed to calculate the reward
 // for the action.
-func (m *base) update(action, newState mat.Vector) (ts.TimeStep, bool) {
+func (m *base) update(action, newState *mat.VecDense) (ts.TimeStep, bool) {
 	// Create the new timestep
 	reward := m.GetReward(m.lastStep.Observation, action, newState)
 	nextStep := ts.New(ts.Mid, reward, m.discount, newState,

@@ -81,7 +81,7 @@ func (g *GaussianLearner) TdError(t timestep.Transition) float64 {
 func (g *GaussianLearner) Step() {
 	// Get variables needed to compute state values
 	discount := g.nextStep.Discount
-	state := g.step.Observation.(*mat.VecDense)
+	state := g.step.Observation
 	nextState := g.nextStep.Observation
 	reward := g.nextStep.Reward
 

@@ -21,6 +21,6 @@ func NewUniformStarter(bounds []r1.Interval, seed uint64) UniformStarter {
 	return UniformStarter{len(bounds), seed, rand}
 }
 
-func (u UniformStarter) Start() mat.Vector {
+func (u UniformStarter) Start() *mat.VecDense {
 	return mat.NewVecDense(u.features, u.rand.Rand(nil))
 }

@@ -37,7 +37,7 @@ type Learner interface {
 // should have pointers to the same weights so that any changes the learner
 // makes to the weights are reflected in the actions the Policy chooses
 type Policy interface {
-	SelectAction(t timestep.TimeStep) mat.Vector
+	SelectAction(t timestep.TimeStep) *mat.VecDense
 }
 
 // type LinearPolicy interface {

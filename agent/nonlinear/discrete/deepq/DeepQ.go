@@ -48,8 +48,9 @@ type DeepQ struct {
 	// trainNet  *policy.MultiHeadEGreedyMLp
 	targetNet *policy.MultiHeadEGreedyMLP // policy providing the update target
 
-	selectedAction *G.Node // Action selected at the previous state
-	numActions     int
+	selectedAction   *G.Node // Actions selected at the previous states in the batch
+	batchPrevActions *tensor.Dense
+	numActions       int
 
 	// nextStateActionValues is the input node in the graph of policy that
 	// is given the action values of the next state. For update:
@@ -165,6 +166,16 @@ func New(env environment.Environment, config Config,
 		selectedAction))
 	selectedActionValue = G.Must(G.Sum(selectedActionValue)) // ! When ER is added: along = 1
 
+	// prevAction is the tensor used to set the value of selectedAction
+	// We store the tensor and backing slice for computational
+	// efficiency so that we don't have to create a new tensor for the
+	// actions selected in the batch each time the computational graph is run
+	// selectedActionSlice := make([]float64, batchSize*numActions)
+	prevAction := tensor.New(
+		tensor.Of(tensor.Float64),
+		tensor.WithShape(selectedAction.Shape()...),
+	)
+
 	// Compute the Mean Squarred TD error
 	losses := G.Must(G.Sub(updateTarget, selectedActionValue))
 	losses = G.Must(G.Square(losses))
@@ -182,7 +193,7 @@ func New(env environment.Environment, config Config,
 	targetVM := G.NewTapeMachine(gTarget)
 	solver := G.NewAdamSolver(G.WithLearnRate(learningRate))
 
-	return &DeepQ{policy, targetNet, selectedAction, numActions, nextStateActionValues, rewards, discounts, vm, targetVM, solver,
+	return &DeepQ{policy, targetNet, selectedAction, prevAction, numActions, nextStateActionValues, rewards, discounts, vm, targetVM, solver,
 		ts.TimeStep{}, 0, ts.TimeStep{}, learningRate, batchSize}, nil
 }
 
@@ -209,19 +220,21 @@ func (d *DeepQ) Observe(action mat.Vector, nextStep ts.TimeStep) {
 
 // Step updates the weights of the Agent's Policies.
 func (d *DeepQ) Step() {
-	selectedAction := make([]float64, d.numActions)
-	selectedAction[d.prevAction] = 1.0
-	prevAction := tensor.New(tensor.WithBacking(selectedAction), tensor.WithShape(d.selectedAction.Shape()...))
-	G.Let(d.selectedAction, prevAction)
+	// Manually adjust backing slice so that the input tensor does not
+	// need to be re-initialized at each timestep
+	selectedActionSlice := make([]float64, d.numActions*d.batchSize)
+	selectedActionSlice[d.prevAction] = 1.0 // ! needs to be adjusted for batches
+	copy(d.batchPrevActions.Data().([]float64), selectedActionSlice)
+	G.Let(d.selectedAction, d.batchPrevActions)
 
-	prevObs := d.prevStep.Observation.(*mat.VecDense).RawVector().Data
+	prevObs := d.prevStep.Observation.RawVector().Data
 	err := d.policy.SetInput(prevObs)
 	if err != nil {
 		msg := fmt.Sprintf("step: could not set policy input: %v", err)
 		panic(msg)
 	}
 
-	nextObs := d.nextStep.Observation.(*mat.VecDense).RawVector().Data
+	nextObs := d.nextStep.Observation.RawVector().Data
 	err = d.targetNet.SetInput(nextObs)
 	if err != nil {
 		msg := fmt.Sprintf("step: could not set target net input: %v", err)
@@ -270,8 +283,8 @@ func (d *DeepQ) Step() {
 
 // SelectAction runs the necessary VMs and then returns an action
 // selected by the behaviour policy.
-func (d *DeepQ) SelectAction(t ts.TimeStep) mat.Vector {
-	obs := t.Observation.(*mat.VecDense).RawVector().Data
+func (d *DeepQ) SelectAction(t ts.TimeStep) *mat.VecDense {
+	obs := t.Observation.RawVector().Data
 	err := d.policy.SetInput(obs)
 	if err != nil {
 		log.Fatal(err)
@@ -292,7 +305,7 @@ func (d *DeepQ) SelectAction(t ts.TimeStep) mat.Vector {
 // transition.
 func (d *DeepQ) TdError(t ts.Transition) float64 {
 	state := t.State
-	d.policy.SetInput(state.(*mat.VecDense).RawVector().Data)
+	d.policy.SetInput(state.RawVector().Data)
 
 	nextState := t.NextState
 	d.targetNet.SetInput(nextState.(*mat.VecDense).RawVector().Data)

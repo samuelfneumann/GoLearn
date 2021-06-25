@@ -150,7 +150,7 @@ func (c *base) DiscountSpec() spec.Environment {
 // nextState calculates the next state of the environment given a force
 // to apply to the cart's base. Negative force will cause the cart to
 // move left while positive force will move the cart right.
-func (c *base) nextState(force float64) mat.Vector {
+func (c *base) nextState(force float64) *mat.VecDense {
 	// Magnify the force
 	force *= c.forceMagnification
 
@@ -207,7 +207,7 @@ func (c *base) nextState(force float64) mat.Vector {
 // The result of that function is then passed to this function as
 // well as the action taken, which is needed to calculate the reward
 // for the action.
-func (c *base) update(a, newState mat.Vector) (ts.TimeStep, bool) {
+func (c *base) update(a, newState *mat.VecDense) (ts.TimeStep, bool) {
 	reward := c.GetReward(c.lastStep.Observation, a, newState)
 	nextStep := ts.New(ts.Mid, reward, c.discount, newState,
 		c.lastStep.Number+1)

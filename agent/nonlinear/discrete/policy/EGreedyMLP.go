@@ -264,7 +264,7 @@ func (e *MultiHeadEGreedyMLP) SetInput(input []float64) error {
 // generated from the last run of the computational graph. This
 // funtion returns the action selected as well as the approximated value
 // of that action.
-func (e *MultiHeadEGreedyMLP) SelectAction() (mat.Vector, float64) {
+func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
 	if e.predVal == nil {
 		log.Fatal("vm must be run before selecting an action")
 	}

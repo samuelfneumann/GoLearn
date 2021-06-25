@@ -71,7 +71,7 @@ func (m *Discrete) ActionSpec() spec.Environment {
 // direction to accelerate the car or whether to apply no acceleration
 // to the car. Legal actions are in the set {0, 1, 2}. Actions outside
 // this range will cause the environment to panic.
-func (m *Discrete) Step(a mat.Vector) (ts.TimeStep, bool) {
+func (m *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
 		panic("Actions should be 1-dimensional")
