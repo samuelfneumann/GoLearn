@@ -23,7 +23,7 @@ func ClipInterval(value float64, interval r1.Interval) float64 {
 
 // Max gets the maximum value and indices of the maximum values in
 // a slice of float64.
-func Max(values []float64) (max float64, indices []int) {
+func MaxSlice(values []float64) (max float64, indices []int) {
 	max, indices = values[0], []int{0}
 
 	for i, value := range values {
@@ -35,4 +35,26 @@ func Max(values []float64) (max float64, indices []int) {
 		}
 	}
 	return
+}
+
+// Min calculates and returns the minimum float64 in a list
+func Min(floats ...float64) float64 {
+	min := floats[0]
+	for _, val := range floats {
+		if val < min {
+			min = val
+		}
+	}
+	return min
+}
+
+// Max calculates and returns the maximum float64 in a list
+func Max(floats ...float64) float64 {
+	max := floats[0]
+	for _, val := range floats {
+		if val > max {
+			max = val
+		}
+	}
+	return max
 }

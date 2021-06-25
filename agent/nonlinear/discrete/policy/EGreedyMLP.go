@@ -280,7 +280,7 @@ func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
 	}
 
 	// Get the actions of maximum value
-	_, maxIndices := floatutils.Max(actionValues)
+	_, maxIndices := floatutils.MaxSlice(actionValues)
 
 	// If multiple actions have max value, return a random max-valued action
 	action := maxIndices[e.rng.Int()%len(maxIndices)]
