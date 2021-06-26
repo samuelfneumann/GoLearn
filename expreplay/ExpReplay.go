@@ -78,6 +78,13 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 		return &cache{}, fmt.Errorf("new: maxCapacity must be >= 1")
 	}
 
+	// If minCapacity == maxCapacity == 1, then the replay buffer
+	// only stores the most recent online transition. In this case,
+	// onlineCache makes a number of efficiency improvements
+	if minCapacity == 1 && maxCapacity == 1 {
+		return newOnline(), nil
+	}
+
 	stateCache := make([]float64, maxCapacity*featureSize)
 	nextStateCache := make([]float64, maxCapacity*featureSize)
 
