@@ -13,9 +13,8 @@ type Selector interface {
 	// the experience replay buffer
 	choose(c *cache) []int
 
-	// size returns the number of elements that will be sampled from or
-	// removed from the buffer
-	size() int
+	// BatchSize returns the number of elements that will be selected
+	BatchSize() int
 
 	// registerAsRemover registers a Selector as a remover
 	//
@@ -45,17 +44,17 @@ func NewUniformSelector(samples int, seed int64) Selector {
 func (u *uniformSelector) registerAsRemover() {}
 
 // size gets the number of samples in a batch drawn from the buffer
-func (u *uniformSelector) size() int {
+func (u *uniformSelector) BatchSize() int {
 	return u.samples
 }
 
 // choose selects a number of indices at which to draw data from the
 // buffer
 func (u *uniformSelector) choose(c *cache) []int {
-	selected := make([]int, u.size())
+	selected := make([]int, u.BatchSize())
 	keys := keysWithValue(c.emptyIndices, false)
 
-	for i := 0; i < u.size(); i++ {
+	for i := 0; i < u.BatchSize(); i++ {
 		index := u.rng.Int() % c.Capacity()
 		selected[i] = keys[index]
 	}
@@ -82,17 +81,17 @@ func (f *fifoSelector) registerAsRemover() {
 }
 
 // size gets the number of samples in a batch drawn from the buffer
-func (f *fifoSelector) size() int {
+func (f *fifoSelector) BatchSize() int {
 	return f.samples
 }
 
 // choose selects a number of indices at which to draw data from the
 // buffer
 func (f *fifoSelector) choose(c *cache) []int {
-	selected := make([]int, intutils.Min(f.size(), c.Capacity()))
-	insertOrder := c.insertOrder(f.size())
+	selected := make([]int, intutils.Min(f.BatchSize(), c.Capacity()))
+	insertOrder := c.insertOrder(f.BatchSize())
 
-	for i := 0; i < f.size() && i < c.Capacity(); i++ {
+	for i := 0; i < f.BatchSize() && i < c.Capacity(); i++ {
 		selected[i] = insertOrder[i]
 
 		if f.remover {

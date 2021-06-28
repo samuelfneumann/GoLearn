@@ -3,6 +3,7 @@ package expreplay
 import (
 	"container/list"
 	"fmt"
+	"os"
 
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/intutils"
@@ -71,8 +72,8 @@ type cache struct {
 // Pixel observations should be flattened before adding to the buffer.
 func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 	actionSize int) (ExperienceReplayer, error) {
-	if minCapacity < 0 {
-		return &cache{}, fmt.Errorf("new: minCapacity must be >= 0")
+	if minCapacity <= 0 {
+		return &cache{}, fmt.Errorf("new: minCapacity must be > 0")
 	}
 	if maxCapacity < 1 {
 		return &cache{}, fmt.Errorf("new: maxCapacity must be >= 1")
@@ -82,6 +83,10 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 	// only stores the most recent online transition. In this case,
 	// onlineCache makes a number of efficiency improvements
 	if minCapacity == 1 && maxCapacity == 1 {
+		if sampler.BatchSize() > 1 || remover.BatchSize() > 1 {
+			msg := "new: using online sampler, ignoring batch size > 1"
+			fmt.Fprintln(os.Stderr, msg)
+		}
 		return newOnline(), nil
 	}
 
@@ -146,7 +151,7 @@ func (c *cache) String() string {
 // BatchSize returns the number of samples sampled using Sample() -
 // a.k.a the batch size
 func (c *cache) BatchSize() int {
-	return c.sampler.size()
+	return c.sampler.BatchSize()
 }
 
 // remove removes elements from the cache using indices sampled from the
@@ -157,7 +162,6 @@ func (c *cache) remove() error {
 	}
 
 	indices := c.remover.choose(c)
-	fmt.Println("REMOVING:", indices)
 	for _, index := range indices {
 		c.emptyIndices[index] = true
 	}

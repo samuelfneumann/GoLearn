@@ -1,6 +1,10 @@
 package expreplay
 
-import "sfneuman.com/golearn/timestep"
+import (
+	"fmt"
+
+	"sfneuman.com/golearn/timestep"
+)
 
 // onlineCache implements an experience replay buffer for sampling
 // completely online.
@@ -39,6 +43,10 @@ func (o *onlineCache) Add(t timestep.Transition) error {
 // buffer
 func (o *onlineCache) Sample() ([]float64, []float64, []float64, []float64,
 	[]float64, []float64, error) {
+	if len(o.stateCache) == 0 {
+		err := fmt.Errorf("sample: cannot sample from empty cache")
+		return nil, nil, nil, nil, nil, nil, err
+	}
 	return o.stateCache, o.actionCache, o.rewardCache, o.discountCache,
 		o.nextStateCache, o.nextActionCache, nil
 }
