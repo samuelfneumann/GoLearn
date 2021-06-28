@@ -36,6 +36,8 @@ type Config struct {
 	TargetUpdateInterval int     // Number of steps target network updates
 }
 
+// BatchSize returns the batch size of the agent constructed using this
+// Config
 func (c Config) BatchSize() int {
 	return c.Sampler.BatchSize()
 }
@@ -419,16 +421,14 @@ func (d *DeepQ) SelectAction(t ts.TimeStep) *mat.VecDense {
 func (d *DeepQ) TdError(t ts.Transition) float64 {
 	state := t.State
 	d.policy.SetInput(state.RawVector().Data)
-
-	nextState := t.NextState
-	d.targetNet.SetInput(nextState.RawVector().Data)
-
-	d.targetVM.RunAll()
-	_, nextActionValue := d.targetNet.SelectAction()
-	d.targetVM.Reset()
-
 	d.vm.RunAll()
 	_, actionValue := d.policy.SelectAction()
+	d.vm.Reset()
+
+	nextState := t.NextState
+	d.policy.SetInput(nextState.RawVector().Data)
+	d.vm.RunAll()
+	_, nextActionValue := d.targetNet.SelectAction()
 	d.vm.Reset()
 
 	return t.Reward + t.Discount*nextActionValue - actionValue
