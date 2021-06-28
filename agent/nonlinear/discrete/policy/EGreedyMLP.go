@@ -186,8 +186,16 @@ func (e *MultiHeadEGreedyMLP) Graph() *G.ExprGraph {
 	return e.g
 }
 
-// Clone clones a MultiHeadEGreedyMLP.
+// Clone clones a MultiHeadEGreedyMLP
 func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
+	batchSize := e.input.Shape()[0]
+	return e.CloneWithBatch(batchSize)
+}
+
+// CloneWithBatch clones a MultiHeadEGreedyMLP with a new input batch
+// size.
+func (e *MultiHeadEGreedyMLP) CloneWithBatch(
+	batchSize int) (*MultiHeadEGreedyMLP, error) {
 	graph := G.NewGraph()
 
 	// Copy fully connected layers
@@ -200,10 +208,11 @@ func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
 	inputShape := e.input.Shape()
 	var input *G.Node
 	if e.input.IsMatrix() {
+		batchShape := append([]int{batchSize}, inputShape[1:]...)
 		input = G.NewMatrix(
 			graph,
 			tensor.Float64,
-			G.WithShape(inputShape...),
+			G.WithShape(batchShape...),
 			G.WithName("input"),
 			G.WithInit(G.Zeroes()),
 		)
@@ -223,7 +232,7 @@ func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
 		epsilon:    e.epsilon,
 		numActions: e.numActions,
 		numInputs:  e.numInputs,
-		batchSize:  e.batchSize,
+		batchSize:  batchSize,
 		rng:        rng,
 		seed:       e.seed,
 	}
@@ -250,7 +259,7 @@ func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
 func (e *MultiHeadEGreedyMLP) SetInput(input []float64) error {
 	if len(input) != e.numInputs*e.batchSize {
 		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)"+
-			"\n\thave(%v)", e.numInputs, len(input))
+			"\n\thave(%v)", e.numInputs*e.batchSize, len(input))
 		panic(msg)
 	}
 	inputTensor := tensor.New(

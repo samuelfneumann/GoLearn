@@ -13,6 +13,7 @@ import (
 	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/trackers"
+	"sfneuman.com/golearn/expreplay"
 )
 
 func DeepQ() {
@@ -28,11 +29,16 @@ func DeepQ() {
 
 	// Create the learning algorithm
 	args := deepq.Config{
-		PolicyLayers: []int{100, 50},
-		Biases:       []bool{true, true},
-		Activations:  []policy.Activation{G.Rectify, G.Rectify},
-		InitWFn:      G.GlorotU(1.0),
-		LearningRate: 0.0001,
+		PolicyLayers:    []int{100, 50},
+		Biases:          []bool{true, true},
+		Activations:     []policy.Activation{G.Rectify, G.Rectify},
+		InitWFn:         G.GlorotU(1.0),
+		LearningRate:    0.0001,
+		Epsilon:         0.1,
+		Remover:         expreplay.NewFifoSelector(1),
+		Sampler:         expreplay.NewUniformSelector(2, seed),
+		MaximumCapacity: 3,
+		MinimumCapacity: 1,
 	}
 	q, err := deepq.New(m, args, seed)
 	if err != nil {
@@ -43,7 +49,7 @@ func DeepQ() {
 	start := time.Now()
 	var tracker trackers.Tracker = trackers.NewReturn("./data.bin")
 	tracker = trackers.Register(tracker, m)
-	e := experiment.NewOnline(m, q, 10_000, tracker)
+	e := experiment.NewOnline(m, q, 20_000, tracker)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
