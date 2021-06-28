@@ -32,8 +32,8 @@ type Config struct {
 	MinimumCapacity int
 
 	// Target net updates
-	// tau   float64
-	// steps int
+	Tau                  float64 // Polyak averaging constant
+	TargetUpdateInterval int     // Number of steps target network updates
 }
 
 func (c Config) BatchSize() int {
@@ -52,6 +52,9 @@ func NewQlearning(env environment.Environment, config qlearning.Config,
 		Biases:       []bool{},
 		Activations:  []policy.Activation{},
 		InitWFn:      InitWFn,
+
+		Tau:                  1.0,
+		TargetUpdateInterval: 1,
 	}
 	return New(env, deepQConfig, seed)
 }
@@ -91,6 +94,11 @@ type DeepQ struct {
 
 	learningRate float64
 	batchSize    int
+
+	// Target network updates
+	tau                  float64 // Polyak averaging constant
+	targetUpdateInterval int     // Steps between target updates
+	gradientSteps        int
 }
 
 // New creates and returns a new DeepQ agent
@@ -156,6 +164,16 @@ func New(env environment.Environment, config Config,
 		return &DeepQ{}, fmt.Errorf(msg, err)
 	}
 	gTarget := targetNet.Graph()
+
+	// Target network updating schedule
+	tau := config.Tau
+	targetUpdateInterval := config.TargetUpdateInterval
+	if targetUpdateInterval < 1 {
+		err := fmt.Errorf("new: target networks must be updated at positive "+
+			"timestep intervals \n\twant(>0) \n\thave(%v)",
+			targetUpdateInterval)
+		return &DeepQ{}, err
+	}
 
 	// Create a learning network which will learn the weights
 	trainNet, err := policy.CloneWithBatch(batchSize)
@@ -245,6 +263,9 @@ func New(env environment.Environment, config Config,
 		nextStep:              ts.TimeStep{},
 		learningRate:          learningRate,
 		batchSize:             batchSize,
+		tau:                   tau,
+		targetUpdateInterval:  targetUpdateInterval,
+		gradientSteps:         0,
 	}, nil
 }
 
@@ -359,10 +380,17 @@ func (d *DeepQ) Step() {
 	d.trainVM.RunAll()
 	d.solver.Step(d.trainNet.Model())
 	d.trainVM.Reset()
+	d.gradientSteps++
 
 	// Update the target network by setting its weights to the newly learned
 	// weights
-	d.targetNet.Set(d.trainNet)
+	if d.gradientSteps%d.targetUpdateInterval == 0 {
+		if d.tau == 1.0 {
+			d.targetNet.Set(d.trainNet)
+		} else {
+			d.targetNet.Polyak(d.trainNet, d.tau)
+		}
+	}
 	d.policy.Set(d.trainNet)
 }
 

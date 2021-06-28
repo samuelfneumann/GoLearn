@@ -28,16 +28,18 @@ func main() {
 
 	// Create the learning algorithm
 	args := deepq.Config{
-		PolicyLayers:    []int{100, 50},
-		Biases:          []bool{true, true},
-		Activations:     []policy.Activation{gorgonia.Rectify, gorgonia.Rectify},
-		InitWFn:         gorgonia.GlorotU(1.0),
-		LearningRate:    0.0001,
-		Epsilon:         0.1,
-		Remover:         expreplay.NewFifoSelector(1),
-		Sampler:         expreplay.NewUniformSelector(2, seed),
-		MaximumCapacity: 3,
-		MinimumCapacity: 1,
+		PolicyLayers:         []int{100, 50},
+		Biases:               []bool{true, true},
+		Activations:          []policy.Activation{gorgonia.Rectify, gorgonia.Rectify},
+		InitWFn:              gorgonia.GlorotU(1.0),
+		LearningRate:         0.0001,
+		Epsilon:              0.1,
+		Remover:              expreplay.NewFifoSelector(1),
+		Sampler:              expreplay.NewUniformSelector(2, seed),
+		MaximumCapacity:      3,
+		MinimumCapacity:      1,
+		Tau:                  1.0,
+		TargetUpdateInterval: 1,
 	}
 	q, err := deepq.New(m, args, seed)
 	if err != nil {
