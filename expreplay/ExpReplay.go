@@ -79,7 +79,7 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 		return &cache{}, fmt.Errorf("new: maxCapacity must be >= 1")
 	}
 	if maxCapacity < sampler.BatchSize() {
-		return &cache{}, fmt.Errorf("new: cannot have batch size(%v)s > max "+
+		return &cache{}, fmt.Errorf("new: cannot have batch size(%v) > max "+
 			"buffer capacity (%v)", sampler.BatchSize(), maxCapacity)
 	}
 
