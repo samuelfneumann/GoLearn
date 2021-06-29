@@ -2,12 +2,12 @@ package deepq
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
+	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/agent/nonlinear/discrete/policy"
 	"sfneuman.com/golearn/environment"
@@ -16,98 +16,55 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
-// Config implements a configuration for a DeepQ agent
-type Config struct {
-	PolicyLayers []int
-	Biases       []bool
-	Activations  []policy.Activation
-	InitWFn      G.InitWFn
-	LearningRate float64
-	Epsilon      float64
-
-	// Experience replay parameters
-	Remover         expreplay.Selector
-	Sampler         expreplay.Selector
-	MaximumCapacity int
-	MinimumCapacity int
-
-	// Target net updates
-	Tau                  float64 // Polyak averaging constant
-	TargetUpdateInterval int     // Number of steps target network updates
-}
-
-// BatchSize returns the batch size of the agent constructed using this
-// Config
-func (c Config) BatchSize() int {
-	return c.Sampler.BatchSize()
-}
-
-// NewQlearning returns a DeepQ agent that uses Q-learning.
-// That is, the algorithm uses linear function approximation to learn
-// online with no target networks.
-func NewQlearning(env environment.Environment, config qlearning.Config,
-	seed int64, InitWFn G.InitWFn) (*DeepQ, error) {
-	deepQConfig := Config{
-		Epsilon:      config.Epsilon,
-		LearningRate: config.LearningRate,
-		PolicyLayers: []int{},
-		Biases:       []bool{},
-		Activations:  []policy.Activation{},
-		InitWFn:      InitWFn,
-
-		Tau:                  1.0,
-		TargetUpdateInterval: 1,
-	}
-	return New(env, deepQConfig, seed)
-}
-
 // DeepQ implements the deep Q-learning algorithm. This algorithm is
-// conceptually similar to DQN, but uses the MSE loss. Currently, DeepQ
-// only works online.
+// conceptually similar to DQN, but uses the MSE loss.
 type DeepQ struct {
 	// Action selection policies
-	behaviour    *policy.MultiHeadEGreedyMLP // behaviour policy
-	targetPolicy *policy.MultiHeadEGreedyMLP // target policy
+	behaviourPolicy   agent.EGreedyNNPolicy // Behaviour egreedy policy
+	behaviourPolicyVM G.VM
+	targetPolicy      agent.EGreedyNNPolicy // Target greedy policy
+	targetPolicyVM    G.VM
 
-	// Policies for learning
-	trainNet  *policy.MultiHeadEGreedyMLP
-	targetNet *policy.MultiHeadEGreedyMLP // policy providing the update target
+	// Policy for learning weights that takes in batches of inputs
+	trainNet   agent.EGreedyNNPolicy // Policy whose weights are adapted
+	trainNetVM G.VM
+	solver     G.Solver // Adapts the weights of trainNet
 
-	selectedActions *G.Node // Actions selected at the previous states in the batch
+	// Policy that provides the update target for a batch of inputs
+	// Note that this is a target network, providing the update target.
+	// It is not the network for the target policy
+	targetNet   agent.EGreedyNNPolicy
+	targetNetVM G.VM
+
+	// Variables to track target network updates
+	tau                  float64 // Polyak averaging constant
+	targetUpdateInterval int     // Steps between target updates
+	gradientSteps        int
+
+	selectedActions *G.Node // Actions taken at the previous states
 	numActions      int
 
 	replay expreplay.ExperienceReplayer
 
-	// nextStateActionValues is the input node in the graph of policy that
+	// nextStateActionValues is the input node in the graph of trainNet that
 	// is given the action values of the next state. For update:
 	//
 	// Q(s, a) <- Q(s, a) + α * (r + Q(s', a') - Q(s, a)) ∇Q(s, a)
 	//
-	// nextStateActionValues provides Q(s', a') for all a' in s'
+	// nextStateActionValues provides Q(s', a') for all a' in s' and is
+	// computed by targetNet.
 	nextStateActionValues *G.Node
 	rewards               *G.Node
 	discounts             *G.Node
 
-	// VMs and solver for running the computational graphs
-	vm             G.VM
-	trainVM        G.VM
-	targetVM       G.VM
-	targetPolicyVM G.VM
-	solver         G.Solver
-
+	// Keep track of previous states and actions to add to replay buffer
 	prevStep   ts.TimeStep
 	prevAction int
 	nextStep   ts.TimeStep
 
-	learningRate float64
-	batchSize    int
+	batchSize int
+	eval      bool // Whether or not in evaluation mode
 
-	eval bool // Whether or not in evaluation mode
-
-	// Target network updates
-	tau                  float64 // Polyak averaging constant
-	targetUpdateInterval int     // Steps between target updates
-	gradientSteps        int
 }
 
 // New creates and returns a new DeepQ agent
@@ -118,41 +75,37 @@ func New(env environment.Environment, config Config,
 		return &DeepQ{}, fmt.Errorf("deepq: cannot use non-discrete " +
 			"actions")
 	}
+
+	// Ensure actions are one-dimensional
 	if env.ActionSpec().LowerBound.Len() > 1 {
 		return &DeepQ{}, fmt.Errorf("deepq: actions must be " +
 			"1-dimensional")
 	}
+
+	// Ensure actions are enumerated from 0
 	if env.ActionSpec().LowerBound.AtVec(0) != 0.0 {
 		return &DeepQ{}, fmt.Errorf("deepq: actions must be " +
 			"enumerated starting from 0")
 	}
 
-	// Configuration variables
+	// Ensure the configuration is valid
+	err := config.Validate()
+	if err != nil {
+		return &DeepQ{}, err
+	}
+
+	// Extract configuration variables
 	batchSize := config.BatchSize()
 	numActions := int(env.ActionSpec().UpperBound.AtVec(0)) + 1
 	hiddenSizes := config.PolicyLayers
 	biases := config.Biases
 	activations := config.Activations
 	init := config.InitWFn
-	learningRate := config.LearningRate
 	ε := config.Epsilon
 
-	// Error checking
-	if len(hiddenSizes) != len(biases) {
-		msg := fmt.Sprintf("new: invalid number of biases\n\twant(%v)"+
-			"\n\thave(%v)", len(hiddenSizes), len(biases))
-		return &DeepQ{}, fmt.Errorf(msg)
-	}
-	if len(hiddenSizes) != len(activations) {
-		msg := fmt.Sprintf("new: invalid number of activations\n\twant(%v)"+
-			"\n\thave(%v)", len(hiddenSizes), len(activations))
-		return &DeepQ{}, fmt.Errorf(msg)
-	}
-
+	// Behaviour network for selecting actions
 	g := G.NewGraph()
-
-	// Behaviour network
-	behaviour, err := policy.NewMultiHeadEGreedyMLP(
+	behaviourPolicy, err := policy.NewMultiHeadEGreedyMLP(
 		ε,
 		env,
 		1, // For behaviour policy, we only need to select a single action
@@ -166,40 +119,38 @@ func New(env environment.Environment, config Config,
 	if err != nil {
 		return &DeepQ{}, err
 	}
+	behaviourPolicyVM := G.NewTapeMachine(g)
 
 	// Create the target policy for selecting actions
-	targetPolicy, err := behaviour.Clone()
+	targetPolicyClone, err := behaviourPolicy.Clone()
 	if err != nil {
 		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
 	}
+	targetPolicy := targetPolicyClone.(agent.EGreedyNNPolicy)
 	targetPolicy.SetEpsilon(0.0)
+	targetPolicyVM := G.NewTapeMachine(targetPolicy.Graph())
 
-	// Clone the target policy to create a target net which gives the
-	// update target
-	targetNet, err := behaviour.CloneWithBatch(batchSize)
-	targetNet.SetEpsilon(0.0) // Qlearning target policy is greedy
+	// Create the target network which provides the update target
+	targetNetClone, err := behaviourPolicy.CloneWithBatch(batchSize)
 	if err != nil {
 		msg := "new: could not create target network: %v"
 		return &DeepQ{}, fmt.Errorf(msg, err)
 	}
-	gTarget := targetNet.Graph()
+	targetNet := targetNetClone.(agent.EGreedyNNPolicy)
+	targetNet.SetEpsilon(0.0) // Qlearning target policy is greedy
+	targetNetVM := G.NewTapeMachine(targetNet.Graph())
 
-	// Target network updating schedule
+	// Target network update schedule
 	tau := config.Tau
 	targetUpdateInterval := config.TargetUpdateInterval
-	if targetUpdateInterval < 1 {
-		err := fmt.Errorf("new: target networks must be updated at positive "+
-			"timestep intervals \n\twant(>0) \n\thave(%v)",
-			targetUpdateInterval)
-		return &DeepQ{}, err
-	}
 
-	// Create a learning network which will learn the weights
-	trainNet, err := behaviour.CloneWithBatch(batchSize)
+	// Create a training network which learns the weights
+	trainNetClone, err := behaviourPolicy.CloneWithBatch(batchSize)
 	if err != nil {
 		msg := "new: could not create learning network: %v"
 		return &DeepQ{}, fmt.Errorf(msg, err)
 	}
+	trainNet := trainNetClone.(agent.EGreedyNNPolicy)
 	gTrain := trainNet.Graph()
 
 	// Create nodes to compute the update target: r + γ * max[Q(s', a')]
@@ -215,17 +166,16 @@ func New(env environment.Environment, config Config,
 	updateTarget = G.Must(G.HadamardProd(updateTarget, discounts))
 	updateTarget = G.Must(G.Add(updateTarget, rewards))
 
-	// Action selected by the policy in the previous state. This is
-	// needed to compute the loss using the correct action value since
-	// the network outputs N action values, one for each environmental
-	// action
+	// Action selected in the previous state. This is needed to compute
+	// the loss using the correct action value since the network outputs N
+	// action values, one for each environmental action
 	selectedActions := G.NewMatrix(
 		gTrain,
 		tensor.Float64,
 		G.WithName("actionSelected"),
 		G.WithShape(batchSize, numActions),
 	)
-	selectedActionsValue := G.Must(G.HadamardProd(trainNet.Prediction(), // ! This will change when ER is added
+	selectedActionsValue := G.Must(G.HadamardProd(trainNet.Prediction(),
 		selectedActions))
 	selectedActionsValue = G.Must(G.Sum(selectedActionsValue, 1))
 
@@ -241,12 +191,12 @@ func New(env environment.Environment, config Config,
 		panic(msg)
 	}
 
-	// Create the VMs and solver for running the policy
-	vm := G.NewTapeMachine(g)
-	targetVM := G.NewTapeMachine(gTarget)
-	targetPolicyVM := G.NewTapeMachine(targetPolicy.Graph())
-	trainVM := G.NewTapeMachine(gTrain, G.BindDualValues(trainNet.Learnables()...))
-	solver := G.NewAdamSolver(G.WithLearnRate(learningRate))
+	// Compile the trainNet graph into a VM
+	trainNetVM := G.NewTapeMachine(
+		gTrain,
+		G.BindDualValues(trainNet.Learnables()...),
+	)
+	solver := config.Solver
 
 	// Create the experience replay buffer. The replay buffer stores
 	// actions selected as one-hot vectors
@@ -265,31 +215,50 @@ func New(env environment.Environment, config Config,
 	}
 
 	return &DeepQ{
-		behaviour:             behaviour,
+		behaviourPolicy:       behaviourPolicy,
+		behaviourPolicyVM:     behaviourPolicyVM,
 		targetPolicy:          targetPolicy,
+		targetPolicyVM:        targetPolicyVM,
 		trainNet:              trainNet,
+		trainNetVM:            trainNetVM,
+		solver:                solver,
 		targetNet:             targetNet,
+		targetNetVM:           targetNetVM,
+		tau:                   tau,
+		targetUpdateInterval:  targetUpdateInterval,
+		gradientSteps:         0,
 		selectedActions:       selectedActions,
 		numActions:            numActions,
 		replay:                replay,
 		nextStateActionValues: nextStateActionValues,
 		rewards:               rewards,
 		discounts:             discounts,
-		vm:                    vm,
-		targetPolicyVM:        targetPolicyVM,
-		trainVM:               trainVM,
-		targetVM:              targetVM,
-		solver:                solver,
 		prevStep:              ts.TimeStep{},
 		prevAction:            0,
 		nextStep:              ts.TimeStep{},
-		learningRate:          learningRate,
 		batchSize:             batchSize,
-		tau:                   tau,
-		targetUpdateInterval:  targetUpdateInterval,
-		gradientSteps:         0,
 		eval:                  false,
 	}, nil
+}
+
+// NewQlearning returns a DeepQ agent that uses Q-learning.
+// That is, the algorithm uses linear function approximation to learn
+// online with no target networks.
+func NewQlearning(env environment.Environment, config qlearning.Config,
+	seed int64, InitWFn G.InitWFn) (*DeepQ, error) {
+	learningRate := config.LearningRate
+	deepQConfig := Config{
+		Epsilon:      config.Epsilon,
+		PolicyLayers: []int{},
+		Biases:       []bool{},
+		Activations:  []policy.Activation{},
+		InitWFn:      InitWFn,
+		Solver:       G.NewVanillaSolver(G.WithLearnRate(learningRate)),
+
+		Tau:                  1.0,
+		TargetUpdateInterval: 1,
+	}
+	return New(env, deepQConfig, seed)
 }
 
 // ObserveFirst observes and records the first episodic timestep
@@ -310,12 +279,7 @@ func (d *DeepQ) Observe(action mat.Vector, nextStep ts.TimeStep) {
 	}
 
 	// Add to replay buffer
-	// Do not add if the previous step was the first step. In this case,
-	// the argument action is the action taken in the first state, and
-	// d.prevAction and d.prevState are invalid since no action was
-	// taken to get to the first state and no state existed before the
-	// first state
-	if !d.prevStep.First() {
+	if !d.nextStep.First() {
 		prevAction := mat.NewVecDense(d.numActions, nil)
 		prevAction.SetVec(d.prevAction, 1.0)
 
@@ -364,7 +328,7 @@ func (d *DeepQ) Step() {
 	}
 
 	// Compute the next state-action values
-	d.targetVM.RunAll()
+	d.targetNetVM.RunAll()
 
 	// Set the action values for the actions in the next state
 	err = G.Let(d.nextStateActionValues, d.targetNet.Output())
@@ -391,12 +355,12 @@ func (d *DeepQ) Step() {
 		panic(fmt.Sprintf("step: could not set discount: %v", err))
 	}
 
-	d.targetVM.Reset()
+	d.targetNetVM.Reset()
 
 	// Run the learning step
-	d.trainVM.RunAll()
+	d.trainNetVM.RunAll()
 	d.solver.Step(d.trainNet.Model())
-	d.trainVM.Reset()
+	d.trainNetVM.Reset()
 	d.gradientSteps++
 
 	// Update the target network by setting its weights to the newly learned
@@ -408,24 +372,32 @@ func (d *DeepQ) Step() {
 			d.targetNet.Polyak(d.trainNet, d.tau)
 		}
 	}
-	d.behaviour.Set(d.trainNet)
+
+	d.targetPolicy.Set(d.trainNet)
+	d.behaviourPolicy.Set(d.trainNet)
 }
 
 // SelectAction runs the necessary VMs and then returns an action
 // selected by the behaviour policy.
 func (d *DeepQ) SelectAction(t ts.TimeStep) *mat.VecDense {
-	// Select action from policy depending on if in training or eval mode
-	policy := d.behaviour
-	vm := d.vm
+	var policy agent.NNPolicy
+	var vm G.VM
+
+	// Select action from target or behaviour policy depending on if
+	// in training or eval mode
 	if d.eval {
 		policy = d.targetPolicy
 		vm = d.targetPolicyVM
+	} else {
+		policy = d.behaviourPolicy
+		vm = d.behaviourPolicyVM
+
 	}
 
 	obs := t.Observation.RawVector().Data
 	err := policy.SetInput(obs)
 	if err != nil {
-		log.Fatal(err)
+		panic(fmt.Sprintf("selectaction: %v", err))
 	}
 
 	// Run the policy's computational graph
@@ -443,10 +415,10 @@ func (d *DeepQ) SelectAction(t ts.TimeStep) *mat.VecDense {
 // transition.
 func (d *DeepQ) TdError(t ts.Transition) float64 {
 	state := t.State
-	d.behaviour.SetInput(state.RawVector().Data)
-	d.vm.RunAll()
-	_, actionValue := d.behaviour.SelectAction()
-	d.vm.Reset()
+	d.behaviourPolicy.SetInput(state.RawVector().Data)
+	d.behaviourPolicyVM.RunAll()
+	_, actionValue := d.behaviourPolicy.SelectAction()
+	d.behaviourPolicyVM.Reset()
 
 	nextState := t.NextState
 	d.targetPolicy.SetInput(nextState.RawVector().Data)

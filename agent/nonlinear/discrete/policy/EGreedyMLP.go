@@ -12,6 +12,7 @@ import (
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 
+	"sfneuman.com/golearn/agent"
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/utils/floatutils"
 )
@@ -78,7 +79,7 @@ type MultiHeadEGreedyMLP struct {
 func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	batch int, g *G.ExprGraph, hiddenSizes []int, biases []bool,
 	init G.InitWFn, activations []Activation,
-	seed int64) (*MultiHeadEGreedyMLP, error) {
+	seed int64) (agent.EGreedyNNPolicy, error) {
 	// Ensure we have one activation per layer
 	if len(hiddenSizes) != len(activations) {
 		msg := "newmultiheadegreedymlp: invalid number of activations" +
@@ -187,7 +188,7 @@ func (e *MultiHeadEGreedyMLP) Graph() *G.ExprGraph {
 }
 
 // Clone clones a MultiHeadEGreedyMLP
-func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
+func (e *MultiHeadEGreedyMLP) Clone() (agent.NNPolicy, error) {
 	batchSize := e.input.Shape()[0]
 	return e.CloneWithBatch(batchSize)
 }
@@ -195,7 +196,7 @@ func (e *MultiHeadEGreedyMLP) Clone() (*MultiHeadEGreedyMLP, error) {
 // CloneWithBatch clones a MultiHeadEGreedyMLP with a new input batch
 // size.
 func (e *MultiHeadEGreedyMLP) CloneWithBatch(
-	batchSize int) (*MultiHeadEGreedyMLP, error) {
+	batchSize int) (agent.NNPolicy, error) {
 	graph := G.NewGraph()
 
 	// Copy fully connected layers
@@ -254,6 +255,17 @@ func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
 	return e.epsilon
 }
 
+// BatchSize returns the batch size of inputs to the policy
+func (e *MultiHeadEGreedyMLP) BatchSize() int {
+	return e.batchSize
+}
+
+// Features returns the number of features in a single observation
+// vector that the policy takes as input.
+func (e *MultiHeadEGreedyMLP) Features() int {
+	return e.numInputs
+}
+
 // SetInput sets the value of the input node before running the forward
 // pass.
 func (e *MultiHeadEGreedyMLP) SetInput(input []float64) error {
@@ -299,7 +311,7 @@ func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
 
 // Set sets the weights of a MultiHeadEGreedyMLP to be equal to the
 // weights of another MultiHeadEGreedyMLP
-func (dest *MultiHeadEGreedyMLP) Set(source *MultiHeadEGreedyMLP) error {
+func (dest *MultiHeadEGreedyMLP) Set(source agent.NNPolicy) error {
 	sourceNodes := source.Learnables()
 	nodes := dest.Learnables()
 	for i, destLearnable := range nodes {
@@ -315,7 +327,7 @@ func (dest *MultiHeadEGreedyMLP) Set(source *MultiHeadEGreedyMLP) error {
 // Polyak sets the weights of a MultiHeadEGreedyMLP to be a polyak
 // average between its existing weights and the weights of another
 // MultiHeadEGreedyMLP
-func (dest *MultiHeadEGreedyMLP) Polyak(source *MultiHeadEGreedyMLP,
+func (dest *MultiHeadEGreedyMLP) Polyak(source agent.NNPolicy,
 	tau float64) error {
 	sourceNodes := source.Learnables()
 	nodes := dest.Learnables()

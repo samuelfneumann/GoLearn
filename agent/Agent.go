@@ -3,6 +3,7 @@ package agent
 
 import (
 	"gonum.org/v1/gonum/mat"
+	"gorgonia.org/gorgonia"
 	"sfneuman.com/golearn/timestep"
 )
 
@@ -20,11 +21,6 @@ type Agent interface {
 
 // Learner implements a learning algorithm that defines how weights are
 // updated.
-//
-// A Learner determines how weights are changed, and therefore how a Policy
-// changes over time. The Learner and Policy of an Agent should have pointers
-// to the same weights so that the Learner can use the transitions chosen by
-// the Policy to update the weights appropriately.
 type Learner interface {
 	Step() // Performs an update
 	Observe(action mat.Vector, nextObs timestep.TimeStep)
@@ -49,21 +45,31 @@ type Policy interface {
 // 	SetWeights(map[string]*mat.Dense) error
 // }
 
-// type NNPolicy interface {
-// 	Policy
-// 	Prediction() *gorgonia.Node
-// 	SetInput([]float64)
-// 	BatchSize() int
-// 	Features() []int
-// 	Graph() *gorgonia.ExprGraph
-// 	Clone() NNPolicy
-// 	CloneWithBatch(int) NNPolicy
-// }
+type NNPolicy interface {
+	SelectAction() (*mat.VecDense, float64)
+	Prediction() *gorgonia.Node
+	SetInput([]float64) error
+	BatchSize() int
+	Features() int
+	Graph() *gorgonia.ExprGraph
+	Clone() (NNPolicy, error)
+	CloneWithBatch(int) (NNPolicy, error)
+	Learnables() gorgonia.Nodes
+	Model() []gorgonia.ValueGrad
+	Set(NNPolicy) error
+	Polyak(NNPolicy, float64) error
+	Output() gorgonia.Value
+}
 
-// type DiscretePolicy interface {
-// 	NNPolicy
-// 	NumActions()
-// }
+// EGreedyNNPolicy implements an epsilon greedy policy using neural
+// network function approximation. Any neural network can be used to
+// approximate the policy (CNN, RNN, MLP, etc.) as long as the epsilon
+// value for the epsilon greeyd policy can be set and retrieved.
+type EGreedyNNPolicy interface {
+	NNPolicy
+	SetEpsilon(float64)
+	Epsilon() float64
+}
 
 // type ContinuousPolicy interface {
 // 	NNPolicy
