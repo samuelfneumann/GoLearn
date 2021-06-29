@@ -32,14 +32,14 @@ func main() {
 		Biases:               []bool{true, true, true},
 		Activations:          []policy.Activation{gorgonia.Rectify, gorgonia.Rectify, gorgonia.Rectify},
 		InitWFn:              gorgonia.GlorotU(1.0),
-		LearningRate:         0.0001,
 		Epsilon:              0.1,
 		Remover:              expreplay.NewFifoSelector(1),
 		Sampler:              expreplay.NewUniformSelector(1, seed),
-		MaximumCapacity:      1000,
+		MaximumCapacity:      1,
 		MinimumCapacity:      1,
 		Tau:                  1.0,
-		TargetUpdateInterval: 100,
+		TargetUpdateInterval: 1,
+		Solver:               gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.00001)),
 	}
 	q, err := deepq.New(m, args, seed)
 	if err != nil {
@@ -50,7 +50,7 @@ func main() {
 	start := time.Now()
 	var tracker trackers.Tracker = trackers.NewReturn("./data.bin")
 	tracker = trackers.Register(tracker, m)
-	e := experiment.NewOnline(m, q, 10_000, tracker)
+	e := experiment.NewOnline(m, q, 20_000, tracker)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
