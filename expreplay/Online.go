@@ -1,8 +1,6 @@
 package expreplay
 
 import (
-	"fmt"
-
 	"sfneuman.com/golearn/timestep"
 )
 
@@ -44,7 +42,10 @@ func (o *onlineCache) Add(t timestep.Transition) error {
 func (o *onlineCache) Sample() ([]float64, []float64, []float64, []float64,
 	[]float64, []float64, error) {
 	if len(o.stateCache) == 0 {
-		err := fmt.Errorf("sample: cannot sample from empty cache")
+		err := &ExpReplayError{
+			Op:  "sample",
+			Err: errEmptyCache,
+		}
 		return nil, nil, nil, nil, nil, nil, err
 	}
 	return o.stateCache, o.actionCache, o.rewardCache, o.discountCache,
