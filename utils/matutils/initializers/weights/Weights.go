@@ -1,4 +1,4 @@
-// Package weights defines interfaces for weight initializations
+// Package weights defines weight initializations for linear agents
 package weights
 
 import "gonum.org/v1/gonum/mat"
