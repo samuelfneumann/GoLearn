@@ -78,6 +78,10 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 	if maxCapacity < 1 {
 		return &cache{}, fmt.Errorf("new: maxCapacity must be >= 1")
 	}
+	if maxCapacity < sampler.BatchSize() {
+		return &cache{}, fmt.Errorf("new: cannot have batch size(%v)s > max "+
+			"buffer capacity (%v)", sampler.BatchSize(), maxCapacity)
+	}
 
 	// If minCapacity == maxCapacity == 1, then the replay buffer
 	// only stores the most recent online transition. In this case,
@@ -168,7 +172,8 @@ func (c *cache) remove() error {
 	return nil
 }
 
-// removeFront removes the earliest index at which data was inserted at.
+// removeFront removes the earliest tracked index that is at
+// which data was inserted at.
 //
 // The cache keeps track of the order of indices at which data was
 // inserted. This function will remove the earliest index from the front
@@ -182,12 +187,17 @@ func (c *cache) removeFront() {
 func (c *cache) Sample() ([]float64, []float64, []float64, []float64,
 	[]float64, []float64, error) {
 	if c.Capacity() == 0 {
-		err := fmt.Errorf("sample: cannot sample from empty cache")
+		err := &ExpReplayError{
+			Op:  "sample",
+			Err: errEmptyCache,
+		}
 		return nil, nil, nil, nil, nil, nil, err
 	}
 	if c.Capacity() < c.MinCapacity() {
-		err := fmt.Errorf("sample: cannot sample, minimum capacity " +
-			"not yet reached")
+		err := &ExpReplayError{
+			Op:  "sample",
+			Err: errInsufficientSamples,
+		}
 		return nil, nil, nil, nil, nil, nil, err
 	}
 

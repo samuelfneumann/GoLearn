@@ -42,7 +42,7 @@ func (c Config) BatchSize() int {
 	return c.Sampler.BatchSize()
 }
 
-// NewQLearning returns a DeepQ agent that uses Q-learning.
+// NewQlearning returns a DeepQ agent that uses Q-learning.
 // That is, the algorithm uses linear function approximation to learn
 // online with no target networks.
 func NewQlearning(env environment.Environment, config qlearning.Config,
@@ -314,17 +314,11 @@ func (d *DeepQ) Observe(action mat.Vector, nextStep ts.TimeStep) {
 
 // Step updates the weights of the Agent's Policies.
 func (d *DeepQ) Step() {
-	// Don't update if replay buffer is empty
-	if d.replay.Capacity() == 0 {
-		fmt.Fprintln(os.Stderr, "step: skipping update, replay buffer empty")
-		return
-	}
-
+	// Don't update if replay buffer is empty or has insufficient
+	// samples to sample
 	S, A, R, discount, NextS, _, err := d.replay.Sample()
-	if err != nil {
-		msg := fmt.Sprintf("step: could not sample from replay buffer: %v",
-			err)
-		panic(msg)
+	if expreplay.IsEmptyBuffer(err) || expreplay.IsInsufficientSamples(err) {
+		return
 	}
 
 	// Previous action one-hot vectors
