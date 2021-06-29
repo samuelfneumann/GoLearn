@@ -6,6 +6,7 @@ import (
 
 	"gonum.org/v1/gonum/spatial/r1"
 	G "gorgonia.org/gorgonia"
+	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
 	"sfneuman.com/golearn/agent/nonlinear/discrete/policy"
 	"sfneuman.com/golearn/environment"
@@ -82,14 +83,11 @@ func QLearning() {
 	tm, _ := wrappers.NewTileCoding(m, tilings, useed)
 
 	// Create the learning algorithm
-	args := deepq.Config{
-		PolicyLayers: []int{},
-		Biases:       []bool{},
-		Activations:  []policy.Activation{},
-		InitWFn:      G.GlorotU(1.0),
+	args := qlearning.Config{
 		LearningRate: 0.01,
+		Epsilon:      0.1,
 	}
-	q, err := deepq.New(tm, args, seed)
+	q, err := deepq.NewQlearning(tm, args, seed, G.Zeroes())
 	if err != nil {
 		panic(err)
 	}
