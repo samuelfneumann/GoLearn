@@ -93,7 +93,7 @@ func (e *EGreedy) actionValues(obs mat.Vector) mat.Vector {
 	return actionValues
 }
 
-// SelectAction selects and action from an ε-greedy policy
+// SelectAction selects an action from an ε-greedy policy
 func (p *EGreedy) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	obs := t.Observation
 
