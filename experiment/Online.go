@@ -61,9 +61,11 @@ func (o *Online) RunEpisode() bool {
 // Run runs the entire experiment for all timesteps
 func (o *Online) Run() {
 	ended := false
+	o.Agent.Train()
 
 	for !ended {
 		ended = o.RunEpisode()
+		o.Agent.EndEpisode()
 	}
 }
 

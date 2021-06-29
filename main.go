@@ -28,18 +28,18 @@ func main() {
 
 	// Create the learning algorithm
 	args := deepq.Config{
-		PolicyLayers:         []int{100, 50},
-		Biases:               []bool{true, true},
-		Activations:          []policy.Activation{gorgonia.Rectify, gorgonia.Rectify},
+		PolicyLayers:         []int{100, 50, 25},
+		Biases:               []bool{true, true, true},
+		Activations:          []policy.Activation{gorgonia.Rectify, gorgonia.Rectify, gorgonia.Rectify},
 		InitWFn:              gorgonia.GlorotU(1.0),
 		LearningRate:         0.0001,
 		Epsilon:              0.1,
 		Remover:              expreplay.NewFifoSelector(1),
-		Sampler:              expreplay.NewUniformSelector(2, seed),
-		MaximumCapacity:      3,
+		Sampler:              expreplay.NewUniformSelector(1, seed),
+		MaximumCapacity:      1000,
 		MinimumCapacity:      1,
 		Tau:                  1.0,
-		TargetUpdateInterval: 1,
+		TargetUpdateInterval: 100,
 	}
 	q, err := deepq.New(m, args, seed)
 	if err != nil {
@@ -50,13 +50,15 @@ func main() {
 	start := time.Now()
 	var tracker trackers.Tracker = trackers.NewReturn("./data.bin")
 	tracker = trackers.Register(tracker, m)
-	e := experiment.NewOnline(m, q, 20_000, tracker)
+	e := experiment.NewOnline(m, q, 10_000, tracker)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
 	data := trackers.LoadData("./data.bin")
 	fmt.Println(data)
+
+	// ============================================
 
 	// remover := expreplay.NewFifoSelector(10)
 	// sampler := expreplay.NewUniformSelector(2, 1243)

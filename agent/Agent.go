@@ -14,6 +14,8 @@ import (
 type Agent interface {
 	Learner
 	Policy
+	Eval()  // Set agent to evaluation mode
+	Train() // Set agent to training mode
 }
 
 // Learner implements a learning algorithm that defines how weights are
@@ -28,6 +30,7 @@ type Learner interface {
 	Observe(action mat.Vector, nextObs timestep.TimeStep)
 	ObserveFirst(timestep.TimeStep)
 	TdError(t timestep.Transition) float64
+	EndEpisode() // Cleanup at the end of episode
 }
 
 // Policy represents a policy that an agent can have.
@@ -52,6 +55,9 @@ type Policy interface {
 // 	SetInput([]float64)
 // 	BatchSize() int
 // 	Features() []int
+// 	Graph() *gorgonia.ExprGraph
+// 	Clone() NNPolicy
+// 	CloneWithBatch(int) NNPolicy
 // }
 
 // type DiscretePolicy interface {

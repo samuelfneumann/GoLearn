@@ -4,10 +4,11 @@ package actorcritic
 import (
 	"fmt"
 
-	"sfneuman.com/golearn/agent"
+	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/agent/linear/continuous/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
@@ -26,9 +27,10 @@ type Config struct {
 // function approximation and eligibility traces. The critic learns the
 // state value function to approximate the actor gradient.
 type LinearGaussian struct {
-	agent.Policy
-	agent.Learner
+	*policy.Gaussian
+	*GaussianLearner
 	seed uint64
+	eval bool // Whether or not the agent is in evaluation mode
 }
 
 // NewLinearGaussian returns a new LinearGaussian agent. The weights for
@@ -69,5 +71,25 @@ func NewLinearGaussian(env environment.Environment, config Config,
 	init.Initialize(weights[policy.StdWeightsKey])
 	init.Initialize(weights[policy.CriticWeightsKey])
 
-	return &LinearGaussian{p, l, seed}, nil
+	return &LinearGaussian{p, l, seed, false}, nil
+}
+
+// SelectAction selects an action from either the agent's behaviour or
+// target policy. The policy depends on whether or not the agent is in
+// evaluation mode or training mode.
+func (l *LinearGaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
+	if !l.eval {
+		return l.Gaussian.SelectAction(t)
+	}
+	return l.Gaussian.Mean(t.Observation)
+}
+
+// Eval sets the agent into evaluation mode
+func (l *LinearGaussian) Eval() {
+	l.eval = true
+}
+
+// Train sets the agent into training mode
+func (l *LinearGaussian) Train() {
+	l.eval = false
 }

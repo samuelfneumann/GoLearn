@@ -50,7 +50,7 @@ func NewGaussian(seed uint64, env environment.Environment) *Gaussian {
 
 // Std gets the standard deviation of the policy given some state
 // observation obs
-func (g *Gaussian) Std(obs mat.Vector) mat.Vector {
+func (g *Gaussian) Std(obs mat.Vector) *mat.VecDense {
 	stdVec := mat.NewVecDense(g.actionDims, nil)
 	stdVec.MulVec(g.stdWeights, obs)
 	for i := 0; i < stdVec.Len(); i++ {
@@ -61,7 +61,7 @@ func (g *Gaussian) Std(obs mat.Vector) mat.Vector {
 }
 
 // Mean gets the mean of the policy given some state observation obs
-func (g *Gaussian) Mean(obs mat.Vector) mat.Vector {
+func (g *Gaussian) Mean(obs mat.Vector) *mat.VecDense {
 	mean := mat.NewVecDense(g.actionDims, nil)
 	mean.MulVec(g.meanWeights, obs)
 	return mean

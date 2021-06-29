@@ -135,3 +135,6 @@ func (e *ESarsaLearner) SetWeights(weights map[string]*mat.Dense) error {
 	e.weights = newWeights
 	return nil
 }
+
+// Cleanup at the end of an episode
+func (e *ESarsaLearner) EndEpisode() {}

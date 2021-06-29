@@ -4,10 +4,12 @@ package esarsa
 import (
 	"fmt"
 
+	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
@@ -26,6 +28,7 @@ type ESarsa struct {
 	agent.Policy // Behaviour
 	Target       agent.Policy
 	seed         uint64
+	eval         bool // Whether or not in evaluation mode
 }
 
 // New creates a new ESarsa struct. The agent spec agent should be a
@@ -78,5 +81,25 @@ func New(env environment.Environment, config Config,
 		init.Initialize(weights[weight])
 	}
 
-	return &ESarsa{learner, behaviour, target, seed}, nil
+	return &ESarsa{learner, behaviour, target, seed, false}, nil
+}
+
+// SelectAction selects an action from either the agent's behaviour or
+// target policy. The policy depends on whether or not the agent is in
+// evaluation mode or training mode.
+func (e *ESarsa) SelectAction(t timestep.TimeStep) *mat.VecDense {
+	if !e.eval {
+		return e.Policy.SelectAction(t)
+	}
+	return e.Target.SelectAction(t)
+}
+
+// Eval sets the agent into evaluation mode
+func (e *ESarsa) Eval() {
+	e.eval = true
+}
+
+// Train sets the agent into training mode
+func (e *ESarsa) Train() {
+	e.eval = false
 }

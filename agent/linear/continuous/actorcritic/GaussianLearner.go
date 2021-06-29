@@ -191,3 +191,10 @@ func (g *GaussianLearner) SetWeights(weights map[string]*mat.Dense) error {
 
 	return nil
 }
+
+// Cleanup at the end of an episode
+func (g *GaussianLearner) EndEpisode() {
+	g.meanTrace.Zero()
+	g.stdTrace.Zero()
+	g.criticTrace.Zero()
+}

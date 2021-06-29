@@ -129,3 +129,6 @@ func (e *QLearner) SetWeights(weights map[string]*mat.Dense) error {
 	e.weights = newWeights
 	return nil
 }
+
+// Cleanup at the end of an episode
+func (q *QLearner) EndEpisode() {}

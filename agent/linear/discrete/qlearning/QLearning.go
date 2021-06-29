@@ -9,10 +9,12 @@ package qlearning
 import (
 	"fmt"
 
+	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
@@ -30,6 +32,7 @@ type QLearning struct {
 	agent.Policy // Behaviour
 	Target       agent.Policy
 	seed         uint64
+	eval         bool // Whether or not in evaluation mode
 }
 
 // New creates a new QLearning struct. The agent spec agent should be
@@ -84,5 +87,25 @@ func New(env environment.Environment, config Config,
 		init.Initialize(weights[weight])
 	}
 
-	return &QLearning{learner, behaviour, target, seed}, nil
+	return &QLearning{learner, behaviour, target, seed, false}, nil
+}
+
+// SelectAction selects an action from either the agent's behaviour or
+// target policy. The policy depends on whether or not the agent is in
+// evaluation mode or training mode.
+func (q *QLearning) SelectAction(t timestep.TimeStep) *mat.VecDense {
+	if !q.eval {
+		return q.Policy.SelectAction(t)
+	}
+	return q.Target.SelectAction(t)
+}
+
+// Eval sets the agent into evaluation mode
+func (q *QLearning) Eval() {
+	q.eval = true
+}
+
+// Train sets the agent into training mode
+func (q *QLearning) Train() {
+	q.eval = false
 }
