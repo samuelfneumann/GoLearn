@@ -11,7 +11,7 @@ import (
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/trackers"
+	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/expreplay"
 )
 
@@ -48,14 +48,13 @@ func main() {
 
 	// Experiment
 	start := time.Now()
-	var tracker trackers.Tracker = trackers.NewReturn("./data.bin")
-	tracker = trackers.Register(tracker, m)
-	e := experiment.NewOnline(m, q, 20_000, tracker)
+	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
+	e := experiment.NewOnline(m, q, 20_000, []tracker.Tracker{saver}, nil)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
-	data := trackers.LoadData("./data.bin")
+	data := tracker.LoadData("./data.bin")
 	fmt.Println(data)
 
 	// ============================================

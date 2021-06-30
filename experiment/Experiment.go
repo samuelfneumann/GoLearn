@@ -25,8 +25,14 @@ type Experiment interface {
 	Run()
 	RunEpisode() bool // Returns whether or not the current episode finished
 
-	track(ts.TimeStep) // Tracks current timestep by sending it to Savers
-	Save()             // Save all tracked data
+	// Tracks current timestep by sending it to Savers
+	track(ts.TimeStep)
+
+	// Save all tracked data to disk
+	Save()
+
+	// Adds a new tracker.Tracker to the (possibly already running) experiment.
+	// Useful if you want to track data only after a specified event.
 	Register(t tracker.Tracker)
 
 	// Saves the current state of all agents
