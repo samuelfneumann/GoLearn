@@ -10,7 +10,7 @@ import (
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/trackers"
+	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
@@ -69,11 +69,11 @@ func QlearningMountainCar() {
 
 	// Now, we will create the experiment. First, generate savers to
 	// determine what data from the experiment we want to save
-	tracker := trackers.NewReturn("./data.bin")
+	saver := tracker.NewReturn("./data.bin")
 
 	// Create a new Online experiment. Online experiments will only
 	// run the agent online, and no offline evaluation will occur
-	e := experiment.NewOnline(tm, q, 1_00_000, []trackers.Tracker{tracker})
+	e := experiment.NewOnline(tm, q, 1_00_000, []tracker.Tracker{saver}, nil)
 
 	// Run the experiment
 	start := time.Now()
@@ -84,6 +84,6 @@ func QlearningMountainCar() {
 	e.Save()
 
 	// Load the data from the experiment and pring it
-	data := trackers.LoadData("./data.bin")
+	data := tracker.LoadData("./data.bin")
 	fmt.Println(data)
 }

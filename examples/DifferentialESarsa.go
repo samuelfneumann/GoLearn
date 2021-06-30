@@ -9,7 +9,7 @@ import (
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/trackers"
+	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
@@ -54,11 +54,11 @@ func DifferentialESarsa() {
 	ttm.Register(e)
 
 	// Experiment
-	tracker := trackers.NewReturn("./data.bin")
-	exp := experiment.NewOnline(ttm, e, 100_000, []trackers.Tracker{tracker})
+	saver := tracker.NewReturn("./data.bin")
+	exp := experiment.NewOnline(ttm, e, 100_000, []tracker.Tracker{saver}, nil)
 	exp.Run()
 	exp.Save()
 
-	data := trackers.LoadData("./data.bin")
+	data := tracker.LoadData("./data.bin")
 	fmt.Println(data[len(data)-10:])
 }

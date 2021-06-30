@@ -1,4 +1,4 @@
-package trackers
+package tracker
 
 import (
 	"encoding/gob"

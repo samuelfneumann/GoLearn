@@ -2,7 +2,7 @@
 package experiment
 
 import (
-	"sfneuman.com/golearn/experiment/trackers"
+	"sfneuman.com/golearn/experiment/tracker"
 	ts "sfneuman.com/golearn/timestep"
 )
 
@@ -23,8 +23,12 @@ import (
 // consturctor or through an Experiment's Register() function.
 type Experiment interface {
 	Run()
-	RunEpisode() bool  // Returns whether or not the current episode finished
-	track(ts.TimeStep) // Track current timestep by sending it to Savers
+	RunEpisode() bool // Returns whether or not the current episode finished
+
+	track(ts.TimeStep) // Tracks current timestep by sending it to Savers
 	Save()             // Save all tracked data
-	Register(t trackers.Tracker)
+	Register(t tracker.Tracker)
+
+	// Saves the current state of all agents
+	checkpoint(ts.TimeStep)
 }

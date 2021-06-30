@@ -3,7 +3,8 @@ package experiment
 import (
 	"sfneuman.com/golearn/agent"
 	env "sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/experiment/trackers"
+	"sfneuman.com/golearn/experiment/checkpointer"
+	"sfneuman.com/golearn/experiment/tracker"
 	ts "sfneuman.com/golearn/timestep"
 )
 
@@ -12,9 +13,10 @@ import (
 type Online struct {
 	env.Environment
 	agent.Agent
-	maxSteps     uint
-	currentSteps uint
-	savers       []trackers.Tracker
+	maxSteps      uint
+	currentSteps  uint
+	savers        []tracker.Tracker
+	checkpointers []checkpointer.Checkpointer
 }
 
 // NewOnline creates and returns a new online experiment on a given
@@ -22,13 +24,30 @@ type Online struct {
 // many timesteps the experiment is run for, and the s parameter
 // is a slice of savers.Saver which determine what data is saved.
 func NewOnline(e env.Environment, a agent.Agent, steps uint,
-	t []trackers.Tracker) *Online {
-	return &Online{e, a, steps, 0, t}
+	t []tracker.Tracker, c []checkpointer.Checkpointer) *Online {
+
+	// Deal with null c inputs
+	var checkpointers []checkpointer.Checkpointer
+	if c == nil {
+		checkpointers = []checkpointer.Checkpointer{}
+	} else {
+		checkpointers = c
+	}
+
+	// Deal with null t inputs
+	var trackers []tracker.Tracker
+	if t == nil {
+		trackers = []tracker.Tracker{}
+	} else {
+		trackers = t
+	}
+
+	return &Online{e, a, steps, 0, trackers, checkpointers}
 }
 
 // Register registers a saver.Saver with an Experiment so that data
 // generated during the experiment can be tracked and saved
-func (o *Online) Register(t trackers.Tracker) {
+func (o *Online) Register(t tracker.Tracker) {
 	o.savers = append(o.savers, t)
 }
 
@@ -48,6 +67,9 @@ func (o *Online) RunEpisode() bool {
 
 		// Cache the environment step in each Saver
 		o.track(step)
+
+		// Checkpoint the experiment
+		o.checkpoint(step)
 
 		// Observe the timestep and step the agent
 		o.Agent.Observe(action, step)
@@ -80,5 +102,12 @@ func (o *Online) Save() {
 func (o *Online) track(t ts.TimeStep) {
 	for _, saver := range o.savers {
 		saver.Track(t)
+	}
+}
+
+// checkpoint checkpoints the current state of the environment
+func (o *Online) checkpoint(t ts.TimeStep) {
+	for _, c := range o.checkpointers {
+		c.Checkpoint(t)
 	}
 }

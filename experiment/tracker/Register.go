@@ -1,4 +1,4 @@
-package trackers
+package tracker
 
 import (
 	"sfneuman.com/golearn/environment"

@@ -1,6 +1,6 @@
 // Package savers implements Savers, which track and save data in an
 // experiment
-package trackers
+package tracker
 
 import (
 	"encoding/gob"
