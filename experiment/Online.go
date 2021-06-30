@@ -22,7 +22,7 @@ type Online struct {
 // many timesteps the experiment is run for, and the s parameter
 // is a slice of savers.Saver which determine what data is saved.
 func NewOnline(e env.Environment, a agent.Agent, steps uint,
-	t ...trackers.Tracker) *Online {
+	t []trackers.Tracker) *Online {
 	return &Online{e, a, steps, 0, t}
 }
 

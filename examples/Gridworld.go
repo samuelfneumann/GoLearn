@@ -59,8 +59,8 @@ func Gridworld() {
 	}
 
 	// Experiment
-	saver := trackers.NewReturn("./data.bin")
-	e := experiment.NewOnline(g, q, 100_000, saver)
+	tracker := trackers.NewReturn("./data.bin")
+	e := experiment.NewOnline(g, q, 100_000, []trackers.Tracker{tracker})
 	e.Run()
 	e.Save()
 

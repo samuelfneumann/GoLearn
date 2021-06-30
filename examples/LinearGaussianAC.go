@@ -57,7 +57,7 @@ func LinearGaussianActorCritic() {
 	// Experiment
 	var tracker trackers.Tracker = trackers.NewReturn("./data.bin")
 	tracker = trackers.Register(tracker, m)
-	e := experiment.NewOnline(ttm, q, 1_000_000, tracker)
+	e := experiment.NewOnline(ttm, q, 1_000_000, []trackers.Tracker{tracker})
 	e.Run()
 	e.Save()
 

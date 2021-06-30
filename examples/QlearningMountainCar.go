@@ -69,11 +69,11 @@ func QlearningMountainCar() {
 
 	// Now, we will create the experiment. First, generate savers to
 	// determine what data from the experiment we want to save
-	saver := trackers.NewReturn("./data.bin")
+	tracker := trackers.NewReturn("./data.bin")
 
 	// Create a new Online experiment. Online experiments will only
 	// run the agent online, and no offline evaluation will occur
-	e := experiment.NewOnline(tm, q, 1_00_000, saver)
+	e := experiment.NewOnline(tm, q, 1_00_000, []trackers.Tracker{tracker})
 
 	// Run the experiment
 	start := time.Now()

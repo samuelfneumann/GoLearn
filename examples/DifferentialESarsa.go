@@ -54,8 +54,8 @@ func DifferentialESarsa() {
 	ttm.Register(e)
 
 	// Experiment
-	saver := trackers.NewReturn("./data.bin")
-	exp := experiment.NewOnline(ttm, e, 100_000, saver)
+	tracker := trackers.NewReturn("./data.bin")
+	exp := experiment.NewOnline(ttm, e, 100_000, []trackers.Tracker{tracker})
 	exp.Run()
 	exp.Save()
 
