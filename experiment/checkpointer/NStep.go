@@ -1,8 +1,14 @@
 package checkpointer
 
-import ts "sfneuman.com/golearn/timestep"
+import (
+	"fmt"
+	"os"
 
-// nStep implements checkpointing every N steps
+	ts "sfneuman.com/golearn/timestep"
+)
+
+// nStep implements checkpointing every N steps by saving a Serializable
+// to a file every n environmental steps in an experiment.
 type nStep struct {
 	interval int
 	object   Serializable // Object to save
@@ -25,7 +31,9 @@ type nStep struct {
 	filename func() string
 }
 
-// NewNStep returns a checkpointer that checkpoints every n steps.
+// NewNStep returns a checkpointer that saves a Serializable to a file
+// every n environmental steps of an experiment. If the file already
+// exists, it is overwritten.
 func NewNStep(n int, object Serializable,
 	filename func() string) Checkpointer {
 	return &nStep{
@@ -35,11 +43,16 @@ func NewNStep(n int, object Serializable,
 	}
 }
 
-// Checkpoint checkpoints the Checkpointer's tracked object by calling
-// its Save() method
+// Checkpoint checkpoints the nStep's tracked Serializable object by
+// calling its Save() method on a file. If the file already exists, it
+// is overwritten.
 func (n *nStep) Checkpoint(t ts.TimeStep) error {
 	if t.Number%n.interval == 0 {
-		return n.object.Save(n.filename())
+		writer, err := os.Create(n.filename())
+		if err != nil {
+			return fmt.Errorf("checkpoint: cannot open file: %v", err)
+		}
+		return n.object.Save(writer)
 	}
 	return nil
 }
