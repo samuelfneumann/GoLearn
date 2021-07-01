@@ -8,13 +8,13 @@ import (
 	G "gorgonia.org/gorgonia"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
-	"sfneuman.com/golearn/agent/nonlinear/discrete/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/expreplay"
+	"sfneuman.com/golearn/network"
 )
 
 func DeepQ() {
@@ -32,7 +32,7 @@ func DeepQ() {
 	args := deepq.Config{
 		PolicyLayers:         []int{100, 50, 25},
 		Biases:               []bool{true, true, true},
-		Activations:          []policy.Activation{G.Rectify, G.Rectify, G.Rectify},
+		Activations:          []network.Activation{G.Rectify, G.Rectify, G.Rectify},
 		InitWFn:              G.GlorotU(1.0),
 		Epsilon:              0.1,
 		Remover:              expreplay.NewFifoSelector(1),

@@ -2,7 +2,6 @@ package network
 
 import (
 	"fmt"
-	"log"
 
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
@@ -10,7 +9,7 @@ import (
 
 type MultiHeadMLP struct {
 	g          *G.ExprGraph
-	layers     []FCLayer
+	layers     []Layer
 	input      *G.Node
 	numOutputs int
 	numInputs  int
@@ -49,7 +48,7 @@ func NewMultiHeadMLP(features, batch, outputs int, g *G.ExprGraph,
 	activations = append(activations, nil)
 
 	// Create the fully connected layers
-	layers := make([]FCLayer, 0, len(hiddenSizes))
+	layers := make([]Layer, 0, len(hiddenSizes))
 	for i := range hiddenSizes {
 		// Create the weights for the layer
 		var Weights *G.Node
@@ -90,10 +89,10 @@ func NewMultiHeadMLP(features, batch, outputs int, g *G.ExprGraph,
 		}
 
 		// Create the fully connected layer
-		layer := FCLayer{
-			Weights: Weights,
-			Bias:    Bias,
-			Act:     activations[i],
+		layer := &fcLayer{
+			weights: Weights,
+			bias:    Bias,
+			act:     activations[i],
 		}
 		layers = append(layers, layer)
 	}
@@ -107,9 +106,10 @@ func NewMultiHeadMLP(features, batch, outputs int, g *G.ExprGraph,
 		numInputs:  features,
 		batchSize:  batch,
 	}
-	_, err := network.Fwd(input)
+	_, err := network.fwd(input)
 	if err != nil {
-		log.Fatal(err)
+		msg := "newmultiheadmlp: could not perform compute pass: %v"
+		return &MultiHeadMLP{}, fmt.Errorf(msg, err)
 	}
 
 	return &network, nil
@@ -133,7 +133,7 @@ func (e *MultiHeadMLP) CloneWithBatch(
 	graph := G.NewGraph()
 
 	// Copy fully connected layers
-	l := make([]FCLayer, len(e.layers))
+	l := make([]Layer, len(e.layers))
 	for i := range e.layers {
 		l[i] = e.layers[i].CloneTo(graph)
 	}
@@ -163,7 +163,7 @@ func (e *MultiHeadMLP) CloneWithBatch(
 		numInputs:  e.numInputs,
 		batchSize:  batchSize,
 	}
-	_, err := network.Fwd(input)
+	_, err := network.fwd(input)
 	if err != nil {
 		msg := fmt.Sprintf("clonewithbatch: could not clone: %v", err)
 		panic(msg)
@@ -181,6 +181,11 @@ func (e *MultiHeadMLP) BatchSize() int {
 // vector that the policy takes as input.
 func (e *MultiHeadMLP) Features() int {
 	return e.numInputs
+}
+
+// Outputs returns the number of outputs from the network
+func (e *MultiHeadMLP) Outputs() int {
+	return e.numOutputs
 }
 
 // SetInput sets the value of the input node before running the forward
@@ -249,8 +254,8 @@ func (e *MultiHeadMLP) Learnables() G.Nodes {
 	learnables := make([]*G.Node, 0, 2*len(e.layers))
 
 	for i := range e.layers {
-		learnables = append(learnables, e.layers[i].Weights)
-		if bias := e.layers[i].Bias; bias != nil {
+		learnables = append(learnables, e.layers[i].Weights())
+		if bias := e.layers[i].Bias(); bias != nil {
 			learnables = append(learnables, bias)
 		}
 	}
@@ -262,17 +267,17 @@ func (e *MultiHeadMLP) Model() []G.ValueGrad {
 	var model []G.ValueGrad = make([]G.ValueGrad, 0, 2*len(e.layers))
 
 	for i := range e.layers {
-		model = append(model, e.layers[i].Weights)
-		if bias := e.layers[i].Bias; bias != nil {
+		model = append(model, e.layers[i].Weights())
+		if bias := e.layers[i].Bias(); bias != nil {
 			model = append(model, bias)
 		}
 	}
 	return model
 }
 
-// Fwd performs the forward pass of the MultiHeadMLP on the input
+// fwd performs the forward pass of the MultiHeadMLP on the input
 // node
-func (e *MultiHeadMLP) Fwd(input *G.Node) (*G.Node, error) {
+func (e *MultiHeadMLP) fwd(input *G.Node) (*G.Node, error) {
 	inputShape := input.Shape()[len(input.Shape())-1]
 	if inputShape%e.numInputs != 0 {
 		return nil, fmt.Errorf("invalid shape for input to neural net:"+
@@ -282,8 +287,9 @@ func (e *MultiHeadMLP) Fwd(input *G.Node) (*G.Node, error) {
 	pred := input
 	var err error
 	for _, l := range e.layers {
-		if pred, err = l.Fwd(pred); err != nil {
-			log.Fatal(err)
+		if pred, err = l.fwd(pred); err != nil {
+			msg := "fwd: could not compute forward pass of layer %v"
+			return nil, fmt.Errorf(msg, err)
 		}
 	}
 	e.prediction = pred

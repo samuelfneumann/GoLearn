@@ -3,7 +3,7 @@ package agent
 
 import (
 	"gonum.org/v1/gonum/mat"
-	"gorgonia.org/gorgonia"
+	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/timestep"
 )
 
@@ -39,26 +39,18 @@ type Policy interface {
 	SelectAction(t timestep.TimeStep) *mat.VecDense
 }
 
-// type LinearPolicy interface {
-// 	Policy
-// 	Weights() map[string]*mat.Dense
-// 	SetWeights(map[string]*mat.Dense) error
-// }
-
+// NNPolicy ...
+//
+// Policies implemented by neural networks satsify a different interface
+// from Policy. This is because a VM is needed to run the policy, but
+// the same VM is needed for both the policy and the Learner so that
+// the weights are updated for each.
 type NNPolicy interface {
+	network.NeuralNet
 	SelectAction() (*mat.VecDense, float64)
-	Prediction() *gorgonia.Node
-	SetInput([]float64) error
-	BatchSize() int
-	Features() int
-	Graph() *gorgonia.ExprGraph
-	Clone() (NNPolicy, error)
-	CloneWithBatch(int) (NNPolicy, error)
-	Learnables() gorgonia.Nodes
-	Model() []gorgonia.ValueGrad
-	Set(NNPolicy) error
-	Polyak(NNPolicy, float64) error
-	Output() gorgonia.Value
+	ClonePolicy() (NNPolicy, error)
+	ClonePolicyWithBatch(int) (NNPolicy, error)
+	Network() network.NeuralNet
 }
 
 // EGreedyNNPolicy implements an epsilon greedy policy using neural
@@ -70,8 +62,3 @@ type EGreedyNNPolicy interface {
 	SetEpsilon(float64)
 	Epsilon() float64
 }
-
-// type ContinuousPolicy interface {
-// 	NNPolicy
-// 	Dims() []int
-// }

@@ -12,6 +12,7 @@ import (
 	"sfneuman.com/golearn/agent/nonlinear/discrete/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/expreplay"
+	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/spec"
 	ts "sfneuman.com/golearn/timestep"
 )
@@ -122,7 +123,7 @@ func New(env environment.Environment, config Config,
 	behaviourPolicyVM := G.NewTapeMachine(g)
 
 	// Create the target policy for selecting actions
-	targetPolicyClone, err := behaviourPolicy.Clone()
+	targetPolicyClone, err := behaviourPolicy.ClonePolicy()
 	if err != nil {
 		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
 	}
@@ -131,7 +132,7 @@ func New(env environment.Environment, config Config,
 	targetPolicyVM := G.NewTapeMachine(targetPolicy.Graph())
 
 	// Create the target network which provides the update target
-	targetNetClone, err := behaviourPolicy.CloneWithBatch(batchSize)
+	targetNetClone, err := behaviourPolicy.ClonePolicyWithBatch(batchSize)
 	if err != nil {
 		msg := "new: could not create target network: %v"
 		return &DeepQ{}, fmt.Errorf(msg, err)
@@ -145,7 +146,7 @@ func New(env environment.Environment, config Config,
 	targetUpdateInterval := config.TargetUpdateInterval
 
 	// Create a training network which learns the weights
-	trainNetClone, err := behaviourPolicy.CloneWithBatch(batchSize)
+	trainNetClone, err := behaviourPolicy.ClonePolicyWithBatch(batchSize)
 	if err != nil {
 		msg := "new: could not create learning network: %v"
 		return &DeepQ{}, fmt.Errorf(msg, err)
@@ -251,7 +252,7 @@ func NewQlearning(env environment.Environment, config qlearning.Config,
 		Epsilon:      config.Epsilon,
 		PolicyLayers: []int{},
 		Biases:       []bool{},
-		Activations:  []policy.Activation{},
+		Activations:  []network.Activation{},
 		InitWFn:      InitWFn,
 		Solver:       G.NewVanillaSolver(G.WithLearnRate(learningRate)),
 
