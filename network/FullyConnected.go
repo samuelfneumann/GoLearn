@@ -4,15 +4,12 @@ import (
 	G "gorgonia.org/gorgonia"
 )
 
-// Activation represents an activation function type
-type Activation func(x *G.Node) (*G.Node, error)
-
 // fcLayer implements a fully connected layer of a feed forward neural
 // network
 type fcLayer struct {
 	weights *G.Node
 	bias    *G.Node
-	act     Activation
+	act     *Activation
 }
 
 // Fwd adds the forward pass of the fcLayer to the computational graph
@@ -25,10 +22,10 @@ func (f *fcLayer) fwd(x *G.Node) (*G.Node, error) {
 		// dimension
 		x = G.Must(G.BroadcastAdd(x, f.Bias(), nil, []byte{0}))
 	}
-	if f.Activation() == nil {
+	if act := f.Activation(); act.IsIdentity() || act.IsNil() {
 		return x, nil
 	}
-	return f.Activation()(x)
+	return f.Activation().fwd(x)
 }
 
 // CloneTo clones an fcLayer to a new computational graph
@@ -49,7 +46,7 @@ func (f *fcLayer) CloneTo(g *G.ExprGraph) Layer {
 	}
 }
 
-func (f *fcLayer) Activation() Activation {
+func (f *fcLayer) Activation() *Activation {
 	return f.act
 }
 

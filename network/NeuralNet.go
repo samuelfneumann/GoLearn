@@ -28,7 +28,8 @@ type NeuralNet interface {
 type Layer interface {
 	fwd(*G.Node) (*G.Node, error)
 	CloneTo(g *G.ExprGraph) Layer
+
 	Weights() *G.Node
 	Bias() *G.Node
-	Activation() Activation
+	Activation() *Activation
 }

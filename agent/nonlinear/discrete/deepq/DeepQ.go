@@ -252,7 +252,7 @@ func NewQlearning(env environment.Environment, config qlearning.Config,
 		Epsilon:      config.Epsilon,
 		PolicyLayers: []int{},
 		Biases:       []bool{},
-		Activations:  []network.Activation{},
+		Activations:  []*network.Activation{},
 		InitWFn:      InitWFn,
 		Solver:       G.NewVanillaSolver(G.WithLearnRate(learningRate)),
 

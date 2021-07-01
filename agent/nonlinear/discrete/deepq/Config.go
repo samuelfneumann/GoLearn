@@ -10,11 +10,11 @@ import (
 
 // Config implements a configuration for a DeepQ agent
 type Config struct {
-	PolicyLayers []int                // Layer sizes in neural net
-	Biases       []bool               // Whether each layer should have a bias
-	Activations  []network.Activation // Activation of each layer
-	InitWFn      G.InitWFn            // Initialization algorithm for weights
-	Solver       G.Solver             // Solver for learning weights
+	PolicyLayers []int                 // Layer sizes in neural net
+	Biases       []bool                // Whether each layer should have a bias
+	Activations  []*network.Activation // Activation of each layer
+	InitWFn      G.InitWFn             // Initialization algorithm for weights
+	Solver       G.Solver              // Solver for learning weights
 
 	Epsilon float64 // Behaviour policy epsilon
 

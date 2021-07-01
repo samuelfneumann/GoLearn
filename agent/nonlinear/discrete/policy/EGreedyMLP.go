@@ -19,13 +19,13 @@ import (
 
 // MultiHeadEGreedyMLP implements an epsilon greedy policy using a
 // feedforward neural network/MLP. Given an environment with N actions,
-// the neural network will produce N outputs, ach predicting the
+// the neural network will produce N outputs, each predicting the
 // value of a distinct action.
 //
 // MultiHeadEGreedyMLP simply populates a gorgonia.ExprGraph with
 // the neural network function approximator and selects actions
 // based on the output of this neural network. The struct does not
-// have a vm of its own. An external G.VM should be used to run the
+// have a vm of its own. An external VM should be used to run the
 // computational graph of the policy externally. The VM should always
 // be run before selecting an action with the policy.
 //
@@ -44,15 +44,7 @@ import (
 //		Select an action:				action = policy.SelectAction()
 type MultiHeadEGreedyMLP struct {
 	network.NeuralNet
-	// layers     []FCLayer
-	// input      *G.Node
 	epsilon float64
-	// numActions int
-	// numInputs  int
-	// batchSize  int
-
-	// prediction *G.Node
-	// predVal    G.Value
 
 	rng  *rand.Rand
 	seed int64
@@ -78,22 +70,8 @@ type MultiHeadEGreedyMLP struct {
 // to []Activation{}.
 func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	batch int, g *G.ExprGraph, hiddenSizes []int, biases []bool,
-	init G.InitWFn, activations []network.Activation,
+	init G.InitWFn, activations []*network.Activation,
 	seed int64) (agent.EGreedyNNPolicy, error) {
-	// Ensure we have one activation per layer
-	if len(hiddenSizes) != len(activations) {
-		msg := "newmultiheadegreedymlp: invalid number of activations" +
-			"\n\twant(%d)\n\thave(%d)"
-		return nil, fmt.Errorf(msg, len(hiddenSizes), len(activations))
-	}
-
-	// Ensure one bias bool per layer
-	if len(hiddenSizes) != len(biases) {
-		msg := "newmultiheadegreedymlp: invalid number of biases\n\twant(%d)" +
-			"\n\thave(%d)"
-		return nil, fmt.Errorf(msg, len(hiddenSizes), len(biases))
-	}
-
 	// Calculate the number of actions and state features
 	numActions := int(env.ActionSpec().UpperBound.AtVec(0)) + 1
 	features := env.ObservationSpec().Shape.Len()
@@ -109,7 +87,7 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	source := rand.NewSource(seed)
 	rng := rand.New(source)
 
-	// Create the network and run the forward pass on the input node
+	// Create the policy
 	nn := MultiHeadEGreedyMLP{
 		epsilon:   epsilon,
 		rng:       rng,
@@ -120,18 +98,20 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	return &nn, nil
 }
 
+// Network returns the neural network function approximator that the
+// policy uses.
 func (e *MultiHeadEGreedyMLP) Network() network.NeuralNet {
 	return e.NeuralNet
 }
 
-// Clone clones a MultiHeadEGreedyMLP
+// ClonePolicy clones a MultiHeadEGreedyMLP
 func (e *MultiHeadEGreedyMLP) ClonePolicy() (agent.NNPolicy, error) {
 	batchSize := e.BatchSize()
 	return e.ClonePolicyWithBatch(batchSize)
 }
 
-// CloneWithBatch clones a MultiHeadEGreedyMLP with a new input batch
-// size.
+// ClonePolicyWithBatch clones a MultiHeadEGreedyMLP with a new input
+// batch size.
 func (e *MultiHeadEGreedyMLP) ClonePolicyWithBatch(
 	batchSize int) (agent.NNPolicy, error) {
 	net, err := e.Network().Clone()
@@ -193,6 +173,8 @@ func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
 		actionValues[action]
 }
 
+// numActions returns the number of actions that the policy chooses
+// between.
 func (e *MultiHeadEGreedyMLP) numActions() int {
 	return e.Outputs()
 }

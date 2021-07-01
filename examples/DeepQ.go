@@ -30,9 +30,13 @@ func DeepQ() {
 
 	// Create the learning algorithm
 	args := deepq.Config{
-		PolicyLayers:         []int{100, 50, 25},
-		Biases:               []bool{true, true, true},
-		Activations:          []network.Activation{G.Rectify, G.Rectify, G.Rectify},
+		PolicyLayers: []int{100, 50, 25},
+		Biases:       []bool{true, true, true},
+		Activations: []*network.Activation{
+			network.ReLU(),
+			network.ReLU(),
+			network.ReLU(),
+		},
 		InitWFn:              G.GlorotU(1.0),
 		Epsilon:              0.1,
 		Remover:              expreplay.NewFifoSelector(1),
