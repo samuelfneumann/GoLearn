@@ -328,21 +328,3 @@ func (e *multiHeadMLP) Output() G.Value {
 func (e *multiHeadMLP) Prediction() *G.Node {
 	return e.prediction
 }
-
-// func (e *multiHeadMLP) Save(out io.Writer) error {
-// 	enc := gob.NewEncoder(out)
-// 	for _, layer := range e.layers {
-// 		err := enc.Encode(layer.Weights().Value())
-// 		if err != nil {
-// 			return fmt.Errorf("save: could not save weights: %v", err)
-// 		}
-// 		err = enc.Encode(layer.Bias().Value())
-// 		if err != nil {
-// 			return fmt.Errorf("save: could not save bias: %v", err)
-// 		}
-// 		err = enc.Encode(layer.Activation())
-// 		if err != nil {
-// 			return fmt.Errorf("save: could not save activation: %v", err)
-// 		}
-// 	}
-// }
