@@ -1,6 +1,7 @@
 package checkpointer
 
 import (
+	"encoding/gob"
 	"fmt"
 	"os"
 
@@ -48,11 +49,17 @@ func NewNStep(n int, object Serializable,
 // is overwritten.
 func (n *nStep) Checkpoint(t ts.TimeStep) error {
 	if t.Number%n.interval == 0 {
-		writer, err := os.Create(n.filename())
+		out, err := os.Create(n.filename())
 		if err != nil {
-			return fmt.Errorf("checkpoint: cannot open file: %v", err)
+			return fmt.Errorf("checkpoint: cannot create file: %v", err)
 		}
-		return n.object.Save(writer)
+
+		enc := gob.NewEncoder(out)
+		err = enc.Encode(n.object)
+		if err != nil {
+			return fmt.Errorf("checkpoint: could not checkpoint: %v", err)
+		}
+		return nil
 	}
 	return nil
 }
