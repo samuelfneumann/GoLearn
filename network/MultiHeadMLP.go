@@ -1,21 +1,28 @@
 package network
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 )
 
-// multiHeadMLP implements a multi-layered perceptron with multiple
+// MultiHeadMLP implements a multi-layered perceptron with multiple
 // output nodes, one for each value that should be predicted.
-type multiHeadMLP struct {
+type MultiHeadMLP struct {
 	g          *G.ExprGraph
 	layers     []Layer
 	input      *G.Node
 	numOutputs int
 	numInputs  int
 	batchSize  int
+
+	// Data needed for gobbing
+	hiddenSizes []int
+	biases      []bool
+	activations []*Activation
 
 	prediction *G.Node
 	predVal    G.Value
@@ -116,44 +123,47 @@ func NewMultiHeadMLP(features, batch, outputs int, g *G.ExprGraph,
 	}
 
 	// Create the network and run the forward pass on the input node
-	network := multiHeadMLP{
-		g:          g,
-		layers:     layers,
-		input:      input,
-		numOutputs: outputs,
-		numInputs:  features,
-		batchSize:  batch,
+	network := MultiHeadMLP{
+		g:           g,
+		layers:      layers,
+		input:       input,
+		numOutputs:  outputs,
+		numInputs:   features,
+		batchSize:   batch,
+		hiddenSizes: hiddenSizes,
+		biases:      biases,
+		activations: activations,
 	}
 	_, err := network.fwd(input)
 	if err != nil {
 		msg := "newmultiheadmlp: could not compute forward pass: %v"
-		return &multiHeadMLP{}, fmt.Errorf(msg, err)
+		return &MultiHeadMLP{}, fmt.Errorf(msg, err)
 	}
 
 	return &network, nil
 }
 
-// Graph returns the computational graph of the multiHeadMLP.
-func (e *multiHeadMLP) Graph() *G.ExprGraph {
+// Graph returns the computational graph of the MultiHeadMLP.
+func (e *MultiHeadMLP) Graph() *G.ExprGraph {
 	return e.g
 }
 
-// Clone clones a multiHeadMLP
-func (e *multiHeadMLP) Clone() (NeuralNet, error) {
+// Clone clones a MultiHeadMLP
+func (e *MultiHeadMLP) Clone() (NeuralNet, error) {
 	batchSize := e.input.Shape()[0]
 	return e.CloneWithBatch(batchSize)
 }
 
-// CloneWithBatch clones a multiHeadMLP with a new input batch
+// CloneWithBatch clones a MultiHeadMLP with a new input batch
 // size.
-func (e *multiHeadMLP) CloneWithBatch(
+func (e *MultiHeadMLP) CloneWithBatch(
 	batchSize int) (NeuralNet, error) {
 	graph := G.NewGraph()
 
 	// Copy fully connected layers
 	l := make([]Layer, len(e.layers))
 	for i := range e.layers {
-		l[i] = e.layers[i].CloneTo(graph)
+		l[i] = e.layers[i].CloneTo(graph).(*fcLayer)
 	}
 
 	// Create the input node
@@ -173,13 +183,16 @@ func (e *multiHeadMLP) CloneWithBatch(
 	}
 
 	// Create the network and run the forward pass on the input node
-	network := multiHeadMLP{
-		g:          graph,
-		layers:     l,
-		input:      input,
-		numOutputs: e.numOutputs,
-		numInputs:  e.numInputs,
-		batchSize:  batchSize,
+	network := MultiHeadMLP{
+		g:           graph,
+		layers:      l,
+		input:       input,
+		numOutputs:  e.numOutputs,
+		numInputs:   e.numInputs,
+		batchSize:   batchSize,
+		hiddenSizes: e.hiddenSizes,
+		biases:      e.biases,
+		activations: e.activations,
 	}
 	_, err := network.fwd(input)
 	if err != nil {
@@ -191,24 +204,24 @@ func (e *multiHeadMLP) CloneWithBatch(
 }
 
 // BatchSize returns the batch size of inputs to the policy
-func (e *multiHeadMLP) BatchSize() int {
+func (e *MultiHeadMLP) BatchSize() int {
 	return e.batchSize
 }
 
 // Features returns the number of features in a single observation
 // vector that the policy takes as input.
-func (e *multiHeadMLP) Features() int {
+func (e *MultiHeadMLP) Features() int {
 	return e.numInputs
 }
 
 // Outputs returns the number of outputs from the network
-func (e *multiHeadMLP) Outputs() int {
+func (e *MultiHeadMLP) Outputs() int {
 	return e.numOutputs
 }
 
 // SetInput sets the value of the input node before running the forward
 // pass.
-func (e *multiHeadMLP) SetInput(input []float64) error {
+func (e *MultiHeadMLP) SetInput(input []float64) error {
 	if len(input) != e.numInputs*e.batchSize {
 		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)"+
 			"\n\thave(%v)", e.numInputs*e.batchSize, len(input))
@@ -221,9 +234,9 @@ func (e *multiHeadMLP) SetInput(input []float64) error {
 	return G.Let(e.input, inputTensor)
 }
 
-// Set sets the weights of a multiHeadMLP to be equal to the
-// weights of another multiHeadMLP
-func (dest *multiHeadMLP) Set(source NeuralNet) error {
+// Set sets the weights of a MultiHeadMLP to be equal to the
+// weights of another MultiHeadMLP
+func (dest *MultiHeadMLP) Set(source NeuralNet) error {
 	sourceNodes := source.Learnables()
 	nodes := dest.Learnables()
 	for i, destLearnable := range nodes {
@@ -236,10 +249,10 @@ func (dest *multiHeadMLP) Set(source NeuralNet) error {
 	return nil
 }
 
-// Polyak sets the weights of a multiHeadMLP to be a polyak
+// Polyak sets the weights of a MultiHeadMLP to be a polyak
 // average between its existing weights and the weights of another
-// multiHeadMLP
-func (dest *multiHeadMLP) Polyak(source NeuralNet, tau float64) error {
+// MultiHeadMLP
+func (dest *MultiHeadMLP) Polyak(source NeuralNet, tau float64) error {
 	sourceNodes := source.Learnables()
 	nodes := dest.Learnables()
 	for i := range nodes {
@@ -267,8 +280,8 @@ func (dest *multiHeadMLP) Polyak(source NeuralNet, tau float64) error {
 	return nil
 }
 
-// Learnables returns the learnable nodes in a multiHeadMLP
-func (e *multiHeadMLP) Learnables() G.Nodes {
+// Learnables returns the learnable nodes in a MultiHeadMLP
+func (e *MultiHeadMLP) Learnables() G.Nodes {
 	learnables := make([]*G.Node, 0, 2*len(e.layers))
 
 	for i := range e.layers {
@@ -281,7 +294,7 @@ func (e *multiHeadMLP) Learnables() G.Nodes {
 }
 
 // Model returns the learnables nodes with their gradients.
-func (e *multiHeadMLP) Model() []G.ValueGrad {
+func (e *MultiHeadMLP) Model() []G.ValueGrad {
 	var model []G.ValueGrad = make([]G.ValueGrad, 0, 2*len(e.layers))
 
 	for i := range e.layers {
@@ -293,9 +306,9 @@ func (e *multiHeadMLP) Model() []G.ValueGrad {
 	return model
 }
 
-// fwd performs the forward pass of the multiHeadMLP on the input
+// fwd performs the forward pass of the MultiHeadMLP on the input
 // node
-func (e *multiHeadMLP) fwd(input *G.Node) (*G.Node, error) {
+func (e *MultiHeadMLP) fwd(input *G.Node) (*G.Node, error) {
 	inputShape := input.Shape()[len(input.Shape())-1]
 	if inputShape%e.numInputs != 0 {
 		return nil, fmt.Errorf("invalid shape for input to neural net:"+
@@ -316,15 +329,137 @@ func (e *multiHeadMLP) fwd(input *G.Node) (*G.Node, error) {
 	return pred, nil
 }
 
-// Output returns the output of the multiHeadMLP. The output is
+// Output returns the output of the MultiHeadMLP. The output is
 // a vector of N dimensions, where each dimension corresponds to an
 // environmental action.
-func (e *multiHeadMLP) Output() G.Value {
+func (e *MultiHeadMLP) Output() G.Value {
 	return e.predVal
 }
 
 // Prediction returns the node of the computational graph the stores
-// the output of the multiHeadMLP
-func (e *multiHeadMLP) Prediction() *G.Node {
+// the output of the MultiHeadMLP
+func (e *MultiHeadMLP) Prediction() *G.Node {
 	return e.prediction
+}
+
+// GobEncode implements the GobEncoder interface
+func (e *MultiHeadMLP) GobEncode() ([]byte, error) {
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+
+	err := enc.Encode(e.numOutputs)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode number of outputs")
+	}
+
+	err = enc.Encode(e.numInputs)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode number of inputs")
+	}
+
+	err = enc.Encode(e.BatchSize())
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode batch size")
+	}
+
+	err = enc.Encode(e.hiddenSizes)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode hidden sizes")
+	}
+
+	err = enc.Encode(e.biases)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode biases")
+	}
+
+	err = enc.Encode(e.activations)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode activations")
+	}
+
+	// Store the fcLayers
+	gob.Register(fcLayer{})
+	for i, layer := range e.layers {
+		// Encode layer
+		err := enc.Encode(layer)
+		if err != nil {
+			msg := "gobencode: could not encode layer %v: %v"
+			return nil, fmt.Errorf(msg, i, err)
+		}
+	}
+
+	return buf.Bytes(), nil
+}
+
+// GobDecode implements the GobDecoder interface
+func (e *MultiHeadMLP) GobDecode(in []byte) error {
+	buf := bytes.NewReader(in)
+	dec := gob.NewDecoder(buf)
+
+	var numOutputs int
+	err := dec.Decode(&numOutputs)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode number of outputs")
+	}
+
+	var numInputs int
+	err = dec.Decode(&numInputs)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode number of inputs")
+	}
+
+	var batchSize int
+	err = dec.Decode(&batchSize)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode batch size")
+	}
+
+	var hiddenSizes []int
+	err = dec.Decode(&hiddenSizes)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode hidden sizes")
+	}
+	hiddenSizes = hiddenSizes[:len(hiddenSizes)-1]
+
+	var biases []bool
+	err = dec.Decode(&biases)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode biases")
+	}
+	biases = biases[:len(biases)-1]
+
+	var activations []*Activation
+	err = dec.Decode(&activations)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode activations")
+	}
+	activations = activations[:len(activations)-1]
+
+	// Create a new MLP
+	g := G.NewGraph()
+	newNet, err := NewMultiHeadMLP(numInputs, batchSize, numOutputs, g,
+		hiddenSizes, biases, G.Zeroes(), activations)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not construct new MLP")
+	}
+	newMLP, ok := newNet.(*MultiHeadMLP)
+	if !ok {
+		panic("NewMultiHeadMLP returned type != MultiHeadMLP")
+	}
+
+	// Fill new MLP's layers with fcLayer weights
+	gob.Register(fcLayer{})
+	numLayers := len(newMLP.layers)
+	layers := newMLP.layers
+	for i := 0; i < numLayers; i++ {
+		err = dec.Decode(layers[i])
+		if err != nil {
+			return fmt.Errorf("gobdecode: could not decode layer %v: %v", i,
+				err)
+		}
+	}
+
+	*e = *newMLP
+	return nil
 }

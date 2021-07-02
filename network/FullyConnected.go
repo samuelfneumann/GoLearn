@@ -67,6 +67,10 @@ func (f *fcLayer) Weights() *G.Node {
 }
 
 // GobEncode implements the GobEncoder interface
+//
+// Since fcLayer uses Gorgonia Nodes, only the Node's values can be
+// saved. Therefore, gobbing an fcLayer is like gobbing the Values of
+// its weights and biases.
 func (f *fcLayer) GobEncode() ([]byte, error) {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
@@ -91,8 +95,32 @@ func (f *fcLayer) GobEncode() ([]byte, error) {
 }
 
 // GobDecode implements the GobDecoder interface
+//
+// This function will fill the weights and bias of an initialized
+// fcLayer with the values saved in a binary file of a previously
+// encoded fcLayer. Note that the shape of the weights and bias are also
+// required to be the same between the new and old fcLayers. The old
+// fcLayer's activation is copied to the new fcLayer's activation.
+//
+// This function is somewhat equivalent to:
+//		newLayer := new fcLayer
+//		oldLayer := read old fcLayer from file
+//		gorgonia.Let(newLayer.Weights, oldLayer.Weights)
+//		gorgonia.Let(newLayer.Bias, oldLayer.Bias)
+//		newLayer.activation = oldLayer.activation
+//
+// Note that it is important that the fcLayer has already been
+// initialized and its weights and biases have the same shape as the
+// those of the serialized fcLayer. Otherwise, if the fcLayer has not
+// been initialized, a null pointer error may be encountered due to
+// it weights and bias *Node having no backing Node.
 func (f *fcLayer) GobDecode(in []byte) error {
-	buf := bytes.NewBuffer(in)
+	if f.Weights() == nil || f.Bias() == nil {
+		return fmt.Errorf("gobdecode: fcLayer must have all node pointers " +
+			"initialized and registered with a graph before decoding")
+	}
+
+	buf := bytes.NewReader(in)
 	dec := gob.NewDecoder(buf)
 
 	var weights *tensor.Dense
@@ -102,7 +130,7 @@ func (f *fcLayer) GobDecode(in []byte) error {
 	}
 	err = G.Let(f.Weights(), weights)
 	if err != nil {
-		return fmt.Errorf("gobdecode: could not set weights: %v", err)
+		return fmt.Errorf("gobdecode: could not set weights %v", err)
 	}
 
 	var bias *tensor.Dense

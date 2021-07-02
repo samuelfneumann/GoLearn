@@ -26,6 +26,11 @@ func (a *Activation) fwd(x *G.Node) (*G.Node, error) {
 	return a.f(x)
 }
 
+// String implements the Stringer interface
+func (a *Activation) String() string {
+	return string(a.activationType)
+}
+
 // IsIdentity returns whether or not the Activation is the identity
 // function.
 func (a *Activation) IsIdentity() bool {

@@ -1,61 +1,87 @@
 package main
 
 import (
+	"encoding/gob"
 	"fmt"
-	"time"
+	"os"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	"gorgonia.org/gorgonia"
-	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
-	"sfneuman.com/golearn/agent/nonlinear/discrete/policy"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
-	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/tracker"
-	"sfneuman.com/golearn/expreplay"
+	"sfneuman.com/golearn/network"
 )
 
 func main() {
-	var useed uint64 = 192382
-	var seed int64 = 192382
+	// var useed uint64 = 192382
+	// var seed int64 = 192382
 
-	// Create the environment
-	bounds := r1.Interval{Min: -0.01, Max: 0.01}
+	// // Create the environment
+	// bounds := r1.Interval{Min: -0.01, Max: 0.01}
 
-	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
-	task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
-	m, _ := mountaincar.NewDiscrete(task, 1.0)
+	// s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
+	// task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
+	// m, _ := mountaincar.NewDiscrete(task, 1.0)
 
-	// Create the learning algorithm
-	args := deepq.Config{
-		PolicyLayers:         []int{100, 50, 25},
-		Biases:               []bool{true, true, true},
-		Activations:          []policy.Activation{gorgonia.Rectify, gorgonia.Rectify, gorgonia.Rectify},
-		InitWFn:              gorgonia.GlorotU(1.0),
-		Epsilon:              0.1,
-		Remover:              expreplay.NewFifoSelector(1),
-		Sampler:              expreplay.NewUniformSelector(1, seed),
-		MaximumCapacity:      1,
-		MinimumCapacity:      1,
-		Tau:                  1.0,
-		TargetUpdateInterval: 1,
-		Solver:               gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.00001)),
-	}
-	q, err := deepq.New(m, args, seed)
+	// // Create the learning algorithm
+	// args := deepq.Config{
+	// 	PolicyLayers:         []int{100, 50, 25},
+	// 	Biases:               []bool{true, true, true},
+	// 	Activations:          []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+	// 	InitWFn:              gorgonia.GlorotU(1.0),
+	// 	Epsilon:              0.1,
+	// 	Remover:              expreplay.NewFifoSelector(1),
+	// 	Sampler:              expreplay.NewUniformSelector(1, seed),
+	// 	MaximumCapacity:      1,
+	// 	MinimumCapacity:      1,
+	// 	Tau:                  1.0,
+	// 	TargetUpdateInterval: 1,
+	// 	Solver:               gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.00001)),
+	// }
+	// q, err := deepq.New(m, args, seed)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// // Experiment
+	// start := time.Now()
+	// var saver tracker.Tracker = tracker.NewReturn("./data.bin")
+	// e := experiment.NewOnline(m, q, 20_000, []tracker.Tracker{saver}, nil)
+	// e.Run()
+	// fmt.Println("Elapsed:", time.Since(start))
+	// e.Save()
+
+	// data := tracker.LoadData("./data.bin")
+	// fmt.Println(data)
+
+	p, err := network.NewMultiHeadMLP(10, 32, 5, gorgonia.NewGraph(), []int{10}, []bool{true}, gorgonia.GlorotU(1.0), []*network.Activation{network.ReLU()})
 	if err != nil {
 		panic(err)
 	}
+	f, err := os.Create("net.bin")
+	if err != nil {
+		panic(err)
+	}
+	enc := gob.NewEncoder(f)
+	err = enc.Encode(p)
+	if err != nil {
+		panic(err)
+	}
+	f.Close()
 
-	// Experiment
-	start := time.Now()
-	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := experiment.NewOnline(m, q, 20_000, []tracker.Tracker{saver}, nil)
-	e.Run()
-	fmt.Println("Elapsed:", time.Since(start))
-	e.Save()
+	f2, err := os.Open("net.bin")
+	if err != nil {
+		panic(err)
+	}
+	dec := gob.NewDecoder(f2)
+	p2, _ := network.NewMultiHeadMLP(11, 33, 6, gorgonia.NewGraph(), []int{11}, []bool{true}, gorgonia.GlorotU(1.0), []*network.Activation{network.ReLU()})
+	// var p2 network.NeuralNet
+	p2 = p2.(*network.MultiHeadMLP)
+	err = dec.Decode(p2)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(p2)
+	f2.Close()
 
-	data := tracker.LoadData("./data.bin")
-	fmt.Println(data)
+	// network.TestGobFCLayer()
 
 	// ============================================
 
