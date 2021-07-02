@@ -4,6 +4,8 @@
 package policy
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"math/rand"
@@ -13,6 +15,7 @@ import (
 
 	"sfneuman.com/golearn/agent"
 	env "sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/utils/floatutils"
 )
@@ -48,6 +51,70 @@ type MultiHeadEGreedyMLP struct {
 
 	rng  *rand.Rand
 	seed int64
+}
+
+// GobDecode implements the gob.Decoder interface
+func (m *MultiHeadEGreedyMLP) GobDecode(in []byte) error {
+	buf := bytes.NewReader(in)
+	dec := gob.NewDecoder(buf)
+
+	err := dec.Decode(&m.NeuralNet)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode network: %v", err)
+	}
+
+	err = dec.Decode(&m.epsilon)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode epsilon: %v", err)
+	}
+
+	err = dec.Decode(&m.rng)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode rng: %v", err)
+	}
+
+	err = dec.Decode(&m.seed)
+	if err != nil {
+		return fmt.Errorf("gobdecode: could not decode seed: %v", err)
+	}
+
+	return nil
+}
+
+// GobEncode implements the gob.Encoder interface
+func (m *MultiHeadEGreedyMLP) GobEncode() ([]byte, error) {
+	// ! might have to use reflection here to register neural net type
+	// ! although we could just register the type in the neural net GobEncode()
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+
+	serializableNet, ok := m.NeuralNet.(checkpointer.Serializable)
+	if !ok {
+		return nil, fmt.Errorf("gobencode: neural network not serializable")
+	}
+
+	err := enc.Encode(serializableNet)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode network: %v", err)
+	}
+
+	err = enc.Encode(m.epsilon)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode epsilon: %v", err)
+	}
+
+	err = enc.Encode(m.rng)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode rng: %v", err)
+	}
+
+	err = enc.Encode(m.seed)
+	if err != nil {
+		return nil, fmt.Errorf("gobencode: could not encode seed: %v", err)
+	}
+
+	return buf.Bytes(), nil
 }
 
 // NewMultiHeadEGreedyMLP creates and returns a new MultiHeadEGreedyMLP
