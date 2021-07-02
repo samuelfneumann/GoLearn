@@ -42,12 +42,12 @@ func (a *Activation) IsNil() bool {
 	return a.activationType == nil_
 }
 
-// GobEncode implements the GobEncoder interface
+// GobEncode implements the gob.GobEncoder interface
 func (a *Activation) GobEncode() ([]byte, error) {
 	return []byte(a.activationType), nil
 }
 
-// GobDecode implements the GobDecoder interface
+// GobDecode implements the gob.GobDecoder interface
 func (a *Activation) GobDecode(encoded []byte) error {
 	decoded := activationType(encoded)
 	switch decoded {

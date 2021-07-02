@@ -66,7 +66,7 @@ func (f *fcLayer) Weights() *G.Node {
 	return f.weights
 }
 
-// GobEncode implements the GobEncoder interface
+// GobEncode implements the gob.GobEncoder interface.
 //
 // Since fcLayer uses Gorgonia Nodes, only the Node's values can be
 // saved. Therefore, gobbing an fcLayer is like gobbing the Values of
@@ -94,7 +94,7 @@ func (f *fcLayer) GobEncode() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// GobDecode implements the GobDecoder interface
+// GobDecode implements the gob.GobDecoder interface.
 //
 // This function will fill the weights and bias of an initialized
 // fcLayer with the values saved in a binary file of a previously

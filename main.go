@@ -73,12 +73,13 @@ func main() {
 	dec := gob.NewDecoder(f2)
 	p2, _ := network.NewMultiHeadMLP(11, 33, 6, gorgonia.NewGraph(), []int{11}, []bool{true}, gorgonia.GlorotU(1.0), []*network.Activation{network.ReLU()})
 	// var p2 network.NeuralNet
-	p2 = p2.(*network.MultiHeadMLP)
+	// p2 = p2.(*network.MultiHeadMLP)
 	err = dec.Decode(p2)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(p2)
+	fmt.Printf("%T\n", p2)
 	f2.Close()
 
 	// network.TestGobFCLayer()

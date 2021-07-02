@@ -342,7 +342,7 @@ func (e *multiHeadMLP) Prediction() *G.Node {
 	return e.prediction
 }
 
-// GobEncode implements the GobEncoder interface
+// GobEncode implements the gob.GobEncoder interface
 func (e *multiHeadMLP) GobEncode() ([]byte, error) {
 	gob.Register(multiHeadMLP{})
 	var buf bytes.Buffer
@@ -392,7 +392,7 @@ func (e *multiHeadMLP) GobEncode() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// GobDecode implements the GobDecoder interface
+// GobDecode implements the gob.GobDecoder interface
 func (e *multiHeadMLP) GobDecode(in []byte) error {
 	gob.Register(multiHeadMLP{})
 	buf := bytes.NewReader(in)

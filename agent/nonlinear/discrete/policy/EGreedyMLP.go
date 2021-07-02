@@ -53,7 +53,7 @@ type MultiHeadEGreedyMLP struct {
 	seed int64
 }
 
-// GobDecode implements the gob.Decoder interface
+// GobDecode implements the gob.GobDecoder interface
 func (m *MultiHeadEGreedyMLP) GobDecode(in []byte) error {
 	buf := bytes.NewReader(in)
 	dec := gob.NewDecoder(buf)
@@ -81,7 +81,7 @@ func (m *MultiHeadEGreedyMLP) GobDecode(in []byte) error {
 	return nil
 }
 
-// GobEncode implements the gob.Encoder interface
+// GobEncode implements the gob.GobEncoder interface
 func (m *MultiHeadEGreedyMLP) GobEncode() ([]byte, error) {
 	// ! might have to use reflection here to register neural net type
 	// ! although we could just register the type in the neural net GobEncode()
