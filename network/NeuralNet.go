@@ -18,7 +18,19 @@ type NeuralNet interface {
 	Polyak(NeuralNet, float64) error
 	Learnables() G.Nodes
 	Model() []G.ValueGrad
+
 	fwd(*G.Node) (*G.Node, error)
+	cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet, error)
+
+	// To keep networks consistent, there should be a single output value
+	// and prediction node. If there are multiple outputs that are not
+	// part of the same gorgonia.Node (e.g. the treeMLP), then these
+	// outputs should be concatenated into a single output value and
+	// prediction node.
+	//
+	// This pattern keeps all neural network outputs consistent. Using
+	// slices of outputs would cause algorithms to have to deal with
+	// differing number of output networks differently.
 	Output() G.Value
 	Prediction() *G.Node
 }
