@@ -294,6 +294,10 @@ func (t *TreeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 }
 
 func (t *TreeMLP) cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet, error) {
+	if graph != input.Graph() {
+		return nil, fmt.Errorf("clonewithinputo: input graph and graph " +
+			"are not the same computaitonal graph")
+	}
 	if !input.IsMatrix() {
 		return nil, fmt.Errorf("cloneWithInputTo: input must be a matrix node")
 	}

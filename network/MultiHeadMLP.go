@@ -149,6 +149,14 @@ func (e *multiHeadMLP) Clone() (NeuralNet, error) {
 // with a specified input node.
 func (e *multiHeadMLP) cloneWithInputTo(input *G.Node,
 	graph *G.ExprGraph) (NeuralNet, error) {
+	if graph != input.Graph() {
+		return nil, fmt.Errorf("clonewithinputo: input graph and graph " +
+			"are not the same computaitonal graph")
+	}
+	if !input.IsMatrix() {
+		return nil, fmt.Errorf("cloneWithInputTo: input must be a matrix node")
+	}
+
 	// Copy fully connected layers
 	l := make([]Layer, len(e.layers))
 	for i := range e.layers {

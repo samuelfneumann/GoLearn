@@ -1,11 +1,6 @@
 package main
 
 import (
-	"encoding/gob"
-	"fmt"
-	"os"
-
-	"gorgonia.org/gorgonia"
 	"sfneuman.com/golearn/network"
 )
 
@@ -51,36 +46,39 @@ func main() {
 	// data := tracker.LoadData("./data.bin")
 	// fmt.Println(data)
 
-	p, err := network.NewMultiHeadMLP(10, 32, 5, gorgonia.NewGraph(), []int{10}, []bool{true}, gorgonia.GlorotU(1.0), []*network.Activation{network.ReLU()})
-	if err != nil {
-		panic(err)
-	}
-	f, err := os.Create("net.bin")
-	if err != nil {
-		panic(err)
-	}
-	enc := gob.NewEncoder(f)
-	err = enc.Encode(p)
-	if err != nil {
-		panic(err)
-	}
-	f.Close()
+	// ===========
+	network.TestTreeMLP()
 
-	f2, err := os.Open("net.bin")
-	if err != nil {
-		panic(err)
-	}
-	dec := gob.NewDecoder(f2)
-	p2, _ := network.NewMultiHeadMLP(11, 33, 6, gorgonia.NewGraph(), []int{11}, []bool{true}, gorgonia.GlorotU(1.0), []*network.Activation{network.ReLU()})
-	// var p2 network.NeuralNet
-	// p2 = p2.(*network.MultiHeadMLP)
-	err = dec.Decode(p2)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(p2)
-	fmt.Printf("%T\n", p2)
-	f2.Close()
+	// p, err := network.NewMultiHeadMLP(10, 32, 5, gorgonia.NewGraph(), []int{10}, []bool{true}, gorgonia.GlorotU(1.0), []*network.Activation{network.ReLU()})
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// f, err := os.Create("net.bin")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// enc := gob.NewEncoder(f)
+	// err = enc.Encode(p)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// f.Close()
+
+	// f2, err := os.Open("net.bin")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// dec := gob.NewDecoder(f2)
+	// p2, _ := network.NewMultiHeadMLP(11, 33, 6, gorgonia.NewGraph(), []int{11}, []bool{true}, gorgonia.GlorotU(1.0), []*network.Activation{network.ReLU()})
+	// // var p2 network.NeuralNet
+	// // p2 = p2.(*network.MultiHeadMLP)
+	// err = dec.Decode(p2)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(p2)
+	// fmt.Printf("%T\n", p2)
+	// f2.Close()
 
 	// network.TestGobFCLayer()
 
