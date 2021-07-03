@@ -49,33 +49,37 @@ func validateTreeMLP(rootHiddenSizes []int, rootBiases []bool,
 	rootActivations []*Activation, leafHiddenSizes [][]int,
 	leafBiases [][]bool, leafActivations [][]*Activation) error {
 	// Validate observation/root network
+	if len(rootHiddenSizes) == 0 {
+		return fmt.Errorf("root network must have at least one hidden layer")
+	}
+
 	if len(rootHiddenSizes) != len(rootActivations) {
-		msg := "newtreemlp: invalid number of activations" +
+		msg := "invalid number of root activations" +
 			"\n\twant(%d)\n\thave(%d)"
 		return fmt.Errorf(msg, len(rootHiddenSizes),
 			len(rootActivations))
 	}
 
 	if len(rootHiddenSizes) != len(rootBiases) {
-		msg := "newtreemlp: invalid number of biases" +
+		msg := "invalid number of root biases" +
 			"\n\twant(%d)\n\thave(%d)"
 		return fmt.Errorf(msg, len(rootHiddenSizes), len(rootBiases))
 	}
 
 	// Validate number of leaf networks
 	if len(leafHiddenSizes) <= 0 {
-		msg := "newtreemlp: there must be at least one leaf network specified"
+		msg := "there must be at least one leaf network specified"
 		return fmt.Errorf(msg)
 	}
 
 	if len(leafHiddenSizes) != len(leafActivations) {
-		msg := "newtreemlp: invalid number of leaf network activations " +
+		msg := "invalid number of leaf network activations " +
 			"\n\twant(%v) \n\thave(%v)"
 		return fmt.Errorf(msg, len(leafHiddenSizes), len(leafActivations))
 	}
 
 	if len(leafHiddenSizes) != len(leafBiases) {
-		msg := "newtreemlp: invalid number of leaf network biases " +
+		msg := "invalid number of leaf network biases " +
 			"\n\twant(%v) \n\thave(%v)"
 		return fmt.Errorf(msg, len(leafHiddenSizes), len(leafBiases))
 	}
@@ -83,14 +87,14 @@ func validateTreeMLP(rootHiddenSizes []int, rootBiases []bool,
 	// Validate architecture of leaf networks
 	for i := 0; i < len(leafHiddenSizes); i++ {
 		if len(leafHiddenSizes[i]) != len(leafActivations[i]) {
-			msg := "newtreemlp: invalid number of activations for leaf " +
+			msg := "invalid number of activations for leaf " +
 				"network %v \n\twant(%v) \n\thave(%v)"
 			return fmt.Errorf(msg, i, len(leafHiddenSizes[i]),
 				len(leafActivations[i]))
 		}
 
 		if len(leafHiddenSizes[i]) != len(leafBiases[i]) {
-			msg := "newtreemlp: invalid number of biases for leaf " +
+			msg := "invalid number of biases for leaf " +
 				"network %v \n\twant(%v) \n\thave(%v)"
 			return fmt.Errorf(msg, i, len(leafHiddenSizes[i]),
 				len(leafBiases[i]))
@@ -105,7 +109,7 @@ func TestTreeMLP() {
 	t, err := NewTreeMLP(
 		3,
 		1,
-		1,
+		2,
 		G.NewGraph(),
 		[]int{5, 5},
 		[]bool{true, true},
@@ -128,6 +132,9 @@ func TestTreeMLP() {
 	vm.Reset()
 }
 
+// To create a network with only linear layer leaf nodes:
+// leafHiddenSize = [][]int{{}, {}, ..., {}}
+// similarly for leafBiases and leafActivations
 func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	rootHiddenSizes []int, rootBiases []bool, rootActivations []*Activation,
 	leafHiddenSizes [][]int, leafBiases [][]bool,
@@ -136,7 +143,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	err := validateTreeMLP(rootHiddenSizes, rootBiases, rootActivations,
 		leafHiddenSizes, leafBiases, leafActivations)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("newtreemlp: %v", err)
 	}
 
 	// Set up the input node
