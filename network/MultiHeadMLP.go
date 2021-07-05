@@ -93,7 +93,7 @@ func newMultiHeadMLPFromInput(input *G.Node, outputs int, g *G.ExprGraph,
 	return &network, nil
 }
 
-// NewmultiHeadMLP creates and returns a new multi-layered perceptron
+// NewMultiHeadMLP creates and returns a new multi-layered perceptron
 // that has multiple output nodes, The number of outputs nodes is equal
 // to outputs. The graph parameter g is populated with the MLP.
 //

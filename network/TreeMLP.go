@@ -7,42 +7,28 @@ import (
 	"gorgonia.org/tensor"
 )
 
-// type slice struct {
-// 	start, stop, step int
-// }
-
-// func sli(start, stop, step int) slice {
-// 	return slice{start, stop, step}
-// }
-// func (s slice) End() int {
-// 	return s.stop
-// }
-// func (s slice) Step() int {
-// 	return s.step
-// }
-// func (s slice) Start() int {
-// 	return s.start
-// }
-
-// TODO: TreeMLP should be un-exported
-
-// TreeMLP
-// 					 ╭─ Leaf Network 1
-//					 ├─ Leaf Network 2
-//					 ├─ ...
-// Input -> Root Net ┼─ ...
-//					 ├─ ...
-//					 ├─ Leaf Network (N - 1)
-//					 ╰─ Leaf Network N
+// treeMLP implements a multi-layered perceptron with a base observation
+// netowrk and multiple leaf networks that use the output of the root
+// observation network as their own inputs. A diagram of a tree MLP:
 //
-type TreeMLP struct {
+// 					 ╭─ Leaf Network 1 			-> Output
+//					 ├─ Leaf Network 2			-> Output
+//					 ├─ ...						...
+// Input -> Root Net ┼─ ...						...
+//					 ├─ ...						...
+//					 ├─ Leaf Network (N - 1)	-> Output
+//					 ╰─ Leaf Network N			-> Output
+//
+type treeMLP struct {
 	g            *G.ExprGraph
-	rootNetwork  NeuralNet
-	leafNetworks []NeuralNet
-	input        *G.Node
+	rootNetwork  NeuralNet   // Observation network
+	leafNetworks []NeuralNet // Leaf networks
+	input        *G.Node     // Input to observation network
 
-	numOutputs int // Total outputs = numLeafLayers * numOutputs
-	numInputs  int
+	// numOutputs records the number of outputs *per leaf layer*.
+	// The total number of outputs is numLeafLayers * numOutputs
+	numOutputs int
+	numInputs  int // Features input for observation network
 	batchSize  int
 
 	// Store learnables and model so that they don't need to be computed
@@ -50,7 +36,7 @@ type TreeMLP struct {
 	learnables G.Nodes
 	model      []G.ValueGrad
 
-	// Data needed for gobbing
+	// Configuration data needed for gobbing
 	rootHiddenSizes []int
 	rootBiases      []bool
 	rootActivations []*Activation
@@ -58,10 +44,12 @@ type TreeMLP struct {
 	leafBiases      [][]bool
 	leafActivations [][]*Activation
 
-	prediction []*G.Node
-	predVal    []G.Value
+	predVal    []G.Value // Values predicted by each leaf node
+	prediction []*G.Node // Nodes holding the predictions
 }
 
+// validateTreeMLP validates the arguments of newTreeMLP() to ensure
+// they are legal.
 func validateTreeMLP(numOutputs int, rootHiddenSizes []int, rootBiases []bool,
 	rootActivations []*Activation, leafHiddenSizes [][]int,
 	leafBiases [][]bool, leafActivations [][]*Activation) error {
@@ -126,50 +114,34 @@ func validateTreeMLP(numOutputs int, rootHiddenSizes []int, rootBiases []bool,
 	return nil
 }
 
-// TODO: Doesn't work with batch size 1 and 1 output node!
-func TestTreeMLP() {
-	t, err := NewTreeMLP(
-		3,
-		1,
-		1,
-		G.NewGraph(),
-		[]int{5, 5},
-		[]bool{true, true},
-		[]*Activation{ReLU(), ReLU()},
-		[][]int{{3, 2, 1}, {3, 2, 1}},
-		[][]bool{{true, true, true}, {true, true, true}},
-		[][]*Activation{{ReLU(), ReLU(), ReLU()}, {ReLU(), ReLU(), ReLU()}},
-		G.GlorotU(1.0),
-	)
-
-	// t, err := NewMultiHeadMLP(
-	// 	3,
-	// 	1,
-	// 	1,
-	// 	G.NewGraph(),
-	// 	[]int{5, 5},
-	// 	[]bool{true, true},
-	// 	G.GlorotU(1.0),
-	// 	[]*Activation{ReLU(), ReLU()},
-	// )
-
-	if err != nil {
-		panic(err)
-	}
-	// fmt.Println("\nRoot Net", t.(*TreeMLP).rootNetwork)
-
-	vm := G.NewTapeMachine(t.Graph())
-	vm.Reset()
-	t.SetInput([]float64{1, 2, 3})
-	vm.RunAll()
-	fmt.Println(t.Output())
-	vm.Reset()
-
-}
-
-// To create a network with only linear layer leaf nodes:
-// leafHiddenSize = [][]int{{}, {}, ..., {}}
-// similarly for leafBiases and leafActivations
+// NewTreeMLP returns a new NeuralNet with a tree MLP architecture.
+//
+// The observation network has number of layers equal to
+// len(rootHiddenSizes). For index i, rootHiddenSizes[i] determines the
+// number of hidden units in that layer, rootBiases[i] determines if a
+// bias unit is added to the hidden layer, and rootActivations[i]
+// determines the activation function to apply to that hidden layer.
+//
+// The number of leaf networks is defined by len(leafHiddenSizes).
+// For index i, leafHiddenSizes[i], leafBiases[i], and
+// leafActivations[i] determine the architecture of leaf network i.
+// The length of any one of these slices determines the number of
+// layers in the leaf network.
+//
+// Given additional index j, leafHiddenSizes[i][j], leafBiases[i][j],
+// and leafActivations[i][j] determine the number of hidden units,
+// whether or not a bias is added ot the hidden layer, and the
+// activaiton function of the hidden layer i respectively.
+// For example, leafHiddenSizes = [][]int{{5, 3, 2}, {10, 90}} will
+// cause this function to create two leaf networks. The first has
+// layers of size 5, 3, and then 2. The second has two layers of size
+// 10 and 90 respectively
+//
+// To create a network with only a single linear layer per leaf network,
+// set leafHiddenSize = [][]int{{}, {}, ..., {}} (similarly for
+// leafBiases and leafActivations). The root observation can be left
+// with nonlinearities to ensure all leaf networks use the same
+// state representation but make (possibly different) predictions.
 func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	rootHiddenSizes []int, rootBiases []bool, rootActivations []*Activation,
 	leafHiddenSizes [][]int, leafBiases [][]bool,
@@ -185,7 +157,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	input := G.NewMatrix(g, tensor.Float64, G.WithShape(batch, features),
 		G.WithName("input"), G.WithInit(G.Zeroes()))
 
-	// Root/observation network
+	// Create root/observation network and run its forward pass
 	observationOutputs := rootHiddenSizes[len(rootHiddenSizes)-1]
 	rootNetwork, err := newMultiHeadMLPFromInput(input, observationOutputs, g,
 		rootHiddenSizes, rootBiases, init, rootActivations, "Root", "", false)
@@ -194,7 +166,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 			"network: %v", err)
 	}
 
-	// Leaf networks
+	// Create leaf networks and run each of their forward passes
 	rootOutput := rootNetwork.Prediction()
 	if len(rootOutput) != 1 {
 		return nil, fmt.Errorf("clonewithinputo: cannot use root network " +
@@ -215,12 +187,10 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 		}
 	}
 
-	net := &TreeMLP{
-		g:            g,
-		rootNetwork:  rootNetwork,
-		leafNetworks: leafNetworks,
-		// rootLayers:      rootLayers,
-		// leafLayers:      leafLayers,
+	net := &treeMLP{
+		g:               g,
+		rootNetwork:     rootNetwork,
+		leafNetworks:    leafNetworks,
 		input:           input,
 		numOutputs:      outputs * len(leafHiddenSizes),
 		numInputs:       features,
@@ -235,10 +205,11 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 		model:           nil,
 	}
 
+	// Compute the forward pass
 	_, err = net.fwd(input)
 	if err != nil {
 		msg := "newmtreemlp: could not compute forward pass: %v"
-		return &TreeMLP{}, fmt.Errorf(msg, err)
+		return &treeMLP{}, fmt.Errorf(msg, err)
 	}
 
 	return net, nil
@@ -246,7 +217,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 
 // SetInput sets the value of the input node before running the forward
 // pass.
-func (t *TreeMLP) SetInput(input []float64) error {
+func (t *treeMLP) SetInput(input []float64) error {
 	if len(input) != t.numInputs*t.batchSize {
 		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)"+
 			"\n\thave(%v)", t.numInputs*t.batchSize, len(input))
@@ -259,9 +230,9 @@ func (t *TreeMLP) SetInput(input []float64) error {
 	return G.Let(t.input, inputTensor)
 }
 
-// Set sets the weights of a multiHeadMLP to be equal to the
-// weights of another multiHeadMLP
-func (dest *TreeMLP) Set(source NeuralNet) error {
+// Set sets the weights of a treeMLP to be equal to the
+// weights of another treeMLP
+func (dest *treeMLP) Set(source NeuralNet) error {
 	sourceNodes := source.Learnables()
 	nodes := dest.Learnables()
 	for i, destLearnable := range nodes {
@@ -274,7 +245,10 @@ func (dest *TreeMLP) Set(source NeuralNet) error {
 	return nil
 }
 
-func (dest *TreeMLP) Polyak(source NeuralNet, tau float64) error {
+// Polyak compute the polyak average of weights of dest with the weights
+// of source and stores these averaged weights as the new weights of
+// dest.
+func (dest *treeMLP) Polyak(source NeuralNet, tau float64) error {
 	sourceNodes := source.Learnables()
 	nodes := dest.Learnables()
 	for i := range nodes {
@@ -302,27 +276,35 @@ func (dest *TreeMLP) Polyak(source NeuralNet, tau float64) error {
 	return nil
 }
 
-func (t *TreeMLP) Outputs() int {
+// Outputs returns the number of outputs per leaf network
+func (t *treeMLP) Outputs() int {
 	return t.numOutputs
 }
 
-func (t *TreeMLP) OutputLayers() int {
+// OutputLayers returns the number of output layers in the network.
+// There is one output layer per leaf network.
+func (t *treeMLP) OutputLayers() int {
 	return len(t.Prediction())
 }
 
-func (t *TreeMLP) Graph() *G.ExprGraph {
+// Graph returns the computational graph of the network
+func (t *treeMLP) Graph() *G.ExprGraph {
 	return t.g
 }
 
-func (t *TreeMLP) Features() int {
+// Features returns the number of input features
+func (t *treeMLP) Features() int {
 	return t.numInputs
 }
 
-func (t *TreeMLP) Clone() (NeuralNet, error) {
+// Clone returns a clone of the treeMLP.
+func (t *treeMLP) Clone() (NeuralNet, error) {
 	return t.CloneWithBatch(t.batchSize)
 }
 
-func (t *TreeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
+// CloneWithBatch returns a clone of the treeMLP with a new input
+// batch size.
+func (t *treeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 	graph := G.NewGraph()
 
 	// Create the input node
@@ -344,7 +326,10 @@ func (t *TreeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 	return t.cloneWithInputTo(input, graph)
 }
 
-func (t *TreeMLP) cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet, error) {
+// cloneWithInputTo clones the treeMLP to a new graph with a given
+// input node
+func (t *treeMLP) cloneWithInputTo(input *G.Node,
+	graph *G.ExprGraph) (NeuralNet, error) {
 	if graph != input.Graph() {
 		return nil, fmt.Errorf("clonewithinputo: input graph and graph " +
 			"are not the same computaitonal graph")
@@ -375,7 +360,7 @@ func (t *TreeMLP) cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet
 		}
 	}
 
-	net := &TreeMLP{
+	net := &treeMLP{
 		g:            graph,
 		rootNetwork:  rootClone,
 		leafNetworks: leafClones,
@@ -398,11 +383,14 @@ func (t *TreeMLP) cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet
 	return net, nil
 }
 
-func (t *TreeMLP) BatchSize() int {
+// BatchSize returns the batch size for inputs to the network
+func (t *treeMLP) BatchSize() int {
 	return t.rootNetwork.BatchSize()
 }
 
-func (t *TreeMLP) fwd(input *G.Node) (*G.Node, error) {
+// fwd computes the remaining steps of the forward pass of the treeMLP
+// that its root and leaf networks did not compute.
+func (t *treeMLP) fwd(input *G.Node) (*G.Node, error) {
 	leafPredictions := make([]*G.Node, 0, len(t.leafNetworks))
 
 	for _, leafNet := range t.leafNetworks {
@@ -418,21 +406,21 @@ func (t *TreeMLP) fwd(input *G.Node) (*G.Node, error) {
 	return nil, nil //concatPred, nil
 }
 
-// Output returns the output of the TreeMLP. The output is
+// Output returns the output of the treeMLP. The output is
 // a matrix of NxM dimensions, where N corresponds to the number of
 // outputs per leaf network and M the number of leaf networks.
-func (t *TreeMLP) Output() []G.Value {
+func (t *treeMLP) Output() []G.Value {
 	return t.predVal
 }
 
 // Prediction returns the node of the computational graph the stores
-// the output of the multiHeadMLP
-func (t *TreeMLP) Prediction() []*G.Node {
+// the output of the treeMLP
+func (t *treeMLP) Prediction() []*G.Node {
 	return t.prediction
 }
 
-// Model returns the learnables nodes with their gradients.
-func (t *TreeMLP) Model() []G.ValueGrad {
+// Model returns the learnable nodes with their gradients.
+func (t *treeMLP) Model() []G.ValueGrad {
 	// Laxy instantiation of model
 	if t.model == nil {
 		t.model = t.computeModel()
@@ -442,7 +430,7 @@ func (t *TreeMLP) Model() []G.ValueGrad {
 
 // computeModel gets and returns all learnables of the network with
 // their gradients
-func (t *TreeMLP) computeModel() []G.ValueGrad {
+func (t *treeMLP) computeModel() []G.ValueGrad {
 	var model []G.ValueGrad
 	for _, learnable := range t.Learnables() {
 		model = append(model, learnable)
@@ -451,7 +439,7 @@ func (t *TreeMLP) computeModel() []G.ValueGrad {
 }
 
 // Learnables returns the learnable nodes in a multiHeadMLP
-func (t *TreeMLP) Learnables() G.Nodes {
+func (t *treeMLP) Learnables() G.Nodes {
 	// Lazy instantiation of learnables
 	if t.learnables == nil {
 		t.learnables = t.computeLearnables()
@@ -460,7 +448,7 @@ func (t *TreeMLP) Learnables() G.Nodes {
 }
 
 // computeLearnables gets and returns all learnables of the network
-func (t *TreeMLP) computeLearnables() G.Nodes {
+func (t *treeMLP) computeLearnables() G.Nodes {
 	// Allocate array of learnables
 	numLearnables := 2 * len(t.rootHiddenSizes)
 	for _, layer := range t.leafHiddenSizes {

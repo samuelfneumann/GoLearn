@@ -7,35 +7,41 @@ import (
 // NeuralNet implements a neural network which can be used in policy
 // parameterizations or value functions/critics.
 type NeuralNet interface {
-	Graph() *G.ExprGraph
+	// Clone clones the NeuralNet to a new graph
 	Clone() (NeuralNet, error)
+
+	// CloneWithBatch clones the NeuralNet with a new input batch size
+	// to a new graph.
 	CloneWithBatch(int) (NeuralNet, error)
+
+	// Getter methods
+	Graph() *G.ExprGraph
 	BatchSize() int
 	Features() int
+	Outputs() int          // Number of outputs per output layer
+	OutputLayers() int     // Layers that will output Outputs() values
+	Output() []G.Value     // Returns the predictions of the network
+	Prediction() []*G.Node // Returns the nodes that hold the predictions
 
-	Outputs() int      // Number of outputs per output layer
-	OutputLayers() int // Layers that will output Outputs() values
-
-	SetInput([]float64) error
-	Set(NeuralNet) error
+	// Polyak computes the polyak average of the receiver's weights
+	// with another networks weights and saves this average as the
+	// new weights of the reciever.
 	Polyak(NeuralNet, float64) error
+
+	// Learnables returns the nodes of the network that can be learned
 	Learnables() G.Nodes
+
+	// Model returns the nodes of the network that can be learned and
+	// their gradients
 	Model() []G.ValueGrad
 
-	fwd(*G.Node) (*G.Node, error)
-	cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet, error)
+	SetInput([]float64) error     // Sets the input to the network
+	Set(NeuralNet) error          // Sets the weights to those of another network
+	fwd(*G.Node) (*G.Node, error) // Performs the forward pass)
 
-	// To keep networks consistent, there should be a single output value
-	// and prediction node. If there are multiple outputs that are not
-	// part of the same gorgonia.Node (e.g. the treeMLP), then these
-	// outputs should be concatenated into a single output value and
-	// prediction node.
-	//
-	// This pattern keeps all neural network outputs consistent. Using
-	// slices of outputs would cause algorithms to have to deal with
-	// differing number of output networks differently.
-	Output() []G.Value
-	Prediction() []*G.Node
+	// cloneWithInputTo clones a NeuralNet, setting its input node as
+	// input and cloning the network to a given computational graph g
+	cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet, error)
 }
 
 // Layer implements a single layer of a NeuralNet. This could be a
