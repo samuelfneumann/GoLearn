@@ -233,14 +233,11 @@ tracked.
 
 - [ ] Cartpole needs `Render()` method
 
-- [ ] Agents should have `EndEpisode()` method for cleanup on episode end (e.g. resetting eligibility traces)
-- [ ] Agent should have `Train()` and `Eval()` methods for setting agent to training or evaluation mode
+- [ ] timesteps should be changed to use a Matrix for state observations so that pixel environments can also be used
+
+- [ ] EGreedyMLP doesn't satisfy policy interface...
+- [ ] Could NN policies have their own VM that would take care of selecting an action? THen the learner could have its own VM for learning? I don't think so, since the graph is compiled the weights will be different between the two VMs.
 
 
-
-Experience Replay:
-	We will always have online version of algorithms that are different
-	from the ER counterparts. This is because if an algorithm is online,
-	then we can add in code optimizations (e.g. we don't need a replay
-	table, sampler, adder and we can store transitions directly intsead
-	of duplicating them and storing them in a table).
+- [ ] If we compute the slice of learnables when we create a network and then Learnables() just returns this backing slice, this will reduce computational time!
+- [ ] Create un-exported struct for multiHeadMLP that takes in an input node and returns and MLP that has that input node as its input node. Then, MultiHeadMLP can just use this struct, and TreeMLP can also use it for the observation + leaf networks.
