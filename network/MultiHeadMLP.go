@@ -24,6 +24,9 @@ type multiHeadMLP struct {
 	biases      []bool
 	activations []*Activation
 
+	learnables G.Nodes
+	model      []G.ValueGrad
+
 	prediction *G.Node
 	predVal    G.Value
 }
@@ -83,6 +86,8 @@ func newMultiHeadMLPFromInput(input *G.Node, outputs int, g *G.ExprGraph,
 		hiddenSizes: hiddenSizes,
 		biases:      biases,
 		activations: activations,
+		learnables:  nil,
+		model:       nil,
 	}
 	_, err := network.fwd(input)
 	if err != nil {
@@ -300,7 +305,16 @@ func (dest *multiHeadMLP) Polyak(source NeuralNet, tau float64) error {
 }
 
 // Learnables returns the learnable nodes in a multiHeadMLP
-func (e *multiHeadMLP) Learnables() G.Nodes {
+func (m *multiHeadMLP) Learnables() G.Nodes {
+	// Lazy instantiation
+	if m.learnables == nil {
+		m.learnables = m.computeLearnables()
+	}
+	return m.learnables
+}
+
+// computeLearnables computes all the learnables for the network
+func (e *multiHeadMLP) computeLearnables() G.Nodes {
 	learnables := make([]*G.Node, 0, 2*len(e.layers))
 
 	for i := range e.layers {
@@ -313,14 +327,19 @@ func (e *multiHeadMLP) Learnables() G.Nodes {
 }
 
 // Model returns the learnables nodes with their gradients.
-func (e *multiHeadMLP) Model() []G.ValueGrad {
-	var model []G.ValueGrad = make([]G.ValueGrad, 0, 2*len(e.layers))
+func (m *multiHeadMLP) Model() []G.ValueGrad {
+	// Lazy instantiation
+	if m.model == nil {
+		m.model = m.computeModel()
+	}
+	return m.model
+}
 
-	for i := range e.layers {
-		model = append(model, e.layers[i].Weights())
-		if bias := e.layers[i].Bias(); bias != nil {
-			model = append(model, bias)
-		}
+// computeModel computes the model for the network
+func (e *multiHeadMLP) computeModel() []G.ValueGrad {
+	model := make([]G.ValueGrad, 0, 2*len(e.layers))
+	for _, node := range e.Learnables() {
+		model = append(model, node)
 	}
 	return model
 }
