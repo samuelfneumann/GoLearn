@@ -421,7 +421,7 @@ func (t *treeMLP) Prediction() []*G.Node {
 
 // Model returns the learnable nodes with their gradients.
 func (t *treeMLP) Model() []G.ValueGrad {
-	// Laxy instantiation of model
+	// Lazy instantiation of model
 	if t.model == nil {
 		t.model = t.computeModel()
 	}
