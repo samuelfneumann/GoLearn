@@ -12,7 +12,10 @@ type NeuralNet interface {
 	CloneWithBatch(int) (NeuralNet, error)
 	BatchSize() int
 	Features() int
-	Outputs() int
+
+	Outputs() int      // Number of outputs per output layer
+	OutputLayers() int // Layers that will output Outputs() values
+
 	SetInput([]float64) error
 	Set(NeuralNet) error
 	Polyak(NeuralNet, float64) error
@@ -31,8 +34,8 @@ type NeuralNet interface {
 	// This pattern keeps all neural network outputs consistent. Using
 	// slices of outputs would cause algorithms to have to deal with
 	// differing number of output networks differently.
-	Output() G.Value
-	Prediction() *G.Node
+	Output() []G.Value
+	Prediction() []*G.Node
 }
 
 // Layer implements a single layer of a NeuralNet. This could be a

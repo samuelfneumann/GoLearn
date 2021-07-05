@@ -149,6 +149,11 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 		return &MultiHeadEGreedyMLP{},
 			fmt.Errorf("new: could not create policy: %v", err)
 	}
+	if predictions := len(net.Prediction()); predictions != 1 {
+		msg := "new: egreedy policy expects function approximator to output " +
+			"a single prediction node\n\twant(1)\n\thave(%v)"
+		return &MultiHeadEGreedyMLP{}, fmt.Errorf(msg, predictions)
+	}
 
 	// Create RNG for sampling actions
 	source := rand.NewSource(seed)
@@ -222,7 +227,7 @@ func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
 	}
 
 	// Get the action values from the last run of the computational graph
-	actionValues := e.Output().Data().([]float64)
+	actionValues := e.Output()[0].Data().([]float64)
 
 	// With probability epsilon return a random action
 	if probability := rand.Float64(); probability < e.epsilon {

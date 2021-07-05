@@ -231,6 +231,13 @@ func (e *multiHeadMLP) Outputs() int {
 	return e.numOutputs
 }
 
+// OutputLayers returns the number of layers that will produce Outputs()
+// values as predictions. For example, in a TreeMDP there may be many
+// output layers, each producing Outputs() predictions.
+func (e *multiHeadMLP) OutputLayers() int {
+	return len(e.Prediction())
+}
+
 // SetInput sets the value of the input node before running the forward
 // pass.
 func (e *multiHeadMLP) SetInput(input []float64) error {
@@ -335,21 +342,23 @@ func (e *multiHeadMLP) fwd(input *G.Node) (*G.Node, error) {
 			return nil, fmt.Errorf(msg, i, err)
 		}
 	}
+
 	e.prediction = pred
+
 	G.Read(e.prediction, &e.predVal)
 
 	return pred, nil
 }
 
 // Output returns the output of the multiHeadMLP.
-func (e *multiHeadMLP) Output() G.Value {
-	return e.predVal
+func (e *multiHeadMLP) Output() []G.Value {
+	return []G.Value{e.predVal}
 }
 
 // Prediction returns the node of the computational graph the stores
 // the output of the multiHeadMLP
-func (e *multiHeadMLP) Prediction() *G.Node {
-	return e.prediction
+func (e *multiHeadMLP) Prediction() []*G.Node {
+	return []*G.Node{e.prediction}
 }
 
 // GobEncode implements the gob.GobEncoder interface

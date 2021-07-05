@@ -7,6 +7,23 @@ import (
 	"gorgonia.org/tensor"
 )
 
+// type slice struct {
+// 	start, stop, step int
+// }
+
+// func sli(start, stop, step int) slice {
+// 	return slice{start, stop, step}
+// }
+// func (s slice) End() int {
+// 	return s.stop
+// }
+// func (s slice) Step() int {
+// 	return s.step
+// }
+// func (s slice) Start() int {
+// 	return s.start
+// }
+
 // TODO: TreeMLP should be un-exported
 
 // TreeMLP
@@ -41,11 +58,11 @@ type TreeMLP struct {
 	leafBiases      [][]bool
 	leafActivations [][]*Activation
 
-	prediction *G.Node
-	predVal    G.Value
+	prediction []*G.Node
+	predVal    []G.Value
 }
 
-func validateTreeMLP(rootHiddenSizes []int, rootBiases []bool,
+func validateTreeMLP(numOutputs int, rootHiddenSizes []int, rootBiases []bool,
 	rootActivations []*Activation, leafHiddenSizes [][]int,
 	leafBiases [][]bool, leafActivations [][]*Activation) error {
 	// Validate observation/root network
@@ -67,9 +84,14 @@ func validateTreeMLP(rootHiddenSizes []int, rootBiases []bool,
 	}
 
 	// Validate number of leaf networks
-	if len(leafHiddenSizes) <= 0 {
+	if len(leafHiddenSizes) <= 0 || len(leafBiases) <= 0 ||
+		len(leafActivations) <= 0 {
 		msg := "there must be at least one leaf network specified"
 		return fmt.Errorf(msg)
+	}
+
+	if numOutputs <= 0 {
+		return fmt.Errorf("there must be more than 0 outputs per leaf network")
 	}
 
 	if len(leafHiddenSizes) != len(leafActivations) {
@@ -109,27 +131,40 @@ func TestTreeMLP() {
 	t, err := NewTreeMLP(
 		3,
 		1,
-		2,
+		1,
 		G.NewGraph(),
 		[]int{5, 5},
 		[]bool{true, true},
 		[]*Activation{ReLU(), ReLU()},
-		[][]int{{3, 2}, {3, 2}},
-		[][]bool{{true, true}, {true, true}},
-		[][]*Activation{{ReLU(), ReLU()}, {ReLU(), ReLU()}},
+		[][]int{{3, 2, 1}, {3, 2, 1}},
+		[][]bool{{true, true, true}, {true, true, true}},
+		[][]*Activation{{ReLU(), ReLU(), ReLU()}, {ReLU(), ReLU(), ReLU()}},
 		G.GlorotU(1.0),
 	)
+
+	// t, err := NewMultiHeadMLP(
+	// 	3,
+	// 	1,
+	// 	1,
+	// 	G.NewGraph(),
+	// 	[]int{5, 5},
+	// 	[]bool{true, true},
+	// 	G.GlorotU(1.0),
+	// 	[]*Activation{ReLU(), ReLU()},
+	// )
 
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("\nRoot Net", t.(*TreeMLP).rootNetwork)
+	// fmt.Println("\nRoot Net", t.(*TreeMLP).rootNetwork)
 
 	vm := G.NewTapeMachine(t.Graph())
+	vm.Reset()
 	t.SetInput([]float64{1, 2, 3})
 	vm.RunAll()
 	fmt.Println(t.Output())
 	vm.Reset()
+
 }
 
 // To create a network with only linear layer leaf nodes:
@@ -140,7 +175,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	leafHiddenSizes [][]int, leafBiases [][]bool,
 	leafActivations [][]*Activation, init G.InitWFn) (NeuralNet, error) {
 
-	err := validateTreeMLP(rootHiddenSizes, rootBiases, rootActivations,
+	err := validateTreeMLP(outputs, rootHiddenSizes, rootBiases, rootActivations,
 		leafHiddenSizes, leafBiases, leafActivations)
 	if err != nil {
 		return nil, fmt.Errorf("newtreemlp: %v", err)
@@ -161,11 +196,16 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 
 	// Leaf networks
 	rootOutput := rootNetwork.Prediction()
+	if len(rootOutput) != 1 {
+		return nil, fmt.Errorf("clonewithinputo: cannot use root network " +
+			" with multiple outputs as a single input to leaf networks")
+	}
+
 	leafNetworks := make([]NeuralNet, len(leafHiddenSizes))
 	for i := 0; i < len(leafHiddenSizes); i++ {
 		prefix := fmt.Sprintf("Leaf%d", i)
 
-		leafNetworks[i], err = newMultiHeadMLPFromInput(rootOutput, outputs, g,
+		leafNetworks[i], err = newMultiHeadMLPFromInput(rootOutput[0], outputs, g,
 			leafHiddenSizes[i], leafBiases[i], init, leafActivations[i],
 			prefix, "", true)
 
@@ -266,6 +306,10 @@ func (t *TreeMLP) Outputs() int {
 	return t.numOutputs
 }
 
+func (t *TreeMLP) OutputLayers() int {
+	return len(t.Prediction())
+}
+
 func (t *TreeMLP) Graph() *G.ExprGraph {
 	return t.g
 }
@@ -317,10 +361,14 @@ func (t *TreeMLP) cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet
 			"network: %v", err)
 	}
 	rootOutput := rootClone.Prediction()
+	if len(rootOutput) != 1 {
+		return nil, fmt.Errorf("clonewithinputo: cannot use root network " +
+			" with multiple outputs as a single input to leaf networks")
+	}
 
 	leafClones := make([]NeuralNet, len(t.leafNetworks))
 	for i := 0; i < len(leafClones); i++ {
-		leafClones[i], err = t.cloneWithInputTo(rootOutput, graph)
+		leafClones[i], err = t.cloneWithInputTo(rootOutput[0], graph)
 		if err != nil {
 			msg := "cloneWithInputTo: could not clone leaf network %v: %v"
 			return nil, fmt.Errorf(msg, i, err)
@@ -355,40 +403,31 @@ func (t *TreeMLP) BatchSize() int {
 }
 
 func (t *TreeMLP) fwd(input *G.Node) (*G.Node, error) {
-	leafPredictions := make([]*G.Node, len(t.leafNetworks))
-	// Compute forward pass on each leaf layer
-	for i, leafNet := range t.leafNetworks {
-		leafPredictions[i] = leafNet.Prediction()
-		fmt.Println(leafPredictions[i].Shape())
+	leafPredictions := make([]*G.Node, 0, len(t.leafNetworks))
+
+	for _, leafNet := range t.leafNetworks {
+		leafPredictions = append(leafPredictions, leafNet.Prediction()...)
+	}
+	t.prediction = leafPredictions
+
+	t.predVal = make([]G.Value, len(t.prediction))
+	for i, pred := range t.prediction {
+		G.Read(pred, &t.predVal[i])
 	}
 
-	for _, l := range t.leafNetworks {
-		fmt.Println(l)
-	}
-
-	// Concatenate all leaf network outputs
-	concatPred, err := G.Concat(0, leafPredictions...)
-	if err != nil {
-		return nil, fmt.Errorf("fwd: could not concatenate leaf node "+
-			"predictions: %v", err)
-	}
-
-	t.prediction = concatPred
-	G.Read(t.prediction, &t.predVal)
-
-	return concatPred, nil
+	return nil, nil //concatPred, nil
 }
 
 // Output returns the output of the TreeMLP. The output is
 // a matrix of NxM dimensions, where N corresponds to the number of
 // outputs per leaf network and M the number of leaf networks.
-func (t *TreeMLP) Output() G.Value {
+func (t *TreeMLP) Output() []G.Value {
 	return t.predVal
 }
 
 // Prediction returns the node of the computational graph the stores
 // the output of the multiHeadMLP
-func (t *TreeMLP) Prediction() *G.Node {
+func (t *TreeMLP) Prediction() []*G.Node {
 	return t.prediction
 }
 

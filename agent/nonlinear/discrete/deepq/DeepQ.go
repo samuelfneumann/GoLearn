@@ -138,6 +138,11 @@ func New(env environment.Environment, config Config,
 		return &DeepQ{}, fmt.Errorf(msg, err)
 	}
 	targetNet := targetNetClone.(agent.EGreedyNNPolicy)
+	if layers := targetNet.OutputLayers(); layers != 1 {
+		msg := "new: target net should return a single target prediction " +
+			"\n\twnat(1)\n\thave(%v)"
+		return &DeepQ{}, fmt.Errorf(msg, layers)
+	}
 	targetNet.SetEpsilon(0.0) // Qlearning target policy is greedy
 	targetNetVM := G.NewTapeMachine(targetNet.Graph())
 
@@ -176,20 +181,23 @@ func New(env environment.Environment, config Config,
 		G.WithName("actionSelected"),
 		G.WithShape(batchSize, numActions),
 	)
-	selectedActionsValue := G.Must(G.HadamardProd(trainNet.Prediction(),
-		selectedActions))
-	selectedActionsValue = G.Must(G.Sum(selectedActionsValue, 1))
 
-	// Compute the Mean Squarred TD error
-	losses := G.Must(G.Sub(updateTarget, selectedActionsValue))
-	losses = G.Must(G.Square(losses))
-	cost := G.Must(G.Mean(losses))
+	for _, pred := range trainNet.Prediction() {
+		selectedActionsValue := G.Must(G.HadamardProd(pred,
+			selectedActions))
+		selectedActionsValue = G.Must(G.Sum(selectedActionsValue, 1))
 
-	// Compute the gradient with respect to the Mean Squarred TD error
-	_, err = G.Grad(cost, trainNet.Learnables()...)
-	if err != nil {
-		msg := fmt.Sprintf("new: could not compute gradient: %v", err)
-		panic(msg)
+		// Compute the Mean Squarred TD error
+		losses := G.Must(G.Sub(updateTarget, selectedActionsValue))
+		losses = G.Must(G.Square(losses))
+		cost := G.Must(G.Mean(losses))
+
+		// Compute the gradient with respect to the Mean Squarred TD error
+		_, err = G.Grad(cost, trainNet.Learnables()...)
+		if err != nil {
+			msg := fmt.Sprintf("new: could not compute gradient: %v", err)
+			panic(msg)
+		}
 	}
 
 	// Compile the trainNet graph into a VM
@@ -332,7 +340,7 @@ func (d *DeepQ) Step() {
 	d.targetNetVM.RunAll()
 
 	// Set the action values for the actions in the next state
-	err = G.Let(d.nextStateActionValues, d.targetNet.Output())
+	err = G.Let(d.nextStateActionValues, d.targetNet.Output()[0])
 	if err != nil {
 		panic(fmt.Sprintf("step: could not set next state-action values: %v",
 			err))
