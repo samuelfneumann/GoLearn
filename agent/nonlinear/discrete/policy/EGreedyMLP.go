@@ -17,6 +17,7 @@ import (
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/network"
+	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/utils/floatutils"
 )
 
@@ -51,6 +52,147 @@ type MultiHeadEGreedyMLP struct {
 
 	rng  *rand.Rand
 	seed int64
+}
+
+// NewMultiHeadEGreedyMLP creates and returns a new MultiHeadEGreedyMLP
+// The hiddenSizes parameter defines the number of nodes in each hidden
+// layer. The biases parameter outlines which layers should include
+// bias units. The activations parameter determines the activation
+// function for each layer. The batch parameter determines the number
+// of inputs in a batch.
+//
+// Note that this constructor will always add an additional hidden
+// layer (with a bias unit and no activation) such that the number of
+// network outputs equals the number of actions in the environment.
+// That is, regardless of the constructor arguments, an additional,
+// final linear layer is added so that the output of the network
+// equals the number of environmental actions.
+//
+//
+// Because of this, it is easy to create a linear EGreedy policy by
+// setting hiddenSizes to []int{}, biases to []bool{}, and activations
+// to []Activation{}.
+func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
+	batch int, g *G.ExprGraph, hiddenSizes []int, biases []bool,
+	init G.InitWFn, activations []*network.Activation,
+	seed int64) (agent.EGreedyNNPolicy, error) {
+
+	if env.ActionSpec().Cardinality == spec.Continuous {
+		err := fmt.Errorf("newMultiHeadEGreedyMLP: cannot use egreedy " +
+			"policy with continuous actions")
+		return &MultiHeadEGreedyMLP{}, err
+	}
+
+	// Calculate the number of actions and state features
+	numActions := int(env.ActionSpec().UpperBound.AtVec(0)) + 1
+	features := env.ObservationSpec().Shape.Len()
+
+	net, err := network.NewMultiHeadMLP(features, batch, numActions, g,
+		hiddenSizes, biases, init, activations)
+	if err != nil {
+		return &MultiHeadEGreedyMLP{},
+			fmt.Errorf("new: could not create policy: %v", err)
+	}
+	if predictions := len(net.Prediction()); predictions != 1 {
+		msg := "new: egreedy policy expects function approximator to output " +
+			"a single prediction node\n\twant(1)\n\thave(%v)"
+		return &MultiHeadEGreedyMLP{}, fmt.Errorf(msg, predictions)
+	}
+
+	// Create RNG for sampling actions
+	source := rand.NewSource(seed)
+	rng := rand.New(source)
+
+	// Create the policy
+	nn := MultiHeadEGreedyMLP{
+		epsilon:   epsilon,
+		rng:       rng,
+		seed:      seed,
+		NeuralNet: net,
+	}
+
+	return &nn, nil
+}
+
+// Network returns the neural network function approximator that the
+// policy uses.
+func (e *MultiHeadEGreedyMLP) Network() network.NeuralNet {
+	return e.NeuralNet
+}
+
+// ClonePolicy clones a MultiHeadEGreedyMLP
+func (e *MultiHeadEGreedyMLP) ClonePolicy() (agent.NNPolicy, error) {
+	batchSize := e.BatchSize()
+	return e.ClonePolicyWithBatch(batchSize)
+}
+
+// ClonePolicyWithBatch clones a MultiHeadEGreedyMLP with a new input
+// batch size.
+func (e *MultiHeadEGreedyMLP) ClonePolicyWithBatch(
+	batchSize int) (agent.NNPolicy, error) {
+	net, err := e.Network().CloneWithBatch(batchSize)
+	if err != nil {
+		msg := "clonepolicywithbatch: could not clone policy: %v"
+		return &MultiHeadEGreedyMLP{}, fmt.Errorf(msg, err)
+	}
+
+	// Create RNG for sampling actions
+	source := rand.NewSource(e.seed)
+	rng := rand.New(source)
+
+	// Create the network and run the forward pass on the input node
+	nn := MultiHeadEGreedyMLP{
+		epsilon:   e.epsilon,
+		rng:       rng,
+		seed:      e.seed,
+		NeuralNet: net,
+	}
+
+	return &nn, nil
+}
+
+// SetEpsilon sets the value for epsilon in the epsilon greedy policy.
+func (e *MultiHeadEGreedyMLP) SetEpsilon(ε float64) {
+	e.epsilon = ε
+}
+
+// Epsilon gets the value of epsilon for the policy.
+func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
+	return e.epsilon
+}
+
+// SelectAction selects an action according to the action values
+// generated from the last run of the computational graph. This
+// funtion returns the action selected as well as the approximated value
+// of that action.
+func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
+	if e.Output() == nil {
+		log.Fatal("vm must be run before selecting an action")
+	}
+
+	// Get the action values from the last run of the computational graph
+	actionValues := e.Output()[0].Data().([]float64)
+
+	// With probability epsilon return a random action
+	if probability := rand.Float64(); probability < e.epsilon {
+		action := rand.Int() % e.numActions()
+		return mat.NewVecDense(1, []float64{float64(action)}),
+			actionValues[action]
+	}
+
+	// Get the actions of maximum value
+	_, maxIndices := floatutils.MaxSlice(actionValues)
+
+	// If multiple actions have max value, return a random max-valued action
+	action := maxIndices[e.rng.Int()%len(maxIndices)]
+	return mat.NewVecDense(1, []float64{float64(action)}),
+		actionValues[action]
+}
+
+// numActions returns the number of actions that the policy chooses
+// between.
+func (e *MultiHeadEGreedyMLP) numActions() int {
+	return e.Outputs()
 }
 
 // GobDecode implements the gob.GobDecoder interface
@@ -115,138 +257,4 @@ func (m *MultiHeadEGreedyMLP) GobEncode() ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
-}
-
-// NewMultiHeadEGreedyMLP creates and returns a new MultiHeadEGreedyMLP
-// The hiddenSizes parameter defines the number of nodes in each hidden
-// layer. The biases parameter outlines which layers should include
-// bias units. The activations parameter determines the activation
-// function for each layer. The batch parameter determines the number
-// of inputs in a batch.
-//
-// Note that this constructor will always add an additional hidden
-// layer (with a bias unit and no activation) such that the number of
-// network outputs equals the number of actions in the environment.
-// That is, regardless of the constructor arguments, an additional,
-// final linear layer is added so that the output of the network
-// equals the number of environmental actions.
-//
-//
-// Because of this, it is easy to create a linear EGreedy policy by
-// setting hiddenSizes to []int{}, biases to []bool{}, and activations
-// to []Activation{}.
-func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
-	batch int, g *G.ExprGraph, hiddenSizes []int, biases []bool,
-	init G.InitWFn, activations []*network.Activation,
-	seed int64) (agent.EGreedyNNPolicy, error) {
-	// Calculate the number of actions and state features
-	numActions := int(env.ActionSpec().UpperBound.AtVec(0)) + 1
-	features := env.ObservationSpec().Shape.Len()
-
-	net, err := network.NewMultiHeadMLP(features, batch, numActions, g,
-		hiddenSizes, biases, init, activations)
-	if err != nil {
-		return &MultiHeadEGreedyMLP{},
-			fmt.Errorf("new: could not create policy: %v", err)
-	}
-	if predictions := len(net.Prediction()); predictions != 1 {
-		msg := "new: egreedy policy expects function approximator to output " +
-			"a single prediction node\n\twant(1)\n\thave(%v)"
-		return &MultiHeadEGreedyMLP{}, fmt.Errorf(msg, predictions)
-	}
-
-	// Create RNG for sampling actions
-	source := rand.NewSource(seed)
-	rng := rand.New(source)
-
-	// Create the policy
-	nn := MultiHeadEGreedyMLP{
-		epsilon:   epsilon,
-		rng:       rng,
-		seed:      seed,
-		NeuralNet: net,
-	}
-
-	return &nn, nil
-}
-
-// Network returns the neural network function approximator that the
-// policy uses.
-func (e *MultiHeadEGreedyMLP) Network() network.NeuralNet {
-	return e.NeuralNet
-}
-
-// ClonePolicy clones a MultiHeadEGreedyMLP
-func (e *MultiHeadEGreedyMLP) ClonePolicy() (agent.NNPolicy, error) {
-	batchSize := e.BatchSize()
-	return e.ClonePolicyWithBatch(batchSize)
-}
-
-// ClonePolicyWithBatch clones a MultiHeadEGreedyMLP with a new input
-// batch size.
-func (e *MultiHeadEGreedyMLP) ClonePolicyWithBatch(
-	batchSize int) (agent.NNPolicy, error) {
-	net, err := e.Network().Clone()
-	if err != nil {
-		msg := "clonepolicywithbatch: could not clone policy: %v"
-		return &MultiHeadEGreedyMLP{}, fmt.Errorf(msg, err)
-	}
-
-	// Create RNG for sampling actions
-	source := rand.NewSource(e.seed)
-	rng := rand.New(source)
-
-	// Create the network and run the forward pass on the input node
-	nn := MultiHeadEGreedyMLP{
-		epsilon:   e.epsilon,
-		rng:       rng,
-		seed:      e.seed,
-		NeuralNet: net,
-	}
-
-	return &nn, nil
-}
-
-// SetEpsilon sets the value for epsilon in the epsilon greedy policy.
-func (e *MultiHeadEGreedyMLP) SetEpsilon(ε float64) {
-	e.epsilon = ε
-}
-
-// Epsilon gets the value of epsilon for the policy.
-func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
-	return e.epsilon
-}
-
-// SelectAction selects an action according to the action values
-// generated from the last run of the computational graph. This
-// funtion returns the action selected as well as the approximated value
-// of that action.
-func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
-	if e.Output() == nil {
-		log.Fatal("vm must be run before selecting an action")
-	}
-
-	// Get the action values from the last run of the computational graph
-	actionValues := e.Output()[0].Data().([]float64)
-
-	// With probability epsilon return a random action
-	if probability := rand.Float64(); probability < e.epsilon {
-		action := rand.Int() % e.numActions()
-		return mat.NewVecDense(1, []float64{float64(action)}),
-			actionValues[action]
-	}
-
-	// Get the actions of maximum value
-	_, maxIndices := floatutils.MaxSlice(actionValues)
-
-	// If multiple actions have max value, return a random max-valued action
-	action := maxIndices[e.rng.Int()%len(maxIndices)]
-	return mat.NewVecDense(1, []float64{float64(action)}),
-		actionValues[action]
-}
-
-// numActions returns the number of actions that the policy chooses
-// between.
-func (e *MultiHeadEGreedyMLP) numActions() int {
-	return e.Outputs()
 }
