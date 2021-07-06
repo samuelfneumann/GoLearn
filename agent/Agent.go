@@ -47,7 +47,7 @@ type Policy interface {
 // the weights are updated for each.
 type NNPolicy interface {
 	network.NeuralNet
-	SelectAction() (*mat.VecDense, float64)
+	SelectAction() *mat.VecDense
 	ClonePolicy() (NNPolicy, error)
 	ClonePolicyWithBatch(int) (NNPolicy, error)
 	Network() network.NeuralNet
@@ -61,4 +61,9 @@ type EGreedyNNPolicy interface {
 	NNPolicy
 	SetEpsilon(float64)
 	Epsilon() float64
+}
+
+type PolicyLogProber interface {
+	NNPolicy
+	LogProbability(action []float64) (float64, error)
 }

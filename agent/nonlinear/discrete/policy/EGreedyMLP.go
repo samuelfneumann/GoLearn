@@ -162,10 +162,8 @@ func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
 }
 
 // SelectAction selects an action according to the action values
-// generated from the last run of the computational graph. This
-// funtion returns the action selected as well as the approximated value
-// of that action.
-func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
+// generated from the last run of the computational graph.
+func (e *MultiHeadEGreedyMLP) SelectAction() *mat.VecDense {
 	if e.Output() == nil {
 		log.Fatal("vm must be run before selecting an action")
 	}
@@ -176,8 +174,7 @@ func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
 	// With probability epsilon return a random action
 	if probability := rand.Float64(); probability < e.epsilon {
 		action := rand.Int() % e.numActions()
-		return mat.NewVecDense(1, []float64{float64(action)}),
-			actionValues[action]
+		return mat.NewVecDense(1, []float64{float64(action)})
 	}
 
 	// Get the actions of maximum value
@@ -185,8 +182,8 @@ func (e *MultiHeadEGreedyMLP) SelectAction() (*mat.VecDense, float64) {
 
 	// If multiple actions have max value, return a random max-valued action
 	action := maxIndices[e.rng.Int()%len(maxIndices)]
-	return mat.NewVecDense(1, []float64{float64(action)}),
-		actionValues[action]
+
+	return mat.NewVecDense(1, []float64{float64(action)})
 }
 
 // numActions returns the number of actions that the policy chooses
