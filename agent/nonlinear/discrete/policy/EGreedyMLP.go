@@ -170,32 +170,20 @@ func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
 	return e.epsilon
 }
 
+// SelectAction selects an action according to the epsilon greedy policy
 func (e *MultiHeadEGreedyMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
-	obs := t.Observation.RawVector().Data
-
-	e.SetInput(obs)
-	e.vm.RunAll()
-
-	action := e.selectAction()
-	e.vm.Reset()
-
-	return action
-}
-
-// SelectAction selects an action according to the action values
-// generated from the last run of the computational graph.
-func (e *MultiHeadEGreedyMLP) selectAction() *mat.VecDense {
-	if e.Output() == nil {
-		log.Fatal("vm must be run before selecting an action")
-	}
-
 	if e.BatchSize() != 1 {
 		log.Fatal("selectAction: cannot select an action from batch policy, " +
 			"can only learn weights using a batch policy")
 	}
 
+	obs := t.Observation.RawVector().Data
+	e.SetInput(obs)
+	e.vm.RunAll()
+
 	// Get the action values from the last run of the computational graph
 	actionValues := e.Output()[0].Data().([]float64)
+	e.vm.Reset()
 
 	// With probability epsilon return a random action
 	if probability := rand.Float64(); probability < e.epsilon {

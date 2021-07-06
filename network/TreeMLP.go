@@ -11,14 +11,17 @@ import (
 // netowrk and multiple leaf networks that use the output of the root
 // observation network as their own inputs. A diagram of a tree MLP:
 //
-// 					 ╭─ Leaf Network 1 			-> Output
-//					 ├─ Leaf Network 2			-> Output
-//					 ├─ ...						...
-// Input -> Root Net ┼─ ...						...
-//					 ├─ ...						...
-//					 ├─ Leaf Network (N - 1)	-> Output
-//					 ╰─ Leaf Network N			-> Output
+// 					  ╭─ Leaf Network 1 			-> Output
+//					  ├─ Leaf Network 2			-> Output
+//					  ├─ ...						...
+// Input -> Root Net ─┼─ ...						...
+//					  ├─ ...						...
+//					  ├─ Leaf Network (N - 1)	-> Output
+//					  ╰─ Leaf Network N			-> Output
 //
+// To create outputs that are of the form [leaf1 output, leaf2 output,
+// ..., leaf(N-1) output, leaf(N) output], once can simply call
+// gorgonia.Concat() on the result of calling Prediction() on a treeMLP.
 type treeMLP struct {
 	g            *G.ExprGraph
 	rootNetwork  NeuralNet   // Observation network
@@ -403,7 +406,7 @@ func (t *treeMLP) fwd(input *G.Node) (*G.Node, error) {
 		G.Read(pred, &t.predVal[i])
 	}
 
-	return nil, nil //concatPred, nil
+	return nil, nil
 }
 
 // Output returns the output of the treeMLP. The output is
