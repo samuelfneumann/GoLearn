@@ -18,6 +18,7 @@ import (
 	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
 )
 
@@ -52,6 +53,8 @@ type MultiHeadEGreedyMLP struct {
 
 	rng  *rand.Rand
 	seed int64
+
+	vm G.VM
 }
 
 // NewMultiHeadEGreedyMLP creates and returns a new MultiHeadEGreedyMLP
@@ -103,12 +106,15 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	source := rand.NewSource(seed)
 	rng := rand.New(source)
 
+	vm := G.NewTapeMachine(net.Graph())
+
 	// Create the policy
 	nn := MultiHeadEGreedyMLP{
 		epsilon:   epsilon,
 		rng:       rng,
 		seed:      seed,
 		NeuralNet: net,
+		vm:        vm,
 	}
 
 	return &nn, nil
@@ -136,6 +142,8 @@ func (e *MultiHeadEGreedyMLP) ClonePolicyWithBatch(
 		return &MultiHeadEGreedyMLP{}, fmt.Errorf(msg, err)
 	}
 
+	vm := G.NewTapeMachine(net.Graph())
+
 	// Create RNG for sampling actions
 	source := rand.NewSource(e.seed)
 	rng := rand.New(source)
@@ -146,6 +154,7 @@ func (e *MultiHeadEGreedyMLP) ClonePolicyWithBatch(
 		rng:       rng,
 		seed:      e.seed,
 		NeuralNet: net,
+		vm:        vm,
 	}
 
 	return &nn, nil
@@ -161,11 +170,28 @@ func (e *MultiHeadEGreedyMLP) Epsilon() float64 {
 	return e.epsilon
 }
 
+func (e *MultiHeadEGreedyMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
+	obs := t.Observation.RawVector().Data
+
+	e.SetInput(obs)
+	e.vm.RunAll()
+
+	action := e.selectAction()
+	e.vm.Reset()
+
+	return action
+}
+
 // SelectAction selects an action according to the action values
 // generated from the last run of the computational graph.
-func (e *MultiHeadEGreedyMLP) SelectAction() *mat.VecDense {
+func (e *MultiHeadEGreedyMLP) selectAction() *mat.VecDense {
 	if e.Output() == nil {
 		log.Fatal("vm must be run before selecting an action")
+	}
+
+	if e.BatchSize() != 1 {
+		log.Fatal("selectAction: cannot select an action from batch policy, " +
+			"can only learn weights using a batch policy")
 	}
 
 	// Get the action values from the last run of the computational graph

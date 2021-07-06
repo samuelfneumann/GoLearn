@@ -2,6 +2,7 @@ package policy
 
 import (
 	"fmt"
+	"log"
 
 	"golang.org/x/exp/rand"
 
@@ -13,6 +14,7 @@ import (
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/timestep"
 )
 
 type GaussianTreeMLP struct {
@@ -21,6 +23,8 @@ type GaussianTreeMLP struct {
 	mean, std []float64
 	source    rand.Source
 	seed      uint64
+
+	vm G.VM
 }
 
 func NewGaussianTreeMLP(env environment.Environment, batch int,
@@ -52,6 +56,7 @@ func NewGaussianTreeMLP(env environment.Environment, batch int,
 			"not create policy network: %v", err)
 	}
 
+	vm := G.NewTapeMachine(net.Graph())
 	source := rand.NewSource(seed)
 
 	policy := GaussianTreeMLP{
@@ -60,6 +65,7 @@ func NewGaussianTreeMLP(env environment.Environment, batch int,
 		std:       nil,
 		source:    source,
 		seed:      seed,
+		vm:        vm,
 	}
 
 	return &policy, nil
@@ -77,6 +83,8 @@ func (g *GaussianTreeMLP) ClonePolicyWithBatch(batch int) (agent.NNPolicy,
 			"not clone policy neural net: %v", err)
 	}
 
+	vm := G.NewTapeMachine(net.Graph())
+
 	source := rand.NewSource(g.seed)
 	newPolicy := GaussianTreeMLP{
 		NeuralNet: net,
@@ -84,6 +92,7 @@ func (g *GaussianTreeMLP) ClonePolicyWithBatch(batch int) (agent.NNPolicy,
 		std:       g.std,
 		source:    source,
 		seed:      g.seed,
+		vm:        vm,
 	}
 
 	return &newPolicy, nil
@@ -93,7 +102,7 @@ func (g *GaussianTreeMLP) ClonePolicy() (agent.NNPolicy, error) {
 	return g.ClonePolicyWithBatch(g.BatchSize())
 }
 
-// VM should be run before runnint logprobability
+// VM should be run before running logprobability
 func (g *GaussianTreeMLP) LogProbability(action []float64) (float64, error) {
 	g.std = g.Output()[0].Data().([]float64)
 	g.mean = g.Output()[1].Data().([]float64)
@@ -113,9 +122,18 @@ func (g *GaussianTreeMLP) numActions() int {
 }
 
 // VM should be run before selecting action
-func (g *GaussianTreeMLP) SelectAction() *mat.VecDense {
+func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
+	if g.BatchSize() != 1 {
+		log.Fatal("selectAction: cannot select an action from batch policy, " +
+			"can only learn weights using a batch policy")
+	}
+
+	g.SetInput(t.Observation.RawVector().Data)
+	g.vm.RunAll()
+
 	g.std = g.Output()[0].Data().([]float64)
 	g.mean = g.Output()[1].Data().([]float64)
+	g.vm.Reset()
 
 	std := mat.NewDiagDense(len(g.std), g.std)
 	dist, ok := distmv.NewNormal(g.mean, std, g.source)

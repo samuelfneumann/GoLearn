@@ -39,15 +39,17 @@ type Policy interface {
 	SelectAction(t timestep.TimeStep) *mat.VecDense
 }
 
-// NNPolicy ...
+// NNPolicy represents a policy that uses neural network function
+// approximation.
 //
 // Policies implemented by neural networks satsify a different interface
 // from Policy. This is because a VM is needed to run the policy, but
 // the same VM is needed for both the policy and the Learner so that
 // the weights are updated for each.
 type NNPolicy interface {
+	Policy
 	network.NeuralNet
-	SelectAction() *mat.VecDense
+	// SelectAction() *mat.VecDense
 	ClonePolicy() (NNPolicy, error)
 	ClonePolicyWithBatch(int) (NNPolicy, error)
 	Network() network.NeuralNet
