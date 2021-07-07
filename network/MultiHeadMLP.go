@@ -32,8 +32,10 @@ type multiHeadMLP struct {
 }
 
 // newMultiHeadMLPFromInput returns a new multi-head output MLP that
-// has a specific node as its input node.
-func newMultiHeadMLPFromInput(input *G.Node, outputs int, g *G.ExprGraph,
+// has a specific node as its input node. If multiple input nodes are
+// given, they are first concatenated along the feature (column)
+// dimension.
+func newMultiHeadMLPFromInput(inputs []*G.Node, outputs int, g *G.ExprGraph,
 	hiddenSizes []int, biases []bool, init G.InitWFn,
 	activations []*Activation, prefix, suffix string,
 	addFinalLayer bool) (NeuralNet, error) {
@@ -49,6 +51,14 @@ func newMultiHeadMLPFromInput(input *G.Node, outputs int, g *G.ExprGraph,
 		msg := "newmultiheadegreedymlp: invalid number of biases\n\twant(%d)" +
 			"\n\thave(%d)"
 		return nil, fmt.Errorf(msg, len(hiddenSizes), len(biases))
+	}
+
+	// Concatenate inputs if necessary
+	var input *G.Node
+	if len(inputs) > 1 {
+		input = G.Must(G.Concat(1, inputs...))
+	} else {
+		input = inputs[0]
 	}
 
 	if !input.IsMatrix() {
@@ -136,8 +146,8 @@ func NewMultiHeadMLP(features, batch, outputs int, g *G.ExprGraph,
 	input := G.NewMatrix(g, tensor.Float64, G.WithShape(batch, features),
 		G.WithName("input"), G.WithInit(G.Zeroes()))
 
-	return newMultiHeadMLPFromInput(input, outputs, g, hiddenSizes, biases,
-		init, activations, "", "", true)
+	return newMultiHeadMLPFromInput([]*G.Node{input}, outputs, g, hiddenSizes,
+		biases, init, activations, "", "", true)
 }
 
 // Graph returns the computational graph of the multiHeadMLP.
@@ -151,13 +161,26 @@ func (e *multiHeadMLP) Clone() (NeuralNet, error) {
 }
 
 // cloneWithInputTo clones a NeuralNet to a specific computational graph
-// with a specified input node.
-func (e *multiHeadMLP) cloneWithInputTo(input *G.Node,
+// with a specified input node. If multiple input nodes are given, then
+// they are first concatenated along the specified axis.
+func (e *multiHeadMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 	graph *G.ExprGraph) (NeuralNet, error) {
-	if graph != input.Graph() {
-		return nil, fmt.Errorf("clonewithinputo: input graph and graph " +
-			"are not the same computaitonal graph")
+	// Ensure inputs share the same graph
+	for _, input := range inputs {
+		if input.Graph() != graph {
+			return nil, fmt.Errorf("clonewithinputto: not all inputs " +
+				"have the same graph")
+		}
 	}
+
+	// Concatenate inputs if necessary
+	var input *G.Node
+	if len(inputs) > 1 {
+		input = G.Must(G.Concat(axis, inputs...))
+	} else {
+		input = inputs[0]
+	}
+
 	if !input.IsMatrix() {
 		return nil, fmt.Errorf("cloneWithInputTo: input must be a matrix node")
 	}
@@ -217,7 +240,7 @@ func (e *multiHeadMLP) CloneWithBatch(
 		return nil, fmt.Errorf("clonewithbatch: invalid input type")
 	}
 
-	return e.cloneWithInputTo(input, graph)
+	return e.cloneWithInputTo(-1, []*G.Node{input}, graph)
 }
 
 // BatchSize returns the batch size of inputs to the policy

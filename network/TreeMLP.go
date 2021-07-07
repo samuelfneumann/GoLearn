@@ -162,8 +162,9 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 
 	// Create root/observation network and run its forward pass
 	observationOutputs := rootHiddenSizes[len(rootHiddenSizes)-1]
-	rootNetwork, err := newMultiHeadMLPFromInput(input, observationOutputs, g,
-		rootHiddenSizes, rootBiases, init, rootActivations, "Root", "", false)
+	rootNetwork, err := newMultiHeadMLPFromInput([]*G.Node{input},
+		observationOutputs, g, rootHiddenSizes, rootBiases, init,
+		rootActivations, "Root", "", false)
 	if err != nil {
 		return nil, fmt.Errorf("newtreemlp: could not construct root "+
 			"network: %v", err)
@@ -171,16 +172,16 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 
 	// Create leaf networks and run each of their forward passes
 	rootOutput := rootNetwork.Prediction()
-	if len(rootOutput) != 1 {
-		return nil, fmt.Errorf("clonewithinputo: cannot use root network " +
-			" with multiple outputs as a single input to leaf networks")
-	}
+	// if len(rootOutput) != 1 {
+	// 	return nil, fmt.Errorf("clonewithinputo: cannot use root network " +
+	// 		" with multiple outputs as a single input to leaf networks")
+	// }
 
 	leafNetworks := make([]NeuralNet, len(leafHiddenSizes))
 	for i := 0; i < len(leafHiddenSizes); i++ {
 		prefix := fmt.Sprintf("Leaf%d", i)
 
-		leafNetworks[i], err = newMultiHeadMLPFromInput(rootOutput[0], outputs, g,
+		leafNetworks[i], err = newMultiHeadMLPFromInput(rootOutput, outputs, g,
 			leafHiddenSizes[i], leafBiases[i], init, leafActivations[i],
 			prefix, "", true)
 
@@ -326,37 +327,52 @@ func (t *treeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 		return nil, fmt.Errorf("clonewithbatch: invalid input type")
 	}
 
-	return t.cloneWithInputTo(input, graph)
+	return t.cloneWithInputTo(-1, []*G.Node{input}, graph)
 }
 
 // cloneWithInputTo clones the treeMLP to a new graph with a given
-// input node
-func (t *treeMLP) cloneWithInputTo(input *G.Node,
+// input node. If multiple input nodes are given, then
+// they are first concatenated along the specified axis. If the root
+// network outputs multiple outputs, these outputs are also concatenated
+// along the specified axis before being input to the leaf networks.
+func (t *treeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 	graph *G.ExprGraph) (NeuralNet, error) {
-	if graph != input.Graph() {
-		return nil, fmt.Errorf("clonewithinputo: input graph and graph " +
-			"are not the same computaitonal graph")
+	// Ensure all inputs share the same graph
+	for _, input := range inputs {
+		if input.Graph() != graph {
+			return nil, fmt.Errorf("clonewithinputto: not all inputs " +
+				"have the same graph")
+		}
 	}
-	if !input.IsMatrix() {
+
+	// Concatenate inputs if necessary
+	var input []*G.Node
+	if len(inputs) > 1 {
+		input = []*G.Node{G.Must(G.Concat(axis, inputs...))}
+	} else {
+		input = []*G.Node{inputs[0]}
+	}
+
+	// Ensure the input is a matrix
+	if !input[0].IsMatrix() {
 		return nil, fmt.Errorf("cloneWithInputTo: input must be a matrix node")
 	}
-	batchSize := input.Shape()[0]
-	features := input.Shape()[1]
+	batchSize := input[0].Shape()[0]
+	features := input[0].Shape()[1]
 
-	rootClone, err := t.rootNetwork.cloneWithInputTo(input, graph)
+	rootClone, err := t.rootNetwork.cloneWithInputTo(-1, input, graph)
 	if err != nil {
 		return nil, fmt.Errorf("clonewithbatch: could not clone root "+
 			"network: %v", err)
 	}
+
 	rootOutput := rootClone.Prediction()
-	if len(rootOutput) != 1 {
-		return nil, fmt.Errorf("clonewithinputo: cannot use root network " +
-			" with multiple outputs as a single input to leaf networks")
-	}
 
 	leafClones := make([]NeuralNet, len(t.leafNetworks))
 	for i := 0; i < len(leafClones); i++ {
-		leafClones[i], err = t.cloneWithInputTo(rootOutput[0], graph)
+		// Concatenate the root output along the specified axis if
+		// there are multiple outputs from the root network
+		leafClones[i], err = t.cloneWithInputTo(axis, rootOutput, graph)
 		if err != nil {
 			msg := "cloneWithInputTo: could not clone leaf network %v: %v"
 			return nil, fmt.Errorf(msg, i, err)
@@ -369,7 +385,7 @@ func (t *treeMLP) cloneWithInputTo(input *G.Node,
 		leafNetworks: leafClones,
 		// rootLayers:      rootLayers,
 		// leafLayers:      leafLayers,
-		input:           input,
+		input:           input[0],
 		numOutputs:      t.numOutputs,
 		numInputs:       features,
 		batchSize:       batchSize,

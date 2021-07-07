@@ -40,8 +40,9 @@ type NeuralNet interface {
 	fwd(*G.Node) (*G.Node, error) // Performs the forward pass)
 
 	// cloneWithInputTo clones a NeuralNet, setting its input node as
-	// input and cloning the network to a given computational graph g
-	cloneWithInputTo(input *G.Node, graph *G.ExprGraph) (NeuralNet, error)
+	// input and cloning the network to a given computational graph g.
+	cloneWithInputTo(axis int, input []*G.Node,
+		graph *G.ExprGraph) (NeuralNet, error)
 }
 
 // Layer implements a single layer of a NeuralNet. This could be a
