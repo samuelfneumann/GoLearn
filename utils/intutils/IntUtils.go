@@ -21,3 +21,12 @@ func Max(ints ...int) int {
 	}
 	return min
 }
+
+// Prod calculates the product of a number of ints
+func Prod(ints ...int) int {
+	prod := 1
+	for _, i := range ints {
+		prod *= i
+	}
+	return prod
+}
