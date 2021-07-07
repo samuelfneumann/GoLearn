@@ -387,8 +387,8 @@ func (d *DeepQ) Step() {
 		}
 	}
 
-	d.targetPolicy.Set(d.trainNet)
-	d.behaviourPolicy.Set(d.trainNet)
+	d.targetPolicy.Network().Set(d.trainNet)
+	d.behaviourPolicy.Network().Set(d.trainNet)
 }
 
 // SelectAction runs the necessary VMs and then returns an action
@@ -410,11 +410,11 @@ func (d *DeepQ) TdError(t ts.Transition) float64 {
 
 	ts := timestep.TimeStep{Observation: t.State}
 	action := int(d.behaviourPolicy.SelectAction(ts).AtVec(0))
-	actionValue := d.behaviourPolicy.Output()[0].Data().([]float64)[action]
+	actionValue := d.behaviourPolicy.Network().Output()[0].Data().([]float64)[action]
 
 	ts.Observation = t.NextState
 	nextAction := int(d.targetPolicy.SelectAction(ts).AtVec(0))
-	nextActionValue := d.targetPolicy.Output()[0].Data().([]float64)[nextAction]
+	nextActionValue := d.targetPolicy.Network().Output()[0].Data().([]float64)[nextAction]
 
 	return t.Reward + t.Discount*nextActionValue - actionValue
 }

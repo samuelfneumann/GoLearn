@@ -48,7 +48,7 @@ type Policy interface {
 // the weights are updated for each.
 type NNPolicy interface {
 	Policy
-	network.NeuralNet
+	// network.NeuralNet
 	// SelectAction() *mat.VecDense
 	ClonePolicy() (NNPolicy, error)
 	// ClonePolicyWithBatch(int) (NNPolicy, error)
