@@ -372,7 +372,7 @@ func (t *treeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 	for i := 0; i < len(leafClones); i++ {
 		// Concatenate the root output along the specified axis if
 		// there are multiple outputs from the root network
-		leafClones[i], err = t.cloneWithInputTo(axis, rootOutput, graph)
+		leafClones[i], err = t.leafNetworks[i].cloneWithInputTo(axis, rootOutput, graph)
 		if err != nil {
 			msg := "cloneWithInputTo: could not clone leaf network %v: %v"
 			return nil, fmt.Errorf(msg, i, err)
