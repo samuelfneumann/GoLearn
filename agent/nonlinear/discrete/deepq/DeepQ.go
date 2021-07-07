@@ -110,7 +110,6 @@ func New(env environment.Environment, config Config,
 	behaviourPolicy, err := policy.NewMultiHeadEGreedyMLP(
 		ε,
 		env,
-		1, // For behaviour policy, we only need to select a single action
 		g,
 		hiddenSizes,
 		biases,

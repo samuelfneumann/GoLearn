@@ -27,7 +27,7 @@ type GaussianTreeMLP struct {
 	vm G.VM // VM for action selection
 }
 
-func NewGaussianTreeMLP(env environment.Environment, batch int,
+func NewGaussianTreeMLP(env environment.Environment,
 	g *G.ExprGraph, rootHiddenSizes []int, rootBiases []bool,
 	rootActivations []*network.Activation, leafHiddenSizes [][]int,
 	leafBiases [][]bool, leafActivations [][]*network.Activation,
@@ -48,7 +48,7 @@ func NewGaussianTreeMLP(env environment.Environment, batch int,
 	features := env.ObservationSpec().Shape.Len()
 	actionDims := env.ActionSpec().Shape.Len()
 
-	net, err := network.NewTreeMLP(features, batch, actionDims, g,
+	net, err := network.NewTreeMLP(features, 1, actionDims, g,
 		rootHiddenSizes, rootBiases, rootActivations, leafHiddenSizes,
 		leafBiases, leafActivations, init)
 	if err != nil {
@@ -59,11 +59,7 @@ func NewGaussianTreeMLP(env environment.Environment, batch int,
 	// If the policy predicts actions from batches of data, then there
 	// is no need for a VM to select actions at each timestep
 	var vm G.VM
-	if batch == 1 {
-		vm = G.NewTapeMachine(net.Graph())
-	} else {
-		vm = nil
-	}
+	vm = G.NewTapeMachine(net.Graph())
 
 	source := rand.NewSource(seed)
 
