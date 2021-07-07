@@ -51,7 +51,7 @@ type NNPolicy interface {
 	network.NeuralNet
 	// SelectAction() *mat.VecDense
 	ClonePolicy() (NNPolicy, error)
-	ClonePolicyWithBatch(int) (NNPolicy, error)
+	// ClonePolicyWithBatch(int) (NNPolicy, error)
 	Network() network.NeuralNet
 }
 

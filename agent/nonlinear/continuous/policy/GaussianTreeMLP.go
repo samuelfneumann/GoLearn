@@ -24,7 +24,7 @@ type GaussianTreeMLP struct {
 	source    rand.Source
 	seed      uint64
 
-	vm G.VM
+	vm G.VM // VM for action selection
 }
 
 func NewGaussianTreeMLP(env environment.Environment, batch int,
@@ -56,7 +56,15 @@ func NewGaussianTreeMLP(env environment.Environment, batch int,
 			"not create policy network: %v", err)
 	}
 
-	vm := G.NewTapeMachine(net.Graph())
+	// If the policy predicts actions from batches of data, then there
+	// is no need for a VM to select actions at each timestep
+	var vm G.VM
+	if batch == 1 {
+		vm = G.NewTapeMachine(net.Graph())
+	} else {
+		vm = nil
+	}
+
 	source := rand.NewSource(seed)
 
 	policy := GaussianTreeMLP{
@@ -75,7 +83,7 @@ func (g *GaussianTreeMLP) Network() network.NeuralNet {
 	return g.NeuralNet
 }
 
-func (g *GaussianTreeMLP) ClonePolicyWithBatch(batch int) (agent.NNPolicy,
+func (g *GaussianTreeMLP) clonePolicyWithBatch(batch int) (agent.NNPolicy,
 	error) {
 	net, err := g.Network().CloneWithBatch(batch)
 	if err != nil {
@@ -99,7 +107,7 @@ func (g *GaussianTreeMLP) ClonePolicyWithBatch(batch int) (agent.NNPolicy,
 }
 
 func (g *GaussianTreeMLP) ClonePolicy() (agent.NNPolicy, error) {
-	return g.ClonePolicyWithBatch(g.BatchSize())
+	return g.clonePolicyWithBatch(g.BatchSize())
 }
 
 // VM should be run before running logprobability

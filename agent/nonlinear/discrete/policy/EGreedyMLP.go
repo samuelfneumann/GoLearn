@@ -54,7 +54,7 @@ type MultiHeadEGreedyMLP struct {
 	rng  *rand.Rand
 	seed int64
 
-	vm G.VM
+	vm G.VM // VM for action selection
 }
 
 // NewMultiHeadEGreedyMLP creates and returns a new MultiHeadEGreedyMLP
@@ -71,10 +71,19 @@ type MultiHeadEGreedyMLP struct {
 // final linear layer is added so that the output of the network
 // equals the number of environmental actions.
 //
-//
 // Because of this, it is easy to create a linear EGreedy policy by
 // setting hiddenSizes to []int{}, biases to []bool{}, and activations
 // to []Activation{}.
+//
+// If the batch size != 1, then it is assumed that the policy will not
+// be used for action selection, which requires a batch size of 1
+// state observation. Instead, the policy is assumed to be used to
+// learn the weights of the neural network, so actions cannot be
+// selected from policies where batch > 1.Instead, the input to the
+// neural network function approximator can be set using the
+// SetInput() method of the embedded network and a policy loss can
+// be constructed on the output of the network to learn the weights.
+// In this case, it is also required to use an external VM for learning.
 func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	batch int, g *G.ExprGraph, hiddenSizes []int, biases []bool,
 	init G.InitWFn, activations []*network.Activation,
@@ -106,7 +115,16 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	source := rand.NewSource(seed)
 	rng := rand.New(source)
 
-	vm := G.NewTapeMachine(net.Graph())
+	// If the policy predicts actions from batches of data, then there
+	// is no need for a VM to select actions at each timestep. Instead,
+	// the policy is being used to learn weights, and an external VM
+	// should be used after a policy loss has been constructed.
+	var vm G.VM
+	if batch == 1 {
+		vm = G.NewTapeMachine(net.Graph())
+	} else {
+		vm = nil
+	}
 
 	// Create the policy
 	nn := MultiHeadEGreedyMLP{
@@ -129,12 +147,12 @@ func (e *MultiHeadEGreedyMLP) Network() network.NeuralNet {
 // ClonePolicy clones a MultiHeadEGreedyMLP
 func (e *MultiHeadEGreedyMLP) ClonePolicy() (agent.NNPolicy, error) {
 	batchSize := e.BatchSize()
-	return e.ClonePolicyWithBatch(batchSize)
+	return e.clonePolicyWithBatch(batchSize)
 }
 
 // ClonePolicyWithBatch clones a MultiHeadEGreedyMLP with a new input
 // batch size.
-func (e *MultiHeadEGreedyMLP) ClonePolicyWithBatch(
+func (e *MultiHeadEGreedyMLP) clonePolicyWithBatch(
 	batchSize int) (agent.NNPolicy, error) {
 	net, err := e.Network().CloneWithBatch(batchSize)
 	if err != nil {
