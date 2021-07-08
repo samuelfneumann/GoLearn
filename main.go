@@ -2,60 +2,88 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"log"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"gorgonia.org/gorgonia"
-	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
+	G "gorgonia.org/gorgonia"
+	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
-	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/tracker"
-	"sfneuman.com/golearn/expreplay"
 	"sfneuman.com/golearn/network"
 )
 
 func main() {
+
 	var useed uint64 = 192382
-	var seed int64 = 192382
+	// var seed int64 = 192382
 
 	// Create the environment
 	bounds := r1.Interval{Min: -0.01, Max: 0.01}
 
 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
 	task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
-	m, _ := mountaincar.NewDiscrete(task, 1.0)
+	m, step := mountaincar.NewContinuous(task, 1.0)
 
-	// Create the learning algorithm
-	args := deepq.Config{
-		PolicyLayers:         []int{100, 50, 25},
-		Biases:               []bool{true, true, true},
-		Activations:          []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
-		InitWFn:              gorgonia.GlorotU(1.0),
-		Epsilon:              0.1,
-		Remover:              expreplay.NewFifoSelector(1),
-		Sampler:              expreplay.NewUniformSelector(1, seed),
-		MaximumCapacity:      1,
-		MinimumCapacity:      1,
-		Tau:                  1.0,
-		TargetUpdateInterval: 1,
-		Solver:               gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.00001)),
-	}
-	q, err := deepq.New(m, args, seed)
+	p, err := policy.NewGaussianTreeMLP(
+		m,
+		1,
+		G.NewGraph(),
+		[]int{2, 3},
+		[]bool{true, true},
+		[]*network.Activation{network.ReLU(), network.ReLU()},
+		[][]int{{2, 2}, {3, 3}},
+		[][]bool{{true, true}, {true, true}},
+		[][]*network.Activation{{network.ReLU(), network.ReLU()}, {network.ReLU(), network.ReLU()}},
+		G.GlorotU(1.0),
+		useed,
+	)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	// Experiment
-	start := time.Now()
-	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := experiment.NewOnline(m, q, 20_000, []tracker.Tracker{saver}, nil)
-	e.Run()
-	fmt.Println("Elapsed:", time.Since(start))
-	e.Save()
+	fmt.Println(p)
+	fmt.Println(p.SelectAction(step))
 
-	data := tracker.LoadData("./data.bin")
-	fmt.Println(data)
+	// var useed uint64 = 192382
+	// var seed int64 = 192382
+
+	// // Create the environment
+	// bounds := r1.Interval{Min: -0.01, Max: 0.01}
+
+	// s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
+	// task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
+	// m, _ := mountaincar.NewDiscrete(task, 1.0)
+
+	// // Create the learning algorithm
+	// args := deepq.Config{
+	// 	PolicyLayers:         []int{100, 50, 25},
+	// 	Biases:               []bool{true, true, true},
+	// 	Activations:          []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+	// 	InitWFn:              gorgonia.GlorotU(1.0),
+	// 	Epsilon:              0.1,
+	// 	Remover:              expreplay.NewFifoSelector(1),
+	// 	Sampler:              expreplay.NewUniformSelector(1, seed),
+	// 	MaximumCapacity:      1,
+	// 	MinimumCapacity:      1,
+	// 	Tau:                  1.0,
+	// 	TargetUpdateInterval: 1,
+	// 	Solver:               gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.00001)),
+	// }
+	// q, err := deepq.New(m, args, seed)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// // Experiment
+	// start := time.Now()
+	// var saver tracker.Tracker = tracker.NewReturn("./data.bin")
+	// e := experiment.NewOnline(m, q, 20_000, []tracker.Tracker{saver}, nil)
+	// e.Run()
+	// fmt.Println("Elapsed:", time.Since(start))
+	// e.Save()
+
+	// data := tracker.LoadData("./data.bin")
+	// fmt.Println(data)
 
 	// ===========
 
