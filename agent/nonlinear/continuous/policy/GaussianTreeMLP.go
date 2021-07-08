@@ -58,8 +58,7 @@ func NewGaussianTreeMLP(env environment.Environment,
 
 	// If the policy predicts actions from batches of data, then there
 	// is no need for a VM to select actions at each timestep
-	var vm G.VM
-	vm = G.NewTapeMachine(net.Graph())
+	vm := G.NewTapeMachine(net.Graph())
 
 	source := rand.NewSource(seed)
 

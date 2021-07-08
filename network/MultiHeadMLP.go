@@ -256,7 +256,12 @@ func (e *multiHeadMLP) Features() []int {
 
 // Outputs returns the number of outputs from the network
 func (e *multiHeadMLP) Outputs() []int {
-	return []int{e.numOutputs}
+	outputs := []int{e.numOutputs}
+	if len(outputs) != len(e.Prediction()) {
+		panic("outputs: number of output layers incosistent with " +
+			"computational graph as found by Prediction()")
+	}
+	return outputs
 }
 
 // OutputLayers returns the number of layers that will produce Outputs()

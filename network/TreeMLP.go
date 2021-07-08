@@ -236,6 +236,10 @@ func (t *treeMLP) SetInput(input []float64) error {
 
 // Outputs returns the number of outputs per leaf network
 func (t *treeMLP) Outputs() []int {
+	if len(t.numOutputs) != len(t.Prediction()) {
+		panic("outputs: number of output layers incosistent with " +
+			"computational graph as found by Prediction()")
+	}
 	return t.numOutputs
 }
 
