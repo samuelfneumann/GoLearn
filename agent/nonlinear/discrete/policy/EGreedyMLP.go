@@ -143,12 +143,12 @@ func (e *MultiHeadEGreedyMLP) Network() network.NeuralNet {
 // ClonePolicy clones a MultiHeadEGreedyMLP
 func (e *MultiHeadEGreedyMLP) Clone() (agent.NNPolicy, error) {
 	batchSize := e.BatchSize()
-	return e.cloneWithBatch(batchSize)
+	return e.CloneWithBatch(batchSize)
 }
 
 // ClonePolicyWithBatch clones a MultiHeadEGreedyMLP with a new input
 // batch size.
-func (e *MultiHeadEGreedyMLP) cloneWithBatch(
+func (e *MultiHeadEGreedyMLP) CloneWithBatch(
 	batchSize int) (agent.NNPolicy, error) {
 	net, err := e.Network().CloneWithBatch(batchSize)
 	if err != nil {

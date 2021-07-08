@@ -3,6 +3,7 @@ package agent
 
 import (
 	"gonum.org/v1/gonum/mat"
+	G "gorgonia.org/gorgonia"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/timestep"
 )
@@ -51,7 +52,7 @@ type NNPolicy interface {
 	// network.NeuralNet
 	// SelectAction() *mat.VecDense
 	Clone() (NNPolicy, error)
-	// ClonePolicyWithBatch(int) (NNPolicy, error)
+	CloneWithBatch(int) (NNPolicy, error)
 	Network() network.NeuralNet
 }
 
@@ -67,5 +68,8 @@ type EGreedyNNPolicy interface {
 
 type PolicyLogProber interface {
 	NNPolicy
-	LogProbability(action []float64) (float64, error)
+
+	// LogProb returns the node that calculates the log probability of
+	// the policy's selected actions
+	LogProb() *G.Node
 }
