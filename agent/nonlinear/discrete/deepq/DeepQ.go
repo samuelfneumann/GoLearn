@@ -380,14 +380,14 @@ func (d *DeepQ) Step() {
 	// weights
 	if d.gradientSteps%d.targetUpdateInterval == 0 {
 		if d.tau == 1.0 {
-			d.targetNet.Set(d.trainNet)
+			network.Set(d.targetNet, d.trainNet)
 		} else {
-			d.targetNet.Polyak(d.trainNet, d.tau)
+			network.Polyak(d.targetNet, d.trainNet, d.tau)
 		}
 	}
 
-	d.targetPolicy.Network().Set(d.trainNet)
-	d.behaviourPolicy.Network().Set(d.trainNet)
+	network.Set(d.targetPolicy.Network(), d.trainNet)
+	network.Set(d.behaviourPolicy.Network(), d.trainNet)
 }
 
 // SelectAction runs the necessary VMs and then returns an action

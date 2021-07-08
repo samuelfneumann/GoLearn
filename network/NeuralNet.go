@@ -2,6 +2,7 @@ package network
 
 import (
 	G "gorgonia.org/gorgonia"
+	"gorgonia.org/tensor"
 )
 
 // NeuralNet implements a neural network which can be used in policy
@@ -26,7 +27,8 @@ type NeuralNet interface {
 	// Polyak computes the polyak average of the receiver's weights
 	// with another networks weights and saves this average as the
 	// new weights of the reciever.
-	Polyak(NeuralNet, float64) error
+	// Polyak(NeuralNet, float64) error
+	// Set(NeuralNet) error          // Sets the weights to those of another network
 
 	// Learnables returns the nodes of the network that can be learned
 	Learnables() G.Nodes
@@ -36,7 +38,6 @@ type NeuralNet interface {
 	Model() []G.ValueGrad
 
 	SetInput([]float64) error     // Sets the input to the network
-	Set(NeuralNet) error          // Sets the weights to those of another network
 	fwd(*G.Node) (*G.Node, error) // Performs the forward pass)
 
 	// cloneWithInputTo clones a NeuralNet, setting its input node as
@@ -54,4 +55,49 @@ type Layer interface {
 	Weights() *G.Node
 	Bias() *G.Node
 	Activation() *Activation
+}
+
+// Set sets the weights of a dest to be equal to the weights of source
+func Set(dest, source NeuralNet) error {
+	sourceNodes := source.Learnables()
+	nodes := dest.Learnables()
+	for i, destLearnable := range nodes {
+		sourceLearnable := sourceNodes[i].Clone()
+		err := G.Let(destLearnable, sourceLearnable.(*G.Node).Value())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Polyak compute the polyak average of weights of dest with the weights
+// of source and stores these averaged weights as the new weights of
+// dest.
+func Polyak(dest, source NeuralNet, tau float64) error {
+	sourceNodes := source.Learnables()
+	nodes := dest.Learnables()
+	for i := range nodes {
+		weights := nodes[i].Value().(*tensor.Dense)
+		sourceWeights := sourceNodes[i].Value().(*tensor.Dense)
+
+		weights, err := weights.MulScalar(1-tau, true)
+		if err != nil {
+			return err
+		}
+
+		sourceWeights, err = sourceWeights.MulScalar(tau, true)
+		if err != nil {
+			return err
+		}
+
+		var newWeights *tensor.Dense
+		newWeights, err = weights.Add(sourceWeights)
+		if err != nil {
+			return err
+		}
+
+		G.Let(nodes[i], newWeights)
+	}
+	return nil
 }

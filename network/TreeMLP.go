@@ -234,52 +234,6 @@ func (t *treeMLP) SetInput(input []float64) error {
 	return G.Let(t.input, inputTensor)
 }
 
-// Set sets the weights of a treeMLP to be equal to the
-// weights of another treeMLP
-func (dest *treeMLP) Set(source NeuralNet) error {
-	sourceNodes := source.Learnables()
-	nodes := dest.Learnables()
-	for i, destLearnable := range nodes {
-		sourceLearnable := sourceNodes[i].Clone()
-		err := G.Let(destLearnable, sourceLearnable.(*G.Node).Value())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Polyak compute the polyak average of weights of dest with the weights
-// of source and stores these averaged weights as the new weights of
-// dest.
-func (dest *treeMLP) Polyak(source NeuralNet, tau float64) error {
-	sourceNodes := source.Learnables()
-	nodes := dest.Learnables()
-	for i := range nodes {
-		weights := nodes[i].Value().(*tensor.Dense)
-		sourceWeights := sourceNodes[i].Value().(*tensor.Dense)
-
-		weights, err := weights.MulScalar(1-tau, true)
-		if err != nil {
-			return err
-		}
-
-		sourceWeights, err = sourceWeights.MulScalar(tau, true)
-		if err != nil {
-			return err
-		}
-
-		var newWeights *tensor.Dense
-		newWeights, err = weights.Add(sourceWeights)
-		if err != nil {
-			return err
-		}
-
-		G.Let(nodes[i], newWeights)
-	}
-	return nil
-}
-
 // Outputs returns the number of outputs per leaf network
 func (t *treeMLP) Outputs() int {
 	return t.numOutputs

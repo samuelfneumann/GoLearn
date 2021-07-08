@@ -8,6 +8,9 @@ import (
 	"sfneuman.com/golearn/utils/intutils"
 )
 
+// revTreeMLP implements a reverse tree MLP. A reverse tree MLP has
+// multiple root networks, each with its own input. Each of these root
+// networks predicts somve value that is input to
 type revTreeMLP struct {
 	g            *G.ExprGraph
 	rootNetworks []NeuralNet // Observation network
@@ -210,52 +213,6 @@ func (t *revTreeMLP) SetInput(input []float64) error {
 		return G.Let(rootInput, inputTensor)
 	}
 
-	return nil
-}
-
-// Set sets the weights of a revTreeMLP to be equal to the weights of
-// another revTreeMLP
-func (dest *revTreeMLP) Set(source NeuralNet) error {
-	sourceNodes := source.Learnables()
-	nodes := dest.Learnables()
-	for i, destLearnable := range nodes {
-		sourceLearnable := sourceNodes[i].Clone()
-		err := G.Let(destLearnable, sourceLearnable.(*G.Node).Value())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Polyak compute the polyak average of weights of dest with the weights
-// of source and stores these averaged weights as the new weights of
-// dest.
-func (dest *revTreeMLP) Polyak(source NeuralNet, tau float64) error {
-	sourceNodes := source.Learnables()
-	nodes := dest.Learnables()
-	for i := range nodes {
-		weights := nodes[i].Value().(*tensor.Dense)
-		sourceWeights := sourceNodes[i].Value().(*tensor.Dense)
-
-		weights, err := weights.MulScalar(1-tau, true)
-		if err != nil {
-			return err
-		}
-
-		sourceWeights, err = sourceWeights.MulScalar(tau, true)
-		if err != nil {
-			return err
-		}
-
-		var newWeights *tensor.Dense
-		newWeights, err = weights.Add(sourceWeights)
-		if err != nil {
-			return err
-		}
-
-		G.Let(nodes[i], newWeights)
-	}
 	return nil
 }
 

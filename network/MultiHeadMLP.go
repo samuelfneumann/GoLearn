@@ -281,52 +281,6 @@ func (e *multiHeadMLP) SetInput(input []float64) error {
 	return G.Let(e.input, inputTensor)
 }
 
-// Set sets the weights of a multiHeadMLP to be equal to the
-// weights of another multiHeadMLP
-func (dest *multiHeadMLP) Set(source NeuralNet) error {
-	sourceNodes := source.Learnables()
-	nodes := dest.Learnables()
-	for i, destLearnable := range nodes {
-		sourceLearnable := sourceNodes[i].Clone()
-		err := G.Let(destLearnable, sourceLearnable.(*G.Node).Value())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Polyak sets the weights of a multiHeadMLP to be a polyak
-// average between its existing weights and the weights of another
-// multiHeadMLP
-func (dest *multiHeadMLP) Polyak(source NeuralNet, tau float64) error {
-	sourceNodes := source.Learnables()
-	nodes := dest.Learnables()
-	for i := range nodes {
-		weights := nodes[i].Value().(*tensor.Dense)
-		sourceWeights := sourceNodes[i].Value().(*tensor.Dense)
-
-		weights, err := weights.MulScalar(1-tau, true)
-		if err != nil {
-			return err
-		}
-
-		sourceWeights, err = sourceWeights.MulScalar(tau, true)
-		if err != nil {
-			return err
-		}
-
-		var newWeights *tensor.Dense
-		newWeights, err = weights.Add(sourceWeights)
-		if err != nil {
-			return err
-		}
-
-		G.Let(nodes[i], newWeights)
-	}
-	return nil
-}
-
 // Learnables returns the learnable nodes in a multiHeadMLP
 func (m *multiHeadMLP) Learnables() G.Nodes {
 	// Lazy instantiation
