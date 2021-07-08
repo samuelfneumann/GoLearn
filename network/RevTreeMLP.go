@@ -318,11 +318,12 @@ func (t *revTreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 			len(t.inputs), len(inputs))
 	}
 
+	// Clone the root networks
 	rootClones := make([]NeuralNet, len(t.rootNetworks))
 	rootOutputs := make([]*G.Node, 0, len(t.rootNetworks))
 	features := make([]int, len(t.rootNetworks))
-	// Ensure all inputs share the same graph
 	for i, input := range inputs {
+		// Ensure all inputs share the same graph
 		if input.Graph() != graph {
 			return nil, fmt.Errorf("clonewithinputto: not all inputs " +
 				"have the same graph")
@@ -334,6 +335,8 @@ func (t *revTreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 		}
 		features[i] = input.Shape()[1]
 
+		// Clone root network i. Since input is a []*G.Node of length 1,
+		// there is no need to concatenate inputs
 		rootClone, err := t.rootNetworks[i].cloneWithInputTo(-1,
 			[]*G.Node{input}, graph)
 		if err != nil {
@@ -345,6 +348,7 @@ func (t *revTreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 	}
 	batchSize := inputs[0].Shape()[0]
 
+	// Clone the leaf network
 	leafClone, err := t.leafNetwork.cloneWithInputTo(axis, rootOutputs, graph)
 	if err != nil {
 		msg := "cloneWithInputTo: could not clone leaf network: %v"
