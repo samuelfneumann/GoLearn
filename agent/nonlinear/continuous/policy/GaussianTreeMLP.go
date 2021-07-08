@@ -43,6 +43,7 @@ type GaussianTreeMLP struct {
 	mean, std G.Value
 
 	logProb    *G.Node
+	logProbVal G.Value
 	actions    *G.Node
 	actionsVal G.Value
 
@@ -113,6 +114,9 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 		seed:      seed,
 	}
 	G.Read(policy.actions, &policy.actionsVal)
+	G.Read(stdNode, &policy.std)
+	G.Read(meanNode, &policy.mean)
+	G.Read(logProbNode, &policy.logProbVal)
 	vm := G.NewTapeMachine(net.Graph())
 	policy.vm = vm
 
@@ -127,6 +131,7 @@ func logProb(mean, std, actions *G.Node) (*G.Node, error) {
 	}
 
 	dims := float64(mean.Shape()[0])
+	fmt.Println("dims:", dims)
 	multiplier := G.NewConstant(math.Pow(math.Pi*2, -dims/2))
 	negativeHalf := G.NewConstant(-0.5)
 
@@ -138,28 +143,42 @@ func logProb(mean, std, actions *G.Node) (*G.Node, error) {
 			s := G.Must(G.Slice(std, nil, NewSlice(i, i+1, 1)))
 			det = G.Must(G.HadamardProd(det, s))
 		}
+		invDet := G.Must(G.Inverse(det))
+
+		det = G.Must(G.Pow(det, negativeHalf))
+		det = G.Must(G.Mul(multiplier, det))
+
+		diff := G.Must(G.Sub(actions, mean))
+		exponent := G.Must(G.HadamardProd(diff, invDet))
+		exponent = G.Must(G.HadamardProd(exponent, diff))
+		exponent = G.Must(G.Sum(exponent, 1))
+		exponent = G.Must(G.Mul(exponent, negativeHalf))
+
+		prob := G.Must(G.Exp(exponent))
+		prob = G.Must(G.HadamardProd(multiplier, prob))
+
+		logProb := G.Must(G.Log(prob))
+
+		fmt.Println("SHAPES:", det.Shape(), exponent.Shape(), logProb.Shape())
+
+		return logProb, nil
 	} else {
-		det = std
+		invStd := G.Must(G.Inverse(std))
+		multiplier = G.Must(G.Mul(multiplier, invStd))
+
+		exponent := G.Must(G.Sub(actions, mean))
+		exponent = G.Must(G.Mul(exponent, invStd))
+		exponent = G.Must(G.Pow(exponent, G.NewConstant(2.0)))
+		exponent = G.Must(G.Mul(exponent, negativeHalf))
+
+		prob := G.Must(G.Exp(exponent))
+		prob = G.Must(G.Mul(multiplier, prob))
+
+		logProb := G.Must(G.Log(prob))
+		fmt.Println("SHAPES:", std.Shape(), exponent.Shape(), logProb.Shape())
+
+		return logProb, nil
 	}
-	invDet := G.Must(G.Inverse(det))
-
-	det = G.Must(G.Pow(det, negativeHalf))
-	det = G.Must(G.Mul(multiplier, det))
-
-	diff := G.Must(G.Sub(actions, mean))
-	exponent := G.Must(G.HadamardProd(diff, invDet))
-	exponent = G.Must(G.HadamardProd(exponent, diff))
-	exponent = G.Must(G.Sum(exponent, 1))
-	exponent = G.Must(G.Mul(exponent, negativeHalf))
-
-	prob := G.Must(G.Exp(exponent))
-	prob = G.Must(G.HadamardProd(multiplier, prob))
-
-	logProb := G.Must(G.Log(prob))
-
-	fmt.Println("SHAPES:", det.Shape(), exponent.Shape(), logProb.Shape())
-
-	return logProb, nil
 }
 
 // Mean returns the mean of the Gaussian policy
@@ -222,8 +241,8 @@ func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	g.vm.RunAll()
 	defer g.vm.Reset()
 
-	fmt.Println("DATA:", g.Network().Prediction()[0].Value(), g.std)
-	fmt.Println(g.actions.Value(), g.actionsVal)
+	fmt.Println("\nAction:", g.actionsVal)
+	fmt.Println("STUFF:", g.mean, g.std, g.logProbVal)
 
 	// ! This only works if batchsize == 1
 	return mat.NewVecDense(1, g.actionsVal.Data().([]float64))
