@@ -121,7 +121,7 @@ func New(env environment.Environment, config Config,
 	}
 
 	// Create the target policy for selecting actions
-	targetPolicyClone, err := behaviourPolicy.ClonePolicy()
+	targetPolicyClone, err := behaviourPolicy.Clone()
 	if err != nil {
 		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
 	}

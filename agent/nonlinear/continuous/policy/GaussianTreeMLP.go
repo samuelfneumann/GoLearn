@@ -79,7 +79,7 @@ func (g *GaussianTreeMLP) Network() network.NeuralNet {
 	return g.NeuralNet
 }
 
-func (g *GaussianTreeMLP) clonePolicyWithBatch(batch int) (agent.NNPolicy,
+func (g *GaussianTreeMLP) cloneWithBatch(batch int) (agent.NNPolicy,
 	error) {
 	net, err := g.Network().CloneWithBatch(batch)
 	if err != nil {
@@ -102,8 +102,8 @@ func (g *GaussianTreeMLP) clonePolicyWithBatch(batch int) (agent.NNPolicy,
 	return &newPolicy, nil
 }
 
-func (g *GaussianTreeMLP) ClonePolicy() (agent.NNPolicy, error) {
-	return g.clonePolicyWithBatch(g.BatchSize())
+func (g *GaussianTreeMLP) Clone() (agent.NNPolicy, error) {
+	return g.cloneWithBatch(g.BatchSize())
 }
 
 // VM should be run before running logprobability
