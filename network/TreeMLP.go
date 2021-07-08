@@ -11,13 +11,13 @@ import (
 // netowrk and multiple leaf networks that use the output of the root
 // observation network as their own inputs. A diagram of a tree MLP:
 //
-// 					  ╭─ Leaf Network 1 			-> Output
-//					  ├─ Leaf Network 2			-> Output
-//					  ├─ ...						...
-// Input -> Root Net ─┼─ ...						...
-//					  ├─ ...						...
-//					  ├─ Leaf Network (N - 1)	-> Output
-//					  ╰─ Leaf Network N			-> Output
+// 					  ╭─→ Leaf Network 1 	   ─→ Output
+//					  ├─→ Leaf Network 2	   ─→ Output
+//					  ├─→ ...				   ─→  ...
+// Input ─→ Root Net ─┼─→ ...				   ─→  ...
+//					  ├─→ ...				   ─→  ...
+//					  ├─→ Leaf Network (N - 1) ─→ Output
+//					  ╰─→ Leaf Network N	   ─→ Output
 //
 // To create outputs that are of the form [leaf1 output, leaf2 output,
 // ..., leaf(N-1) output, leaf(N) output], once can simply call
@@ -124,19 +124,18 @@ func validateTreeMLP(numOutputs int, rootHiddenSizes []int, rootBiases []bool,
 // determines the activation function to apply to that hidden layer.
 //
 // The number of leaf networks is defined by len(leafHiddenSizes).
-// For index i, leafHiddenSizes[i], leafBiases[i], and
-// leafActivations[i] determine the architecture of leaf network i.
-// The length of any one of these slices determines the number of
-// layers in the leaf network.
-//
-// Given additional index j, leafHiddenSizes[i][j], leafBiases[i][j],
-// and leafActivations[i][j] determine the number of hidden units,
-// whether or not a bias is added ot the hidden layer, and the
-// activaiton function of the hidden layer i respectively.
+// For indices i and j, leafHiddenSizes[i][j], leafBiases[i][j], and
+// leafActivations[i][j] determine the number of hidden units if layer
+// j in leaf network i, whether a bias is added to layer j of leaf
+// network i, and the activation of layer j of leaf network i
+// respectively. The length of leafHiddenSizes[i] determines the number
+// of hidden layers in leaf network i.
 // For example, leafHiddenSizes = [][]int{{5, 3, 2}, {10, 90}} will
 // cause this function to create two leaf networks. The first has
 // layers of size 5, 3, and then 2. The second has two layers of size
-// 10 and 90 respectively
+// 10 and 90 respectively. For all leaf networks, a final linear layer
+// with a bias and no activations is added to ensure the output of each
+// leaf network has the shape output.
 //
 // To create a network with only a single linear layer per leaf network,
 // set leafHiddenSize = [][]int{{}, {}, ..., {}} (similarly for

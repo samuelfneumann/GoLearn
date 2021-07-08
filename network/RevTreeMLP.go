@@ -10,7 +10,17 @@ import (
 
 // revTreeMLP implements a reverse tree MLP. A reverse tree MLP has
 // multiple root networks, each with its own input. Each of these root
-// networks predicts somve value that is input to
+// networks predicts somve value. All the predictions of all the root
+// networks are concatenated into a single feature vector and sent
+// as input to a final, single leaf network. The overall architecture:
+//
+// Input 1     ─→ Root Network 1     ─╮
+// Input 2     ─→ Root Network 2     ─┤
+//   ... 	   ─→ 	   ...           ─┤
+//   ... 	   ─→ 	   ...           ─┼─→ Leaf Network ─→ Output
+//   ... 	   ─→ 	   ...           ─┤
+// Input (N-1) ─→ Root Network (N-1) ─┤
+// Input N     ─→ Root Network N     ─╯
 type revTreeMLP struct {
 	g            *G.ExprGraph
 	rootNetworks []NeuralNet // Observation network
@@ -99,17 +109,45 @@ func validateRevTreeMLP(features []int, rootHiddenSizes [][]int, rootBiases [][]
 	return nil
 }
 
+// NewRevTreeMLP returns a new NeuralNet with a reverse tree MLP
+// structure.
+//
+// The number of observation/root networks is equal to
+// len(rootHiddenSizes). For index i, rootHiddenSizes[i], rootBiases[i],
+// and rootActivations[i] determine the architecture of the ith
+// root network. The ith root network has number of layers equal to
+// len(rootHiddenSizes[i]). Given index j, rootHiddenSizes[i][j]
+// determines the number of hidden units in layer j of root network i;
+// rootBiases[i][j] determines whether a bias unit is added to layer j
+// of root network i; rootActivations[i][j] determines the activation
+// function to use for layer j of root network i.
+//
+// The leaf network's architecture is defined by leafHiddenSizes,
+// leafBiases, and leafActivations in a similar manner. The number of
+// layers in the leaf network is defined by len(leafHiddenSizes). Given
+// index i, leafHiddenSizes[i] determines the number of hidden units
+// in layer i; leafBiases[i] determines whether or not a bias unit is
+// added to layer i; leafActivations[i] determines the activation
+// function for layer i. A final linear layer with a bias unit and no
+// activations is added to the leaf network to ensure the output of the
+// network has the shape outputs.
+//
+// To create a network that has a single linear layer as the leaf
+// network, simply use leafHiddenSizes = []int{}, leafBiases = []bool{},
+// and leafActivations = []*network.Activations{}. The final linear
+// layer will be added automatically.
 func NewRevTreeMLP(features []int, batch, outputs int, g *G.ExprGraph,
 	rootHiddenSizes [][]int, rootBiases [][]bool,
 	rootActivations [][]*Activation, leafHiddenSizes []int, leafBiases []bool,
 	leafActivations []*Activation, init G.InitWFn) (NeuralNet, error) {
-
+	// Ensure the input is valid
 	err := validateRevTreeMLP(features, rootHiddenSizes, rootBiases,
 		rootActivations, leafHiddenSizes, leafBiases, leafActivations)
 	if err != nil {
 		return nil, fmt.Errorf("newtreemlp: %v", err)
 	}
 
+	// Construct root networks
 	rootNetworks := make([]NeuralNet, len(rootHiddenSizes))
 	rootPredictions := make([]*G.Node, 0, len(rootHiddenSizes))
 	inputs := make([]*G.Node, len(rootHiddenSizes))
@@ -118,7 +156,7 @@ func NewRevTreeMLP(features []int, batch, outputs int, g *G.ExprGraph,
 		inputs[i] = G.NewMatrix(g, tensor.Float64, G.WithShape(batch, features[i]),
 			G.WithName(fmt.Sprintf("Root%dInput", i)), G.WithInit(G.Zeroes()))
 
-		// Create root/observation networks and run forward passes
+		// Create individual root networks and run each's forward pass
 		rootOutputs := rootHiddenSizes[i][len(rootHiddenSizes)-1]
 		prefix := fmt.Sprintf("Root%d", i)
 		rootInput := []*G.Node{inputs[i]}
@@ -136,11 +174,10 @@ func NewRevTreeMLP(features []int, batch, outputs int, g *G.ExprGraph,
 	// Concatenate outputs of root networks
 	rootOutput := []*G.Node{G.Must(G.Concat(1, rootPredictions...))}
 
-	// Create leaf networks and run each of their forward passes
+	// Create leaf networks and run its forward pass
 	leafNetwork, err := newMultiHeadMLPFromInput(rootOutput, outputs, g,
 		leafHiddenSizes, leafBiases, init, leafActivations,
 		"Leaf", "", true)
-
 	if err != nil {
 		return nil, fmt.Errorf("newtreemlp: could not construct leaf "+
 			"network: %v", err)
