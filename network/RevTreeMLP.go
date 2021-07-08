@@ -200,6 +200,11 @@ func NewRevTreeMLP(features []int, batch, outputs int, g *G.ExprGraph,
 		learnables:      nil,
 		model:           nil,
 	}
+	_, err = net.fwd(inputs)
+	if err != nil {
+		return nil, fmt.Errorf("newRevTreeMLP: could not compute forward "+
+			"pass: %v", err)
+	}
 
 	return net, nil
 }
@@ -376,7 +381,15 @@ func (t *revTreeMLP) BatchSize() int {
 
 // fwd computes the remaining steps of the forward pass of the revTreeMLP
 // that its root and leaf networks did not compute.
-func (t *revTreeMLP) fwd(input *G.Node) (*G.Node, error) {
+func (t *revTreeMLP) fwd(inputs []*G.Node) (*G.Node, error) {
+	// Because of the way revTreeMLPs are constructed, there is nothing
+	// to do with the input to the network, it's already been sent
+	// through each sub-net's forward pass.
+	if num := len(inputs); num != len(t.rootNetworks) {
+		return nil, fmt.Errorf("fwd: expected one input for each root "+
+			"network \n\twant(%v) \n\thave(%v)", len(t.rootNetworks), num)
+	}
+
 	return nil, nil
 }
 

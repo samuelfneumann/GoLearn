@@ -209,7 +209,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	}
 
 	// Compute the forward pass
-	_, err = net.fwd(input)
+	_, err = net.fwd([]*G.Node{input})
 	if err != nil {
 		msg := "newmtreemlp: could not compute forward pass: %v"
 		return &treeMLP{}, fmt.Errorf(msg, err)
@@ -366,9 +366,17 @@ func (t *treeMLP) BatchSize() int {
 
 // fwd computes the remaining steps of the forward pass of the treeMLP
 // that its root and leaf networks did not compute.
-func (t *treeMLP) fwd(input *G.Node) (*G.Node, error) {
-	leafPredictions := make([]*G.Node, 0, len(t.leafNetworks))
+func (t *treeMLP) fwd(inputs []*G.Node) (*G.Node, error) {
+	// Because of the way treeMLPs are constructed, there is nothing
+	// to do with the input to the network, it's already been sent
+	// through each sub-net's forward pass.
+	if len(inputs) != 1 {
+		return nil, fmt.Errorf("fwd: treeMLP only supports a single "+
+			"input \n\twant(1) \n\thave(%v)", len(inputs))
+	}
 
+	// Store all leaf predictions in a slice
+	leafPredictions := make([]*G.Node, 0, len(t.leafNetworks))
 	for _, leafNet := range t.leafNetworks {
 		leafPredictions = append(leafPredictions, leafNet.Prediction()...)
 	}

@@ -99,7 +99,7 @@ func newMultiHeadMLPFromInput(inputs []*G.Node, outputs int, g *G.ExprGraph,
 		learnables:  nil,
 		model:       nil,
 	}
-	_, err := network.fwd(input)
+	_, err := network.fwd([]*G.Node{input})
 	if err != nil {
 		msg := "newmultiheadmlp: could not compute forward pass: %v"
 		return &multiHeadMLP{}, fmt.Errorf(msg, err)
@@ -209,7 +209,7 @@ func (e *multiHeadMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 		biases:      e.biases,
 		activations: e.activations,
 	}
-	_, err := network.fwd(input)
+	_, err := network.fwd([]*G.Node{input})
 	if err != nil {
 		msg := fmt.Sprintf("clonewithbatch: could not clone: %v", err)
 		panic(msg)
@@ -328,7 +328,13 @@ func (e *multiHeadMLP) computeModel() []G.ValueGrad {
 
 // fwd performs the forward pass of the multiHeadMLP on the input
 // node
-func (e *multiHeadMLP) fwd(input *G.Node) (*G.Node, error) {
+func (e *multiHeadMLP) fwd(inputs []*G.Node) (*G.Node, error) {
+	if len(inputs) != 1 {
+		return nil, fmt.Errorf("fwd: MultiHeadMLP only supports a single "+
+			"input \n\twant(1) \n\thave(%v)", len(inputs))
+	}
+	input := inputs[0]
+
 	inputShape := input.Shape()[len(input.Shape())-1]
 	if inputShape%e.numInputs != 0 {
 		return nil, fmt.Errorf("fwd: invalid shape for input to neural net:"+

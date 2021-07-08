@@ -37,8 +37,8 @@ type NeuralNet interface {
 	// their gradients
 	Model() []G.ValueGrad
 
-	SetInput([]float64) error     // Sets the input to the network
-	fwd(*G.Node) (*G.Node, error) // Performs the forward pass)
+	SetInput([]float64) error       // Sets the input to the network
+	fwd([]*G.Node) (*G.Node, error) // Performs the forward pass
 
 	// cloneWithInputTo clones a NeuralNet, setting its input node as
 	// input and cloning the network to a given computational graph g.
