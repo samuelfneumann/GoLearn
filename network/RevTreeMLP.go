@@ -195,9 +195,10 @@ func NewRevTreeMLP(features []int, batch, outputs int, g *G.ExprGraph,
 // forming the first sample in the batch, the next 7 features forming
 // the second sample in the batch, etc.
 func (t *revTreeMLP) SetInput(input []float64) error {
-	if len(input) != t.Features()*t.batchSize {
+	if len(input) != intutils.Prod(t.Features()...)*t.batchSize {
 		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)"+
-			"\n\thave(%v)", t.Features()*t.batchSize, len(input))
+			"\n\thave(%v)", intutils.Prod(t.Features()...)*t.batchSize,
+			len(input))
 		panic(msg)
 	}
 
@@ -217,8 +218,8 @@ func (t *revTreeMLP) SetInput(input []float64) error {
 }
 
 // Outputs returns the number of outputs per leaf network
-func (t *revTreeMLP) Outputs() int {
-	return t.numOutputs
+func (t *revTreeMLP) Outputs() []int {
+	return []int{t.numOutputs}
 }
 
 // OutputLayers returns the number of output layers in the network.
@@ -233,8 +234,8 @@ func (t *revTreeMLP) Graph() *G.ExprGraph {
 }
 
 // Features returns the number of input features
-func (t *revTreeMLP) Features() int {
-	return intutils.Prod(t.numInputs...)
+func (t *revTreeMLP) Features() []int {
+	return t.numInputs
 }
 
 // Clone returns a clone of the revTreeMLP.

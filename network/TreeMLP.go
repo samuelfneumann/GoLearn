@@ -28,10 +28,8 @@ type treeMLP struct {
 	leafNetworks []NeuralNet // Leaf networks
 	input        *G.Node     // Input to observation network
 
-	// numOutputs records the number of outputs *per leaf layer*.
-	// The total number of outputs is numLeafLayers * numOutputs
-	numOutputs int
-	numInputs  int // Features input for observation network
+	numOutputs []int // Number of outputs per leaf layer
+	numInputs  int   // Features input for observation network
 	batchSize  int
 
 	// Store learnables and model so that they don't need to be computed
@@ -177,6 +175,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	// 		" with multiple outputs as a single input to leaf networks")
 	// }
 
+	numOutputs := make([]int, len(leafHiddenSizes))
 	leafNetworks := make([]NeuralNet, len(leafHiddenSizes))
 	for i := 0; i < len(leafHiddenSizes); i++ {
 		prefix := fmt.Sprintf("Leaf%d", i)
@@ -189,6 +188,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 			return nil, fmt.Errorf("newtreemlp: could not construct leaf "+
 				"network %v: %v", i, err)
 		}
+		numOutputs[i] = outputs
 	}
 
 	net := &treeMLP{
@@ -196,7 +196,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 		rootNetwork:     rootNetwork,
 		leafNetworks:    leafNetworks,
 		input:           input,
-		numOutputs:      outputs * len(leafHiddenSizes),
+		numOutputs:      numOutputs,
 		numInputs:       features,
 		batchSize:       batch,
 		rootHiddenSizes: rootHiddenSizes,
@@ -235,7 +235,7 @@ func (t *treeMLP) SetInput(input []float64) error {
 }
 
 // Outputs returns the number of outputs per leaf network
-func (t *treeMLP) Outputs() int {
+func (t *treeMLP) Outputs() []int {
 	return t.numOutputs
 }
 
@@ -251,8 +251,8 @@ func (t *treeMLP) Graph() *G.ExprGraph {
 }
 
 // Features returns the number of input features
-func (t *treeMLP) Features() int {
-	return t.numInputs
+func (t *treeMLP) Features() []int {
+	return []int{t.numInputs}
 }
 
 // Clone returns a clone of the treeMLP.

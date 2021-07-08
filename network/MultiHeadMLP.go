@@ -250,13 +250,13 @@ func (e *multiHeadMLP) BatchSize() int {
 
 // Features returns the number of features in a single observation
 // vector that the policy takes as input.
-func (e *multiHeadMLP) Features() int {
-	return e.numInputs
+func (e *multiHeadMLP) Features() []int {
+	return []int{e.numInputs}
 }
 
 // Outputs returns the number of outputs from the network
-func (e *multiHeadMLP) Outputs() int {
-	return e.numOutputs
+func (e *multiHeadMLP) Outputs() []int {
+	return []int{e.numOutputs}
 }
 
 // OutputLayers returns the number of layers that will produce Outputs()

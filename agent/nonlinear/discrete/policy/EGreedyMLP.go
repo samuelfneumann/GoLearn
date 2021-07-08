@@ -217,7 +217,14 @@ func (e *MultiHeadEGreedyMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 // numActions returns the number of actions that the policy chooses
 // between.
 func (e *MultiHeadEGreedyMLP) numActions() int {
-	return e.Outputs()
+	actions := e.Outputs()
+	if len(actions) != 1 {
+		msg := fmt.Sprintf("numActions: there should be a single output "+
+			"layer for EGreedyMLP \n\twant(1)\n\thave(%v)", len(actions))
+		panic(msg)
+	}
+
+	return actions[0]
 }
 
 // GobDecode implements the gob.GobDecoder interface

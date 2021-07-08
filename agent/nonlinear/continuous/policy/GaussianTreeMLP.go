@@ -121,10 +121,6 @@ func (g *GaussianTreeMLP) LogProbability(action []float64) (float64, error) {
 	return dist.LogProb(action), nil
 }
 
-func (g *GaussianTreeMLP) numActions() int {
-	return g.Outputs()
-}
-
 // VM should be run before selecting action
 func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	if g.BatchSize() != 1 {
@@ -147,8 +143,8 @@ func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 
 	sampler := samplemv.IID{Dist: dist}
 
-	action := mat.NewDense(g.numActions(), 1, nil)
+	action := mat.NewDense(1, 1, nil)
 	sampler.Sample(action)
 
-	return mat.NewVecDense(g.numActions(), action.RawMatrix().Data)
+	return mat.NewVecDense(1, action.RawMatrix().Data)
 }

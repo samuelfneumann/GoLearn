@@ -18,8 +18,8 @@ type NeuralNet interface {
 	// Getter methods
 	Graph() *G.ExprGraph
 	BatchSize() int
-	Features() int
-	Outputs() int          // Number of outputs per output layer
+	Features() []int
+	Outputs() []int        // Number of outputs per output layer
 	OutputLayers() int     // Layers that will output Outputs() values
 	Output() []G.Value     // Returns the predictions of the network
 	Prediction() []*G.Node // Returns the nodes that hold the predictions
