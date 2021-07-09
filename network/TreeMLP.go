@@ -125,7 +125,7 @@ func validateTreeMLP(numOutputs int, rootHiddenSizes []int, rootBiases []bool,
 //
 // The number of leaf networks is defined by len(leafHiddenSizes).
 // For indices i and j, leafHiddenSizes[i][j], leafBiases[i][j], and
-// leafActivations[i][j] determine the number of hidden units if layer
+// leafActivations[i][j] determine the number of hidden units of layer
 // j in leaf network i, whether a bias is added to layer j of leaf
 // network i, and the activation of layer j of leaf network i
 // respectively. The length of leafHiddenSizes[i] determines the number
