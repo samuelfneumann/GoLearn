@@ -29,24 +29,8 @@ import (
 //
 // MultiHeadEGreedyMLP simply populates a gorgonia.ExprGraph with
 // the neural network function approximator and selects actions
-// based on the output of this neural network. The struct does not
-// have a vm of its own. An external VM should be used to run the
-// computational graph of the policy externally. The VM should always
-// be run before selecting an action with the policy.
-//
-// For example, given an observation vector obs, we should first call
-// the SetInput() function to set the input to the policy as this
-// observation. Then, we can run the VM to get a prediction from the
-// policy. The policy will predict N action values given N actions.
-// At this point, the SelectAction() function can be called which
-// will look through these action values and select one based on the
-// policy. The way to get an action from the policy is summarized as:
-//
-//		Set up VM with policy's graph:	vm = NewVM(policy.Graph())
-//		Get state observation vector:	obs
-//		Set input to policy's network:	policy.SetInput(obs)
-//		Predict the action values:		vm.RunAll()
-//		Select an action:				action = policy.SelectAction()
+// based on the output of this neural network, which predicts the
+// action values in a given input state.
 type MultiHeadEGreedyMLP struct {
 	network.NeuralNet
 	epsilon float64
@@ -115,12 +99,7 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	source := rand.NewSource(seed)
 	rng := rand.New(source)
 
-	// If the policy predicts actions from batches of data, then there
-	// is no need for a VM to select actions at each timestep. Instead,
-	// the policy is being used to learn weights, and an external VM
-	// should be used after a policy loss has been constructed.
-	var vm G.VM
-	vm = G.NewTapeMachine(net.Graph())
+	vm := G.NewTapeMachine(net.Graph())
 
 	// Create the policy
 	nn := MultiHeadEGreedyMLP{
@@ -156,7 +135,11 @@ func (e *MultiHeadEGreedyMLP) CloneWithBatch(
 		return &MultiHeadEGreedyMLP{}, fmt.Errorf(msg, err)
 	}
 
-	vm := G.NewTapeMachine(net.Graph())
+	// Policies with batch sizes > 1 should not be used for action selection
+	var vm G.VM
+	if batchSize == 1 {
+		vm = G.NewTapeMachine(net.Graph())
+	}
 
 	// Create RNG for sampling actions
 	source := rand.NewSource(e.seed)
