@@ -45,6 +45,21 @@ import (
 //
 // ! So far, the Gaussian policy is not seedable since we use
 // ! gorgonia's GaussianRandomNode().
+//
+// ! This version of a Gaussian policy will take in some state S and
+// ! compute the log probabilities for the actions the policy would
+// ! sample in that state, not the actual actions taken. For example,
+// ! if given a tuple (S, A, R, S'), this the logProb() will compute
+// ! the log probability of A' taken in S' as well as compute each A'.
+// ! This is because this implementation assumes a "SAC-like" update.
+// ! Given (S, A, R, S') from a replay buffer, we use the policy to
+// ! predict A' and logProb(A' | S'). This A' is then used in the
+// ! in the critic to get a value of Q(A', S') to use in the gradient.
+//
+// ! if we want to compute log prob of action A in state S, we will
+// ! need another function which takes batches of states/actions as
+// ! inputs, sets the states as input to the NN, then adds the actions
+// ! to an input node -> calculates the log prob of those actions.
 type GaussianTreeMLP struct {
 	network.NeuralNet
 
@@ -52,8 +67,15 @@ type GaussianTreeMLP struct {
 
 	logProb    *G.Node
 	logProbVal G.Value
-	actions    *G.Node
-	actionsVal G.Value
+	actions    *G.Node // Node of action(s) to take in input state(s)
+	actionsVal G.Value // Value of action(s) to take in input state(s)
+	actionDims int
+
+	// External actions refer to actions that are given to the policy
+	// with which to calculate the log probability of.
+	externActions           *G.Node
+	externActionsLogProb    *G.Node
+	externActionsLogProbVal G.Value
 
 	seed uint64
 
@@ -148,11 +170,27 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 			"log probabiltiy: %v", err)
 	}
 
+	// Create external actions
+	externActions := G.NewMatrix(
+		net.Graph(),
+		tensor.Float64,
+		G.WithName("externActions"),
+		G.WithShape(net.BatchSize(), actionDims),
+	)
+	logProbExternalActions, err := logProb(meanNode, stdNode, externActions)
+	if err != nil {
+		return nil, fmt.Errorf("newGaussianTreMLP: could not calculate "+
+			"log probability of external input actions: %v", err)
+	}
+
 	policy := GaussianTreeMLP{
-		NeuralNet: net,
-		logProb:   logProbNode,
-		actions:   actions,
-		seed:      seed,
+		NeuralNet:            net,
+		logProb:              logProbNode,
+		actions:              actions,
+		seed:                 seed,
+		externActions:        externActions,
+		externActionsLogProb: logProbExternalActions,
+		actionDims:           actionDims,
 	}
 
 	// Store the values of the actions selected for the batch, standard
@@ -162,6 +200,7 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 	G.Read(stdNode, &policy.std)
 	G.Read(meanNode, &policy.mean)
 	G.Read(logProbNode, &policy.logProbVal)
+	G.Read(logProbExternalActions, &policy.externActionsLogProbVal)
 
 	// Action selection VM is used only for policies with batches of size 1.
 	// If batch size > 1, it's assumed that the policy weights are being
@@ -176,7 +215,60 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 	return &policy, nil
 }
 
-// logProb calculates the log probability of each action
+// LogProbOf returns a node that computes the log probability of taking
+// the argument actions in the argument states when a VM of the policy
+// is run. No VM is run.
+//
+// This function simply sets the inputs to the neural net so that the
+// returned node will compute the log probabilities of actions a
+// in states s. To actually get these values, an external VM must be run.
+func (g *GaussianTreeMLP) LogProbOf(s, a []float64) (*G.Node, error) {
+	if expect := (g.Network().BatchSize()) * g.actionDims; len(a) != expect {
+		return nil, fmt.Errorf("logProbOf: invalid action size\n\t"+
+			"want(%v) \n\thave(%v)", expect, len(a))
+	}
+
+	g.Network().SetInput(s)
+	err := G.Let(g.externActions, a)
+	if err != nil {
+		return nil, fmt.Errorf("logProbOf: could not set action input: %v",
+			err)
+	}
+
+	return g.externActionsLogProb, nil
+}
+
+// Actions returns the actions selected by the previous run of the
+// policy. If SetInput() is called on the policy's NerualNet, this
+// function returns the actions selected in the states that were
+// inputted to the neural net. If SelectAction() was last called,
+// this function returns the action selected at the last timestep.
+//
+// Given M actions, this node will be a vector of size M.
+func (g *GaussianTreeMLP) Actions() *G.Node {
+	return g.actions
+}
+
+// LogProb returns the node of the computational graph that computes the
+// log probabilities of actions selected in the states inputted to the
+// policy's neural network. If SetInput() was called on the policy's
+// NeuralNet, this function returns the log probabilities of actions
+// selected in the states that were inputted to the neural net. If
+// SelectAction() was last called, this function returns the action
+// selected at the last timestep.
+//
+// Given M actions, this node will be a vector of size M.
+//
+// This function makes use of the reprarameterization trick
+// (https://spinningup.openai.com/en/latest/algorithms/sac.html)
+// and should be used when taking an expectation - over actions selected
+// from the policy - over the log probability of selecting actions.
+func (g *GaussianTreeMLP) LogProb() *G.Node {
+	return g.logProb
+}
+
+// logProb calculates the log probability of each action selected in a
+// state
 func logProb(mean, std, actions *G.Node) (*G.Node, error) {
 	// Error checking
 	graph := mean.Graph()
@@ -278,13 +370,6 @@ func (g *GaussianTreeMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
 // Clone clones the policy
 func (g *GaussianTreeMLP) Clone() (agent.NNPolicy, error) {
 	return g.CloneWithBatch(g.BatchSize())
-}
-
-// LogProb returns the node of the computational graph that computes the
-// log probabilities of actions. Given M actions, this node will be a
-// vector of size M.
-func (g *GaussianTreeMLP) LogProb() *G.Node {
-	return g.logProb
 }
 
 // SelectAction selects and returns a new action given a TimeStep
