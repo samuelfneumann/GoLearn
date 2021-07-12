@@ -7,7 +7,7 @@ import (
 	"gorgonia.org/tensor"
 )
 
-// treeMLP implements a multi-layered perceptron with a base observation
+// TreeMLP implements a multi-layered perceptron with a base observation
 // netowrk and multiple leaf networks that use the output of the root
 // observation network as their own inputs. A diagram of a tree MLP:
 //
@@ -21,8 +21,8 @@ import (
 //
 // To create outputs that are of the form [leaf1 output, leaf2 output,
 // ..., leaf(N-1) output, leaf(N) output], once can simply call
-// gorgonia.Concat() on the result of calling Prediction() on a treeMLP.
-type treeMLP struct {
+// gorgonia.Concat() on the result of calling Prediction() on a TreeMLP.
+type TreeMLP struct {
 	g            *G.ExprGraph
 	rootNetwork  NeuralNet   // Observation network
 	leafNetworks []NeuralNet // Leaf networks
@@ -190,7 +190,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 		numOutputs[i] = outputs
 	}
 
-	net := &treeMLP{
+	net := &TreeMLP{
 		g:               g,
 		rootNetwork:     rootNetwork,
 		leafNetworks:    leafNetworks,
@@ -212,7 +212,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	_, err = net.fwd([]*G.Node{input})
 	if err != nil {
 		msg := "newmtreemlp: could not compute forward pass: %v"
-		return &treeMLP{}, fmt.Errorf(msg, err)
+		return &TreeMLP{}, fmt.Errorf(msg, err)
 	}
 
 	return net, nil
@@ -220,7 +220,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 
 // SetInput sets the value of the input node before running the forward
 // pass.
-func (t *treeMLP) SetInput(input []float64) error {
+func (t *TreeMLP) SetInput(input []float64) error {
 	if len(input) != t.numInputs*t.batchSize {
 		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)"+
 			"\n\thave(%v)", t.numInputs*t.batchSize, len(input))
@@ -234,7 +234,7 @@ func (t *treeMLP) SetInput(input []float64) error {
 }
 
 // Outputs returns the number of outputs per leaf network
-func (t *treeMLP) Outputs() []int {
+func (t *TreeMLP) Outputs() []int {
 	if len(t.numOutputs) != len(t.Prediction()) {
 		panic("outputs: number of output layers incosistent with " +
 			"computational graph as found by Prediction()")
@@ -244,28 +244,28 @@ func (t *treeMLP) Outputs() []int {
 
 // OutputLayers returns the number of output layers in the network.
 // There is one output layer per leaf network.
-func (t *treeMLP) OutputLayers() int {
+func (t *TreeMLP) OutputLayers() int {
 	return len(t.Prediction())
 }
 
 // Graph returns the computational graph of the network
-func (t *treeMLP) Graph() *G.ExprGraph {
+func (t *TreeMLP) Graph() *G.ExprGraph {
 	return t.g
 }
 
 // Features returns the number of input features
-func (t *treeMLP) Features() []int {
+func (t *TreeMLP) Features() []int {
 	return []int{t.numInputs}
 }
 
-// Clone returns a clone of the treeMLP.
-func (t *treeMLP) Clone() (NeuralNet, error) {
+// Clone returns a clone of the TreeMLP.
+func (t *TreeMLP) Clone() (NeuralNet, error) {
 	return t.CloneWithBatch(t.batchSize)
 }
 
-// CloneWithBatch returns a clone of the treeMLP with a new input
+// CloneWithBatch returns a clone of the TreeMLP with a new input
 // batch size.
-func (t *treeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
+func (t *TreeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 	graph := G.NewGraph()
 
 	// Create the input node
@@ -287,12 +287,12 @@ func (t *treeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 	return t.cloneWithInputTo(-1, []*G.Node{input}, graph)
 }
 
-// cloneWithInputTo clones the treeMLP to a new graph with a given
+// cloneWithInputTo clones the TreeMLP to a new graph with a given
 // input node. If multiple input nodes are given, then
 // they are first concatenated along the specified axis. If the root
 // network outputs multiple outputs, these outputs are also concatenated
 // along the specified axis before being input to the leaf networks.
-func (t *treeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
+func (t *TreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 	graph *G.ExprGraph) (NeuralNet, error) {
 	// Ensure all inputs share the same graph
 	for _, input := range inputs {
@@ -336,7 +336,7 @@ func (t *treeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 		}
 	}
 
-	net := &treeMLP{
+	net := &TreeMLP{
 		g:            graph,
 		rootNetwork:  rootClone,
 		leafNetworks: leafClones,
@@ -360,18 +360,18 @@ func (t *treeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 }
 
 // BatchSize returns the batch size for inputs to the network
-func (t *treeMLP) BatchSize() int {
+func (t *TreeMLP) BatchSize() int {
 	return t.rootNetwork.BatchSize()
 }
 
-// fwd computes the remaining steps of the forward pass of the treeMLP
+// fwd computes the remaining steps of the forward pass of the TreeMLP
 // that its root and leaf networks did not compute.
-func (t *treeMLP) fwd(inputs []*G.Node) (*G.Node, error) {
-	// Because of the way treeMLPs are constructed, there is nothing
+func (t *TreeMLP) fwd(inputs []*G.Node) (*G.Node, error) {
+	// Because of the way TreeMLPs are constructed, there is nothing
 	// to do with the input to the network, it's already been sent
 	// through each sub-net's forward pass.
 	if len(inputs) != 1 {
-		return nil, fmt.Errorf("fwd: treeMLP only supports a single "+
+		return nil, fmt.Errorf("fwd: TreeMLP only supports a single "+
 			"input \n\twant(1) \n\thave(%v)", len(inputs))
 	}
 
@@ -390,21 +390,21 @@ func (t *treeMLP) fwd(inputs []*G.Node) (*G.Node, error) {
 	return nil, nil
 }
 
-// Output returns the output of the treeMLP. The output is
+// Output returns the output of the TreeMLP. The output is
 // a matrix of NxM dimensions, where N corresponds to the number of
 // outputs per leaf network and M the number of leaf networks.
-func (t *treeMLP) Output() []G.Value {
+func (t *TreeMLP) Output() []G.Value {
 	return t.predVal
 }
 
 // Prediction returns the node of the computational graph the stores
-// the output of the treeMLP
-func (t *treeMLP) Prediction() []*G.Node {
+// the output of the TreeMLP
+func (t *TreeMLP) Prediction() []*G.Node {
 	return t.prediction
 }
 
 // Model returns the learnable nodes with their gradients.
-func (t *treeMLP) Model() []G.ValueGrad {
+func (t *TreeMLP) Model() []G.ValueGrad {
 	// Lazy instantiation of model
 	if t.model == nil {
 		t.model = t.computeModel()
@@ -414,7 +414,7 @@ func (t *treeMLP) Model() []G.ValueGrad {
 
 // computeModel gets and returns all learnables of the network with
 // their gradients
-func (t *treeMLP) computeModel() []G.ValueGrad {
+func (t *TreeMLP) computeModel() []G.ValueGrad {
 	var model []G.ValueGrad
 	for _, learnable := range t.Learnables() {
 		model = append(model, learnable)
@@ -423,7 +423,7 @@ func (t *treeMLP) computeModel() []G.ValueGrad {
 }
 
 // Learnables returns the learnable nodes in a multiHeadMLP
-func (t *treeMLP) Learnables() G.Nodes {
+func (t *TreeMLP) Learnables() G.Nodes {
 	// Lazy instantiation of learnables
 	if t.learnables == nil {
 		t.learnables = t.computeLearnables()
@@ -432,7 +432,7 @@ func (t *treeMLP) Learnables() G.Nodes {
 }
 
 // computeLearnables gets and returns all learnables of the network
-func (t *treeMLP) computeLearnables() G.Nodes {
+func (t *TreeMLP) computeLearnables() G.Nodes {
 	// Allocate array of learnables
 	numLearnables := 2 * len(t.rootHiddenSizes)
 	for _, layer := range t.leafHiddenSizes {

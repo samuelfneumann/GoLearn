@@ -8,7 +8,7 @@ import (
 	"sfneuman.com/golearn/utils/intutils"
 )
 
-// revTreeMLP implements a reverse tree MLP. A reverse tree MLP has
+// RevTreeMLP implements a reverse tree MLP. A reverse tree MLP has
 // multiple root networks, each with its own input. Each of these root
 // networks predicts somve value. All the predictions of all the root
 // networks are concatenated into a single feature vector and sent
@@ -21,7 +21,7 @@ import (
 //   ... 	   ─→ 	   ...           ─┤
 // Input (N-1) ─→ Root Network (N-1) ─┤
 // Input N     ─→ Root Network N     ─╯
-type revTreeMLP struct {
+type RevTreeMLP struct {
 	g            *G.ExprGraph
 	rootNetworks []NeuralNet // Observation network
 	leafNetwork  NeuralNet   // Leaf networks
@@ -183,7 +183,7 @@ func NewRevTreeMLP(features []int, batch, outputs int, g *G.ExprGraph,
 			"network: %v", err)
 	}
 
-	net := &revTreeMLP{
+	net := &RevTreeMLP{
 		g:               g,
 		rootNetworks:    rootNetworks,
 		leafNetwork:     leafNetwork,
@@ -236,7 +236,7 @@ func NewRevTreeMLP(features []int, batch, outputs int, g *G.ExprGraph,
 // used as input for the second root network, with the first 7 features
 // forming the first sample in the batch, the next 7 features forming
 // the second sample in the batch, etc.
-func (t *revTreeMLP) SetInput(input []float64) error {
+func (t *RevTreeMLP) SetInput(input []float64) error {
 	if len(input) != intutils.Prod(t.Features()...)*t.batchSize {
 		msg := fmt.Sprintf("invalid number of inputs\n\twant(%v)"+
 			"\n\thave(%v)", intutils.Prod(t.Features()...)*t.batchSize,
@@ -260,34 +260,34 @@ func (t *revTreeMLP) SetInput(input []float64) error {
 }
 
 // Outputs returns the number of outputs per leaf network
-func (t *revTreeMLP) Outputs() []int {
+func (t *RevTreeMLP) Outputs() []int {
 	return []int{t.numOutputs}
 }
 
 // OutputLayers returns the number of output layers in the network.
 // There is one output layer per leaf network.
-func (t *revTreeMLP) OutputLayers() int {
+func (t *RevTreeMLP) OutputLayers() int {
 	return len(t.Prediction())
 }
 
 // Graph returns the computational graph of the network
-func (t *revTreeMLP) Graph() *G.ExprGraph {
+func (t *RevTreeMLP) Graph() *G.ExprGraph {
 	return t.g
 }
 
 // Features returns the number of input features
-func (t *revTreeMLP) Features() []int {
+func (t *RevTreeMLP) Features() []int {
 	return t.numInputs
 }
 
-// Clone returns a clone of the revTreeMLP.
-func (t *revTreeMLP) Clone() (NeuralNet, error) {
+// Clone returns a clone of the RevTreeMLP.
+func (t *RevTreeMLP) Clone() (NeuralNet, error) {
 	return t.CloneWithBatch(t.batchSize)
 }
 
-// CloneWithBatch returns a clone of the revTreeMLP with a new input
+// CloneWithBatch returns a clone of the RevTreeMLP with a new input
 // batch size.
-func (t *revTreeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
+func (t *RevTreeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 	graph := G.NewGraph()
 
 	// Create the input nodes
@@ -305,11 +305,11 @@ func (t *revTreeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 	return t.cloneWithInputTo(-1, inputs, graph)
 }
 
-// cloneWithInputTo clones the revTreeMLP to a new graph with a given
+// cloneWithInputTo clones the RevTreeMLP to a new graph with a given
 // input node. There should be one input node for each root network.
 // If the leaf network only takes in a single input node, then the
 // outputs of the root networks are first concatenated.
-func (t *revTreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
+func (t *RevTreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 	graph *G.ExprGraph) (NeuralNet, error) {
 	// Ensure one input is given for each root network
 	if len(inputs) != len(t.inputs) {
@@ -355,7 +355,7 @@ func (t *revTreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 		return nil, fmt.Errorf(msg, err)
 	}
 
-	net := &revTreeMLP{
+	net := &RevTreeMLP{
 		g:            graph,
 		rootNetworks: rootClones,
 		leafNetwork:  leafClone,
@@ -379,14 +379,14 @@ func (t *revTreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 }
 
 // BatchSize returns the batch size for inputs to the network
-func (t *revTreeMLP) BatchSize() int {
+func (t *RevTreeMLP) BatchSize() int {
 	return t.rootNetworks[0].BatchSize()
 }
 
-// fwd computes the remaining steps of the forward pass of the revTreeMLP
+// fwd computes the remaining steps of the forward pass of the RevTreeMLP
 // that its root and leaf networks did not compute.
-func (t *revTreeMLP) fwd(inputs []*G.Node) (*G.Node, error) {
-	// Because of the way revTreeMLPs are constructed, there is nothing
+func (t *RevTreeMLP) fwd(inputs []*G.Node) (*G.Node, error) {
+	// Because of the way RevTreeMLPs are constructed, there is nothing
 	// to do with the input to the network, it's already been sent
 	// through each sub-net's forward pass.
 	if num := len(inputs); num != len(t.rootNetworks) {
@@ -397,21 +397,21 @@ func (t *revTreeMLP) fwd(inputs []*G.Node) (*G.Node, error) {
 	return nil, nil
 }
 
-// Output returns the output of the revTreeMLP. The output is
+// Output returns the output of the RevTreeMLP. The output is
 // a matrix of NxM dimensions, where N corresponds to the number of
 // outputs per leaf network and M the number of leaf networks.
-func (t *revTreeMLP) Output() []G.Value {
+func (t *RevTreeMLP) Output() []G.Value {
 	return t.predVal
 }
 
 // Prediction returns the node of the computational graph the stores
-// the output of the revTreeMLP
-func (t *revTreeMLP) Prediction() []*G.Node {
+// the output of the RevTreeMLP
+func (t *RevTreeMLP) Prediction() []*G.Node {
 	return t.prediction
 }
 
 // Model returns the learnable nodes with their gradients.
-func (t *revTreeMLP) Model() []G.ValueGrad {
+func (t *RevTreeMLP) Model() []G.ValueGrad {
 	// Lazy instantiation of model
 	if t.model == nil {
 		t.model = t.computeModel()
@@ -421,7 +421,7 @@ func (t *revTreeMLP) Model() []G.ValueGrad {
 
 // computeModel gets and returns all learnables of the network with
 // their gradients
-func (t *revTreeMLP) computeModel() []G.ValueGrad {
+func (t *RevTreeMLP) computeModel() []G.ValueGrad {
 	var model []G.ValueGrad
 	for _, learnable := range t.Learnables() {
 		model = append(model, learnable)
@@ -430,7 +430,7 @@ func (t *revTreeMLP) computeModel() []G.ValueGrad {
 }
 
 // Learnables returns the learnable nodes in a multiHeadMLP
-func (t *revTreeMLP) Learnables() G.Nodes {
+func (t *RevTreeMLP) Learnables() G.Nodes {
 	// Lazy instantiation of learnables
 	if t.learnables == nil {
 		t.learnables = t.computeLearnables()
@@ -439,7 +439,7 @@ func (t *revTreeMLP) Learnables() G.Nodes {
 }
 
 // computeLearnables gets and returns all learnables of the network
-func (t *revTreeMLP) computeLearnables() G.Nodes {
+func (t *RevTreeMLP) computeLearnables() G.Nodes {
 	// Allocate array of learnables
 	numLearnables := 2 * len(t.leafHiddenSizes)
 	for _, layer := range t.rootHiddenSizes {

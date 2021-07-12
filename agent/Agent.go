@@ -72,4 +72,18 @@ type PolicyLogProber interface {
 	// LogProb returns the node that calculates the log probability of
 	// the policy's selected actions
 	LogProb() *G.Node
+
+	// Actions returns the actions selected by the policy. This may
+	// be a batch of actions if the .Network().SetInput() is called
+	// on the policy or a single action if SelectAction() was last
+	// called on the policy.
+	Actions() *G.Node
+
+	// LogProbOf returns the log probability of taking the argument
+	// actions in the argument states. Inputs should be constructed in
+	// row major order.
+	//
+	// This function is needed for non-TD implementations of policy
+	// gradient algorithms.
+	LogProbOf(states, actions []float64) (*G.Node, error)
 }
