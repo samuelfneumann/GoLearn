@@ -65,7 +65,6 @@ type DeepQ struct {
 
 	batchSize int
 	eval      bool // Whether or not in evaluation mode
-
 }
 
 // New creates and returns a new DeepQ agent
@@ -307,7 +306,6 @@ func (d *DeepQ) Observe(action mat.Vector, nextStep ts.TimeStep) {
 	d.prevStep = d.nextStep
 	d.nextStep = nextStep
 	d.prevAction = int(action.AtVec(0))
-
 }
 
 // Step updates the weights of the Agent's Policies.

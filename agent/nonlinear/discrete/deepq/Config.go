@@ -10,6 +10,7 @@ import (
 
 // Config implements a configuration for a DeepQ agent
 type Config struct {
+	// Policy       agent.EGreedyNNPolicy
 	PolicyLayers []int                 // Layer sizes in neural net
 	Biases       []bool                // Whether each layer should have a bias
 	Activations  []*network.Activation // Activation of each layer
