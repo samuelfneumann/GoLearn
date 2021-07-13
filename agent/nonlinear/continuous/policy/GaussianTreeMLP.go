@@ -15,6 +15,7 @@ import (
 	"log"
 	"math"
 
+	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
@@ -65,11 +66,11 @@ type GaussianTreeMLP struct {
 
 	mean, std G.Value
 
-	logProb    *G.Node
-	logProbVal G.Value
-	actions    *G.Node // Node of action(s) to take in input state(s)
-	actionsVal G.Value // Value of action(s) to take in input state(s)
-	actionDims int
+	logProbNode *G.Node
+	logProbVal  G.Value
+	actions     *G.Node // Node of action(s) to take in input state(s)
+	actionsVal  G.Value // Value of action(s) to take in input state(s)
+	actionDims  int
 
 	// External actions refer to actions that are given to the policy
 	// with which to calculate the log probability of.
@@ -170,48 +171,51 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 			"log probabiltiy: %v", err)
 	}
 
-	// Create external actions
-	externActions := G.NewMatrix(
-		net.Graph(),
-		tensor.Float64,
-		G.WithName("externActions"),
-		G.WithShape(net.BatchSize(), actionDims),
-	)
-	logProbExternalActions, err := logProb(meanNode, stdNode, externActions)
-	if err != nil {
-		return nil, fmt.Errorf("newGaussianTreMLP: could not calculate "+
-			"log probability of external input actions: %v", err)
-	}
-
-	policy := GaussianTreeMLP{
-		NeuralNet:            net,
-		logProb:              logProbNode,
-		actions:              actions,
-		seed:                 seed,
-		externActions:        externActions,
-		externActionsLogProb: logProbExternalActions,
-		actionDims:           actionDims,
+	p := GaussianTreeMLP{
+		NeuralNet:   net,
+		logProbNode: logProbNode,
+		actions:     actions,
+		seed:        seed,
+		actionDims:  actionDims,
 	}
 
 	// Store the values of the actions selected for the batch, standard
 	// deviations and means for the policy in each state in the batch,
 	// and the log probability of selecting each action in the batch.
-	G.Read(policy.actions, &policy.actionsVal)
-	G.Read(stdNode, &policy.std)
-	G.Read(meanNode, &policy.mean)
-	G.Read(logProbNode, &policy.logProbVal)
-	G.Read(logProbExternalActions, &policy.externActionsLogProbVal)
+	G.Read(p.actions, &p.actionsVal)
+	G.Read(stdNode, &p.std)
+	G.Read(meanNode, &p.mean)
+	G.Read(logProbNode, &p.logProbVal)
+
+	if net.BatchSize() > 1 {
+		// ? Create external actions (not sure why but the
+		// ? G.Read(p.actions, &p.actionsVal)) line won't work if this is
+		// ? included, so when making train/behaviour policies, make sure
+		// ? not to clone but to create brand new ones
+		externActions := G.NewMatrix(
+			net.Graph(),
+			tensor.Float64,
+			G.WithName("externActions"),
+			G.WithShape(net.BatchSize(), actionDims),
+		)
+		logProbExternalActions, err := logProb(meanNode, stdNode, externActions)
+		if err != nil {
+			return nil, fmt.Errorf("newGaussianTreMLP: could not calculate "+
+				"log probability of external input actions: %v", err)
+		}
+		p.externActions = externActions
+		p.externActionsLogProb = logProbExternalActions
+		G.Read(logProbExternalActions, &p.externActionsLogProbVal)
+	}
 
 	// Action selection VM is used only for policies with batches of size 1.
 	// If batch size > 1, it's assumed that the policy weights are being
 	// learned, and so an external VM will be used after an external loss
 	// has been added to the policy's graph.
 	vm := G.NewTapeMachine(net.Graph())
-	policy.vm = vm
+	p.vm = vm
 
-	// fmt.Println("Gaussian", len(policy.Graph().AllNodes()))
-
-	return &policy, nil
+	return &p, nil
 }
 
 // Mean gets the mean of the policy when last run
@@ -273,7 +277,7 @@ func (g *GaussianTreeMLP) Actions() *G.Node {
 // and should be used when taking an expectation - over actions selected
 // from the policy - over the log probability of selecting actions.
 func (g *GaussianTreeMLP) LogProb() *G.Node {
-	return g.logProb
+	return g.logProbNode
 }
 
 // logProb calculates the log probability of each action selected in a
@@ -394,7 +398,7 @@ func (g *GaussianTreeMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
 
 	policy := GaussianTreeMLP{
 		NeuralNet:            net,
-		logProb:              logProbNode,
+		logProbNode:          logProbNode,
 		actions:              actions,
 		seed:                 g.seed,
 		externActions:        externActions,
@@ -437,24 +441,23 @@ func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 		log.Fatal("selectAction: cannot select an action from batch policy")
 	}
 
-	g.Network().SetInput(t.Observation.RawVector().Data)
+	obs := t.Observation.RawVector().Data
+	g.Network().SetInput(obs)
 	g.vm.RunAll()
+	g.vm.Reset()
 
 	// fmt.Println("POL", g.Network().Output())
 	// fmt.Println("\nACTIONS", g.actionsVal, g.actions.Value())
 
-	// ! THIS DOESN'T WORK SOMETIMES...
-	// action := g.actionsVal.Data().([]float64)
-	action := g.actions.Value().Data().([]float64)
+	action := g.actionsVal.Data().([]float64)
 
-	fmt.Println("\nAction:", g.actionsVal)
-	fmt.Println("STUFF:", g.mean, g.std, g.logProbVal)
+	// fmt.Println("\nAction:", g.actionsVal)
+	// fmt.Println("STUFF:", g.mean, g.std, g.logProbVal)
 
-	g.vm.Reset()
 	return mat.NewVecDense(len(action), action)
 }
 
 func (g *GaussianTreeMLP) PrintVals() {
-	fmt.Println("\nActions val print for non-cloned...", g.actionsVal)
-	fmt.Println()
+	fmt.Println("Log prob:", g.logProbVal)
+	fmt.Println("Sum", floats.Sum(g.logProbVal.Data().([]float64)))
 }

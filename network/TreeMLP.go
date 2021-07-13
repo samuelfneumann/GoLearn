@@ -2,7 +2,9 @@ package network
 
 import (
 	"fmt"
+	"log"
 
+	"gonum.org/v1/gonum/floats"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 )
@@ -231,6 +233,12 @@ func (t *TreeMLP) SetInput(input []float64) error {
 		tensor.WithBacking(input),
 		tensor.WithShape(t.input.Shape()...),
 	)
+
+	w := t.rootNetwork.(*MultiHeadMLP).layers[0].Weights().Value().Data().([]float64)
+	if floats.HasNaN(w) {
+		log.Fatal("w has NaN")
+	}
+
 	return G.Let(t.input, inputTensor)
 }
 

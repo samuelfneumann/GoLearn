@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
 	"gorgonia.org/gorgonia"
-	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
+	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/VanillaPG"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
+	"sfneuman.com/golearn/experiment"
+	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/network"
 )
 
@@ -21,69 +23,80 @@ func main() {
 	bounds := r1.Interval{Min: -0.01, Max: 0.01}
 
 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
-	task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
+	task := mountaincar.NewGoal(s, 1000, mountaincar.GoalPosition)
 	m, step := mountaincar.NewContinuous(task, 1.0)
 	fmt.Println(step)
 
-	// args := vanillapg.TreePolicyConfig{
-	// 	Policy:            vanillapg.Gaussian,
-	// 	PolicyLayers:      []int{64, 64},
-	// 	PolicyBiases:      []bool{true, true},
-	// 	PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU()},
-	// 	LeafLayers:        [][]int{{64, 64}, {64, 64}},
-	// 	LeafBiases:        [][]bool{{true, true}, {true, true}},
-	// 	LeafActivations:   [][]*network.Activation{{network.ReLU(), network.ReLU()}, {network.ReLU(), network.ReLU()}},
+	args := vanillapg.TreePolicyConfig{
+		Policy:            vanillapg.Gaussian,
+		PolicyLayers:      []int{64, 64},
+		PolicyBiases:      []bool{true, true},
+		PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU()},
+		LeafLayers:        [][]int{{64, 64}, {64, 64}},
+		LeafBiases:        [][]bool{{true, true}, {true, true}},
+		LeafActivations:   [][]*network.Activation{{network.ReLU(), network.ReLU()}, {network.ReLU(), network.ReLU()}},
 
-	// 	CriticLayers:      []int{100, 50, 25},
-	// 	CriticBiases:      []bool{true, true, true},
-	// 	CriticActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+		CriticLayers:      []int{100, 50, 25},
+		CriticBiases:      []bool{true, true, true},
+		CriticActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
 
-	// 	InitWFn:      gorgonia.GlorotU(1.0),
-	// 	PolicySolver: gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.0003)),
-	// 	VSolver:      gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.001)),
+		InitWFn:      gorgonia.GlorotU(1.0),
+		PolicySolver: gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.00003)),
+		VSolver:      gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.0001)),
 
-	// 	ValueGradSteps: 10,
-	// 	EpochLength:    1000,
-	// 	Lambda:         0.97,
-	// 	Gamma:          0.99,
-	// }
-
-	// agent, err := args.CreateAgent(m, useed)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// start := time.Now()
-	// var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	// e := experiment.NewOnline(m, agent, 1000*120, []tracker.Tracker{saver}, nil)
-	// e.Run()
-	// fmt.Println("Elapsed:", time.Since(start))
-	// e.Save()
-
-	// data := tracker.LoadData("./data.bin")
-	// fmt.Println(data)
-
-	// ======================================
-
-	p, err := policy.NewGaussianTreeMLP(
-		m,
-		1,
-		gorgonia.NewGraph(),
-		[]int{100, 50},
-		[]bool{true, true},
-		[]*network.Activation{network.ReLU(), network.ReLU()},
-		[][]int{{50, 25}, {50, 25}},
-		[][]bool{{true, true}, {true, true}},
-		[][]*network.Activation{{network.ReLU(), network.ReLU()}, {network.ReLU(), network.ReLU()}},
-		gorgonia.GlorotU(1.0),
-		useed,
-	)
-	if err != nil {
-		log.Fatal(err)
+		ValueGradSteps: 10,
+		EpochLength:    1000,
+		Lambda:         0.95,
+		Gamma:          0.99,
 	}
 
-	fmt.Println(p)
-	fmt.Println(p.SelectAction(step))
+	agent, err := args.CreateAgent(m, useed)
+	if err != nil {
+		panic(err)
+	}
+
+	start := time.Now()
+	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
+	e := experiment.NewOnline(m, agent, 1000*100, []tracker.Tracker{saver}, nil)
+	e.Run()
+	fmt.Println("Elapsed:", time.Since(start))
+	e.Save()
+
+	data := tracker.LoadData("./data.bin")
+	fmt.Println(data)
+
+	// ======================================
+	// ======================================
+	// ======================================
+	// ======================================
+	// ======================================
+	// ======================================
+	// g := gorgonia.NewGraph()
+	// p, err := policy.NewGaussianTreeMLP(
+	// 	m,
+	// 	1,
+	// 	g,
+	// 	[]int{100, 50},
+	// 	[]bool{true, true},
+	// 	[]*network.Activation{network.ReLU(), network.ReLU()},
+	// 	[][]int{{50, 25}, {50, 25}},
+	// 	[][]bool{{true, true}, {true, true}},
+	// 	[][]*network.Activation{{network.ReLU(), network.ReLU()}, {network.ReLU(), network.ReLU()}},
+	// 	gorgonia.GlorotU(1.0),
+	// 	useed,
+	// )
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Println(p)
+	// fmt.Println(p.SelectAction(step))
+	// ==============================
+	// ==============================
+	// ==============================
+	// ==============================
+	// ==============================
+	// ==============================
 
 	// var useed uint64 = 192382
 	// var seed int64 = 192382

@@ -43,6 +43,14 @@ func (c *TreePolicyConfig) CreateAgent(e env.Environment, seed uint64) (agent.Ag
 	// 	return nil, fmt.Errorf("createAgent: could not create policy: %v", err)
 	// }
 
+	behaviour, err := policy.NewGaussianTreeMLP(e, 1, G.NewGraph(),
+		c.PolicyLayers, c.PolicyBiases, c.PolicyActivations, c.LeafLayers,
+		c.LeafBiases, c.LeafActivations, c.InitWFn, seed)
+	if err != nil {
+		return nil, fmt.Errorf("createAgent: could not create "+
+			"behaviour policy: %v", err)
+	}
+
 	p, err := policy.NewGaussianTreeMLP(e, c.EpochLength, G.NewGraph(),
 		c.PolicyLayers, c.PolicyBiases, c.PolicyActivations, c.LeafLayers,
 		c.LeafBiases, c.LeafActivations, c.InitWFn, seed)
@@ -58,7 +66,9 @@ func (c *TreePolicyConfig) CreateAgent(e env.Environment, seed uint64) (agent.Ag
 		return nil, fmt.Errorf("createAgent: could not create critic: %v", err)
 	}
 
+	network.Set(behaviour.Network(), p.Network())
 	c.policy = p
+	c.behaviour = behaviour
 	c.vCritic = critic
 
 	return New(e, c, int64(seed))
@@ -71,6 +81,7 @@ func (c *TreePolicyConfig) CreateAgent(e env.Environment, seed uint64) (agent.Ag
 type TreePolicyConfig struct {
 	// Policy neural net
 	policy            agent.PolicyLogProber // VPG.trainPolicy
+	behaviour         agent.NNPolicy        // VPG.behaviour
 	Policy            PolicyType
 	PolicyLayers      []int
 	PolicyBiases      []bool

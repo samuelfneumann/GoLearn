@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
@@ -65,6 +66,8 @@ type VPG struct {
 	vNextVal       *G.Node
 	vSolver        G.Solver
 	valueGradSteps int
+
+	PLoss G.Value
 }
 
 func New(env environment.Environment, c Config,
@@ -91,11 +94,12 @@ func New(env environment.Environment, c Config,
 		config.Gamma)
 
 	// Construct behaviour and training policy
-	behaviour, err := config.policy.CloneWithBatch(1)
-	if err != nil {
-		return nil, fmt.Errorf("new: could not construct behaviour policy: %v",
-			err)
-	}
+	// behaviour, err := config.policy.CloneWithBatch(1)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("new: could not construct behaviour policy: %v",
+	// 		err)
+	// }
+	behaviour := config.behaviour
 	trainPolicy := config.policy
 	// fmt.Println("Train policy", trainPolicy.Actions())
 	// fmt.Println("Behave policy", trainPolicy.Actions())
@@ -103,15 +107,16 @@ func New(env environment.Environment, c Config,
 	// Monte-Carlo method: vNextVal == sum of rewards following current step
 	vCritic := config.vCritic
 	vVM := G.NewTapeMachine(vCritic.Graph())
+
 	vTrainCritic, err := vCritic.CloneWithBatch(epochLength)
 	if err != nil {
 		return nil, fmt.Errorf("new: could not clone train critic: %v", err)
 	}
-	vTrainCritic, vNextVal, vTrainVM,
-		err := addMSELoss(vTrainCritic, "stateNetwork")
+	vTrainCritic, vNextVal, vTrainVM, err := addMSELoss(vTrainCritic, "stateNetwork")
 	if err != nil {
 		return nil, fmt.Errorf("new: could not create state critic: %v", err)
 	}
+	network.Set(vCritic, vTrainCritic)
 
 	// Construct policy loss
 	graph := trainPolicy.Network().Graph()
@@ -130,7 +135,7 @@ func New(env environment.Environment, c Config,
 
 	negative := G.NewConstant(-1.0)
 	policyLoss := G.Must(G.HadamardProd(logProb, advantage))
-	policyLoss = G.Must(G.Sum(policyLoss))
+	// policyLoss = G.Must(G.Sum(policyLoss))
 	policyLoss = G.Must(G.Mean(policyLoss))
 	policyLoss = G.Must(G.Mul(negative, policyLoss))
 
@@ -139,17 +144,17 @@ func New(env environment.Environment, c Config,
 	if err != nil {
 		panic(fmt.Sprintf("new: could not compute policy gradient: %v", err))
 	}
-	policyVM := G.NewTapeMachine(
-		graph,
-		G.BindDualValues(trainPolicy.Network().Learnables()...),
-	)
+	// policyVM := G.NewTapeMachine(
+	// 	graph,
+	// 	G.BindDualValues(trainPolicy.Network().Learnables()...),
+	// )
 
 	retVal := &VPG{
 		trainPolicy:  trainPolicy,
 		behaviour:    behaviour,
 		policySolver: config.PolicySolver,
 		advantage:    advantage,
-		policyVM:     policyVM,
+		// policyVM:     policyVM,
 
 		buffer:           buffer,
 		epochLength:      config.EpochLength,
@@ -168,6 +173,13 @@ func New(env environment.Environment, c Config,
 		vSolver:        config.VSolver,
 		valueGradSteps: config.ValueGradSteps,
 	}
+
+	G.Read(policyLoss, &retVal.PLoss)
+	policyVM := G.NewTapeMachine(
+		graph,
+		G.BindDualValues(trainPolicy.Network().Learnables()...),
+	)
+	retVal.policyVM = policyVM
 
 	return retVal, nil
 }
@@ -194,7 +206,7 @@ func addMSELoss(net network.NeuralNet, name string) (network.NeuralNet,
 	)
 
 	// Critic loss
-	loss := G.Must(G.Sub(net.Prediction()[0], nextVal))
+	loss := G.Must(G.Sub(nextVal, net.Prediction()[0]))
 	loss = G.Must(G.Square(loss))
 	loss = G.Must(G.Mean(loss))
 
@@ -325,8 +337,15 @@ func (v *VPG) Step() {
 	v.policyVM.RunAll()
 	// fmt.Println(v.trainPolicy.LogProb().Value())
 	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).Std())
-	// fmt.Println(v.advantage.Value())
-	// fmt.Println(v.policyCost.Value())
+	fmt.Println("Advantage", advantage)
+	fmt.Println("Sum", floats.Sum(advantage.Data().([]float64)))
+	fmt.Println()
+
+	v.trainPolicy.(*policy.GaussianTreeMLP).PrintVals()
+
+	fmt.Println("Loss", v.PLoss)
+	fmt.Println()
+
 	// time.Sleep(time.Millisecond * 1000)
 	v.policySolver.Step(v.trainPolicy.Network().Model())
 	v.policyVM.Reset()
