@@ -131,7 +131,7 @@ func (e *MultiHeadEGreedyMLP) CloneWithBatch(
 	batchSize int) (agent.NNPolicy, error) {
 	net, err := e.Network().CloneWithBatch(batchSize)
 	if err != nil {
-		msg := "clonepolicywithbatch: could not clone policy: %v"
+		msg := "clonewithbatch: could not clone policy: %v"
 		return &MultiHeadEGreedyMLP{}, fmt.Errorf(msg, err)
 	}
 

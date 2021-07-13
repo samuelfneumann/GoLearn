@@ -206,13 +206,21 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 	// If batch size > 1, it's assumed that the policy weights are being
 	// learned, and so an external VM will be used after an external loss
 	// has been added to the policy's graph.
-	var vm G.VM
-	if batchForLogProb == 1 {
-		vm = G.NewTapeMachine(net.Graph())
-	}
+	vm := G.NewTapeMachine(net.Graph())
 	policy.vm = vm
 
+	// fmt.Println("Gaussian", len(policy.Graph().AllNodes()))
+
 	return &policy, nil
+}
+
+// Mean gets the mean of the policy when last run
+func (g *GaussianTreeMLP) Mean() []float64 {
+	return g.mean.Data().([]float64)
+}
+
+func (g *GaussianTreeMLP) Std() []float64 {
+	return g.std.Data().([]float64)
 }
 
 // LogProbOf returns a node that computes the log probability of taking
@@ -229,7 +237,8 @@ func (g *GaussianTreeMLP) LogProbOf(s, a []float64) (*G.Node, error) {
 	}
 
 	g.Network().SetInput(s)
-	err := G.Let(g.externActions, a)
+	actions := tensor.NewDense(tensor.Float64, g.externActions.Shape())
+	err := G.Let(g.externActions, actions)
 	if err != nil {
 		return nil, fmt.Errorf("logProbOf: could not set action input: %v",
 			err)
@@ -279,10 +288,10 @@ func logProb(mean, std, actions *G.Node) (*G.Node, error) {
 
 	// Calculate (2*π)^(-k/2)
 	negativeHalf := G.NewConstant(-0.5)
-	dims := float64(mean.Shape()[0])
+	dims := float64(mean.Shape()[1])
 	multiplier := G.NewConstant(math.Pow(math.Pi*2, -dims/2))
 
-	if std.Shape()[0] != 1 {
+	if std.Shape()[1] != 1 {
 		// Multi-dimensional actions
 		// Calculate det(σ). Since σ is a diagonal matrix stored as a vector,
 		// the determinant == prod(diagonal of σ) = prod(σ)
@@ -321,15 +330,16 @@ func logProb(mean, std, actions *G.Node) (*G.Node, error) {
 
 		// Calculate (-1/2) * ((A - μ) / σ) ^ 2
 		exponent := G.Must(G.Sub(actions, mean))
-		exponent = G.Must(G.Mul(exponent, invStd))
+		exponent = G.Must(G.HadamardProd(exponent, invStd))
 		exponent = G.Must(G.Pow(exponent, G.NewConstant(2.0)))
-		exponent = G.Must(G.Mul(exponent, negativeHalf))
+		exponent = G.Must(G.HadamardProd(exponent, negativeHalf))
 
 		// Calcualte probability
 		prob := G.Must(G.Exp(exponent))
-		prob = G.Must(G.Mul(multiplier, prob))
+		prob = G.Must(G.HadamardProd(multiplier, prob))
 
 		logProb := G.Must(G.Log(prob))
+		logProb = G.Must(G.Ravel(logProb))
 
 		return logProb, nil
 	}
@@ -343,28 +353,77 @@ func (g *GaussianTreeMLP) Network() network.NeuralNet {
 
 // CloneWithBatch clones the policy with a new input batch size
 func (g *GaussianTreeMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
-	// CLone the network
+	// Clone the network
 	net, err := g.Network().CloneWithBatch(batch)
 	if err != nil {
 		return &GaussianTreeMLP{}, fmt.Errorf("clonePolicyWithBatch: could "+
 			"not clone policy neural net: %v", err)
 	}
+	// fmt.Println("BEFORE CLONE", len(net.Graph().AllNodes()))
 
-	// Only if batch size == 1 do we need a VM for action selection
+	// Exponentiate the log standard deviation
+	logStd := net.Prediction()[0]
+	stdNode := G.Must(G.Exp(logStd))
+	meanNode := net.Prediction()[1]
+
+	// Reparameterization trick A = μ + σ*ε, where ε ~ N(0, 1)
+	actionPerturb := G.GaussianRandomNode(net.Graph(), tensor.Float64,
+		0, 1, batch, net.Outputs()[0])
+	actionStd := G.Must(G.HadamardProd(stdNode, actionPerturb))
+	actions := G.Must(G.Add(meanNode, actionStd))
+
+	// Calculate log probability
+	logProbNode, err := logProb(meanNode, stdNode, actions)
+	if err != nil {
+		return nil, fmt.Errorf("newGaussianTreeMLP: could not calculate "+
+			"log probabiltiy: %v", err)
+	}
+
+	// Create external actions
+	externActions := G.NewMatrix(
+		net.Graph(),
+		tensor.Float64,
+		G.WithName("externActions"),
+		G.WithShape(net.BatchSize(), g.actionDims),
+	)
+	logProbExternalActions, err := logProb(meanNode, stdNode, externActions)
+	if err != nil {
+		return nil, fmt.Errorf("newGaussianTreMLP: could not calculate "+
+			"log probability of external input actions: %v", err)
+	}
+
+	policy := GaussianTreeMLP{
+		NeuralNet:            net,
+		logProb:              logProbNode,
+		actions:              actions,
+		seed:                 g.seed,
+		externActions:        externActions,
+		externActionsLogProb: logProbExternalActions,
+		actionDims:           g.actionDims,
+	}
+
+	// Store the values of the actions selected for the batch, standard
+	// deviations and means for the policy in each state in the batch,
+	// and the log probability of selecting each action in the batch.
+	G.Read(policy.actions, &policy.actionsVal)
+	G.Read(stdNode, &policy.std)
+	G.Read(meanNode, &policy.mean)
+	G.Read(logProbNode, &policy.logProbVal)
+	G.Read(logProbExternalActions, &policy.externActionsLogProbVal)
+
+	// Action selection VM is used only for policies with batches of size 1.
+	// If batch size > 1, it's assumed that the policy weights are being
+	// learned, and so an external VM will be used after an external loss
+	// has been added to the policy's graph.
 	var vm G.VM
 	if batch == 1 {
-		vm = G.NewTapeMachine(net.Graph())
+		vm = G.NewTapeMachine(policy.Graph())
 	}
+	policy.vm = vm
 
-	newPolicy := GaussianTreeMLP{
-		NeuralNet: net,
-		mean:      g.mean,
-		std:       g.std,
-		seed:      g.seed,
-		vm:        vm,
-	}
+	// fmt.Println("AFTER CLONE", len(net.Graph().AllNodes()))
 
-	return &newPolicy, nil
+	return &policy, nil
 }
 
 // Clone clones the policy
@@ -380,8 +439,22 @@ func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 
 	g.Network().SetInput(t.Observation.RawVector().Data)
 	g.vm.RunAll()
-	defer g.vm.Reset()
 
-	action := g.actionsVal.Data().([]float64)
+	// fmt.Println("POL", g.Network().Output())
+	// fmt.Println("\nACTIONS", g.actionsVal, g.actions.Value())
+
+	// ! THIS DOESN'T WORK SOMETIMES...
+	// action := g.actionsVal.Data().([]float64)
+	action := g.actions.Value().Data().([]float64)
+
+	fmt.Println("\nAction:", g.actionsVal)
+	fmt.Println("STUFF:", g.mean, g.std, g.logProbVal)
+
+	g.vm.Reset()
 	return mat.NewVecDense(len(action), action)
+}
+
+func (g *GaussianTreeMLP) PrintVals() {
+	fmt.Println("\nActions val print for non-cloned...", g.actionsVal)
+	fmt.Println()
 }

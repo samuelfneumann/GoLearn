@@ -215,6 +215,7 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 		return &TreeMLP{}, fmt.Errorf(msg, err)
 	}
 
+	// fmt.Println("TreeMLP", len(net.Graph().AllNodes()))
 	return net, nil
 }
 
@@ -284,7 +285,9 @@ func (t *TreeMLP) CloneWithBatch(batchSize int) (NeuralNet, error) {
 		return nil, fmt.Errorf("clonewithbatch: invalid input type")
 	}
 
-	return t.cloneWithInputTo(-1, []*G.Node{input}, graph)
+	retVal, err := t.cloneWithInputTo(-1, []*G.Node{input}, graph)
+
+	return retVal, err
 }
 
 // cloneWithInputTo clones the TreeMLP to a new graph with a given
@@ -354,6 +357,11 @@ func (t *TreeMLP) cloneWithInputTo(axis int, inputs []*G.Node,
 		leafActivations: t.leafActivations,
 		learnables:      nil,
 		model:           nil,
+	}
+	_, err = net.fwd(inputs)
+	if err != nil {
+		return nil, fmt.Errorf("cloneWithInputTo: could not compute "+
+			"forward pass: %v", err)
 	}
 
 	return net, nil

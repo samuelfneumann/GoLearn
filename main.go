@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	G "gorgonia.org/gorgonia"
+	"gorgonia.org/gorgonia"
 	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
@@ -23,18 +23,59 @@ func main() {
 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
 	task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
 	m, step := mountaincar.NewContinuous(task, 1.0)
+	fmt.Println(step)
+
+	// args := vanillapg.TreePolicyConfig{
+	// 	Policy:            vanillapg.Gaussian,
+	// 	PolicyLayers:      []int{64, 64},
+	// 	PolicyBiases:      []bool{true, true},
+	// 	PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU()},
+	// 	LeafLayers:        [][]int{{64, 64}, {64, 64}},
+	// 	LeafBiases:        [][]bool{{true, true}, {true, true}},
+	// 	LeafActivations:   [][]*network.Activation{{network.ReLU(), network.ReLU()}, {network.ReLU(), network.ReLU()}},
+
+	// 	CriticLayers:      []int{100, 50, 25},
+	// 	CriticBiases:      []bool{true, true, true},
+	// 	CriticActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+
+	// 	InitWFn:      gorgonia.GlorotU(1.0),
+	// 	PolicySolver: gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.0003)),
+	// 	VSolver:      gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.001)),
+
+	// 	ValueGradSteps: 10,
+	// 	EpochLength:    1000,
+	// 	Lambda:         0.97,
+	// 	Gamma:          0.99,
+	// }
+
+	// agent, err := args.CreateAgent(m, useed)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// start := time.Now()
+	// var saver tracker.Tracker = tracker.NewReturn("./data.bin")
+	// e := experiment.NewOnline(m, agent, 1000*120, []tracker.Tracker{saver}, nil)
+	// e.Run()
+	// fmt.Println("Elapsed:", time.Since(start))
+	// e.Save()
+
+	// data := tracker.LoadData("./data.bin")
+	// fmt.Println(data)
+
+	// ======================================
 
 	p, err := policy.NewGaussianTreeMLP(
 		m,
 		1,
-		G.NewGraph(),
-		[]int{2, 3},
+		gorgonia.NewGraph(),
+		[]int{100, 50},
 		[]bool{true, true},
 		[]*network.Activation{network.ReLU(), network.ReLU()},
-		[][]int{{2, 2}, {3, 3}},
+		[][]int{{50, 25}, {50, 25}},
 		[][]bool{{true, true}, {true, true}},
 		[][]*network.Activation{{network.ReLU(), network.ReLU()}, {network.ReLU(), network.ReLU()}},
-		G.GlorotU(1.0),
+		gorgonia.GlorotU(1.0),
 		useed,
 	)
 	if err != nil {
@@ -77,7 +118,7 @@ func main() {
 	// // Experiment
 	// start := time.Now()
 	// var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	// e := experiment.NewOnline(m, q, 20_000, []tracker.Tracker{saver}, nil)
+	// e := experiment.NewOnline(m, agent, 1000*120, []tracker.Tracker{saver}, nil)
 	// e.Run()
 	// fmt.Println("Elapsed:", time.Since(start))
 	// e.Save()
