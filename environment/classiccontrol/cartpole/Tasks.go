@@ -7,6 +7,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r1"
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
+	"sfneuman.com/golearn/timestep"
 	ts "sfneuman.com/golearn/timestep"
 )
 
@@ -39,7 +40,8 @@ func NewBalance(s env.Starter, episodeSteps int, failAngle float64) *Balance {
 	legalAngles := []r1.Interval{{Min: -failAngle, Max: failAngle}}
 	angleFeatureIndex := []int{2}
 
-	angleLimiter := env.NewIntervalLimit(legalAngles, angleFeatureIndex)
+	angleLimiter := env.NewIntervalLimit(legalAngles, angleFeatureIndex,
+		timestep.TerminalStateReached)
 
 	return &Balance{s, stepLimiter, angleLimiter, failAngle}
 }

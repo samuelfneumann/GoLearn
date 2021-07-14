@@ -41,7 +41,8 @@ func NewGoal(s environment.Starter, episodeSteps int, goalX float64) *Goal {
 
 	interval := []r1.Interval{{Min: math.Inf(-1), Max: goalX}}
 	positionIndex := []int{0}
-	goalEnder := environment.NewIntervalLimit(interval, positionIndex)
+	goalEnder := environment.NewIntervalLimit(interval, positionIndex,
+		timestep.TerminalStateReached)
 	return &Goal{s, goalEnder, stepEnder, goalX}
 }
 

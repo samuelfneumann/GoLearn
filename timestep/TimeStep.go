@@ -17,6 +17,16 @@ const (
 	Last
 )
 
+// EndType denotes how the last episode ended. The episode could end
+// due to a time limit or due to reaching the goal.
+type EndType int
+
+const (
+	TerminalStateReached EndType = iota
+	Timeout
+	nilEnd // TimeStep was not last TimeStep
+)
+
 // String converts a StepType into a string representation
 func (s StepType) String() string {
 	switch s {
@@ -61,11 +71,34 @@ type TimeStep struct {
 	Discount    float64
 	Observation *mat.VecDense
 	Number      int
+	EndType
 }
 
 // New constructs a new TimeStep
 func New(t StepType, r, d float64, o *mat.VecDense, n int) TimeStep {
-	return TimeStep{t, r, d, o, n}
+	return TimeStep{t, r, d, o, n, nilEnd}
+}
+
+// SetEnd sets the ending type for the timestep
+func (t *TimeStep) SetEnd(e EndType) error {
+	if !t.Last() {
+		return fmt.Errorf("setEnd: cannot set ending type of non-last " +
+			"timestep")
+	}
+	t.EndType = e
+	return nil
+}
+
+// TerminalEnd returns whether this timestep was the last timestep
+// due to reaching the terminal state.
+func (t *TimeStep) TerminalEnd() bool {
+	return t.EndType == TerminalStateReached
+}
+
+// CutoffEnd returns whether this timestep was the last timestep due to
+// an episode being cutoff
+func (t *TimeStep) CutoffEnd() bool {
+	return t.EndType == Timeout
 }
 
 // First returns whether a TimeStep is the first in an environment

@@ -10,15 +10,18 @@ import (
 type IntervalLimit struct {
 	intervals []r1.Interval
 	indices   []int
+	endType   timestep.EndType
 }
 
-// NewIntervalLimit creates and returns a new inteval limit
-func NewIntervalLimit(limits []r1.Interval, obsIndices []int) *IntervalLimit {
+// NewIntervalLimit creates and returns a new inteval limit. The endType
+// argument determines what the episode end should be considered as.
+func NewIntervalLimit(limits []r1.Interval, obsIndices []int,
+	endType timestep.EndType) *IntervalLimit {
 	if len(limits) != len(obsIndices) {
 		panic("limits should have same length as observation indices")
 	}
 
-	return &IntervalLimit{limits, obsIndices}
+	return &IntervalLimit{limits, obsIndices, endType}
 }
 
 // End determines whether or not the current episode should be ended,
@@ -34,6 +37,7 @@ func (i *IntervalLimit) End(t *timestep.TimeStep) bool {
 		if t.Observation.AtVec(featureIndex) > interval.Max ||
 			t.Observation.AtVec(featureIndex) < interval.Min {
 			t.StepType = timestep.Last
+			t.SetEnd(i.endType)
 			return true
 		}
 	}

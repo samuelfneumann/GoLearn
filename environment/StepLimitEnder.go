@@ -20,6 +20,7 @@ func NewStepLimit(episodeSteps int) *StepLimit {
 func (s *StepLimit) End(t *timestep.TimeStep) bool {
 	if t.Number >= s.episodeSteps {
 		t.StepType = timestep.Last
+		t.SetEnd(timestep.Timeout)
 		return true
 	}
 	return false
