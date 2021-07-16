@@ -1,5 +1,7 @@
 # Ignore data files
 *.bin
 **.bin
+**.dot
+**.svg
 
 DocumentationGuidelines.txt
