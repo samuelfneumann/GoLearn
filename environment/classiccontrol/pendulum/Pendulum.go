@@ -138,7 +138,7 @@ func (p *Pendulum) NextState(t timestep.TimeStep, a mat.Vector) *mat.VecDense {
 // onsisting of the horizontal force to apply to the cart. Actions
 // outside the legal range of [-1, 1] are clipped to stay within this
 // range.
-func (p *Pendulum) Step(action mat.Vector) (timestep.TimeStep, bool) {
+func (p *Pendulum) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	// Ensure action is 1-dimensional
 	if action.Len() > ActionDims {
 		panic("Actions should be 1-dimensional")

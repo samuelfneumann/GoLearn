@@ -100,7 +100,6 @@ func (g *Goal) End(t *timestep.TimeStep) bool {
 
 	// Check if the max steps was reached, modifying t.StepType if appropriate
 	if end := g.stepEnder.End(t); end {
-
 		return true
 	}
 	return false
