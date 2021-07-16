@@ -221,6 +221,10 @@ func NewTreeMLP(features, batch, outputs int, g *G.ExprGraph,
 	return net, nil
 }
 
+func (t *TreeMLP) Layers() []Layer {
+	return t.rootNetwork.(*MultiHeadMLP).Layers()
+}
+
 // SetInput sets the value of the input node before running the forward
 // pass.
 func (t *TreeMLP) SetInput(input []float64) error {

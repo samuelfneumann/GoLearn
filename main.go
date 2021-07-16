@@ -5,65 +5,202 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"gorgonia.org/gorgonia"
 	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/VanillaPG"
+	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/network"
+
+	G "gorgonia.org/gorgonia"
 )
 
 func main() {
 
+	// vanillapg.TestBuffer2()
 	var useed uint64 = 192382
 	// var seed int64 = 192382
 
 	// Create the environment
-	bounds := r1.Interval{Min: -0.01, Max: 0.01}
+	position := r1.Interval{Min: -0.6, Max: -0.4}
+	velocity := r1.Interval{Min: -0.01, Max: 0.01}
 
-	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
-	task := mountaincar.NewGoal(s, 1000, mountaincar.GoalPosition)
-	m, step := mountaincar.NewContinuous(task, 1.0)
+	s := environment.NewUniformStarter([]r1.Interval{position, velocity}, useed)
+	task := mountaincar.NewGoal(s, 500, mountaincar.GoalPosition)
+	m, step := mountaincar.NewDiscrete(task, 0.99)
 	fmt.Println(step)
 
-	args := vanillapg.TreePolicyConfig{
-		Policy:            vanillapg.Gaussian,
-		PolicyLayers:      []int{64, 64},
-		PolicyBiases:      []bool{true, true},
-		PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU()},
-		LeafLayers:        [][]int{{64, 64}, {64, 64}},
-		LeafBiases:        [][]bool{{true, true}, {true, true}},
-		LeafActivations:   [][]*network.Activation{{network.ReLU(), network.ReLU()}, {network.ReLU(), network.ReLU()}},
+	c, err := policy.NewCategoricalMLP(m, 3, G.NewGraph(), []int{10}, []bool{true},
+		[]*network.Activation{network.ReLU()}, G.GlorotU(1.0), 10)
+	if err != nil {
+		panic(err)
+	}
 
-		CriticLayers:      []int{100, 50, 25},
-		CriticBiases:      []bool{true, true, true},
-		CriticActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+	// fmt.Println(c.SelectAction(step))
 
-		InitWFn:      gorgonia.GlorotU(1.0),
-		PolicySolver: gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.00003)),
-		VSolver:      gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.0001)),
+	vm := G.NewTapeMachine(c.Network().Graph())
+	c.LogProbOf([]float64{0.1, 0.2, 0.1, 0.3, 1.0, 9.1}, []float64{1.0, 2.0, 0.0})
+	vm.RunAll()
+	vm.Reset()
+	fmt.Println("\nLogProb of input actions\n", c.(*policy.CategoricalMLP).LogProbNode().Value())
 
-		ValueGradSteps: 10,
+	fmt.Println("\nLogits of each obs")
+	fmt.Println(c.(*policy.CategoricalMLP).Logits())
+
+	// fmt.Println("LogProb of selected actions")
+	// fmt.Println(c.(*policy.CategoricalMLP).LogProbSelectedActions().Value())
+
+	// ===========================================================================
+	// ===========================================================================
+	// ===========================================================================
+	// ===========================================================================
+	// ===========================================================================
+
+	// ioutil.WriteFile("net.dot", []byte(c.Network().Graph().ToDot()), 0644)
+
+	// // g, err := policy.NewGaussianTreeMLP(m, 10, gorgonia.NewGraph(), []int{64}, []bool{false}, []*network.Activation{network.ReLU()},
+	// // 	[][]int{{}, {}}, [][]bool{{}, {}}, [][]*network.Activation{{}, {}}, gorgonia.GlorotU(1.0), useed)
+	// // if err != nil {
+	// // 	panic(err)
+	// // }
+	// // ioutil.WriteFile("net.dot", []byte(g.Network().Graph().ToDot()), 0644)
+
+	// args := vanillapg.TreePolicyConfig{
+	// 	Policy:            vanillapg.Gaussian,
+	// 	PolicyLayers:      []int{64, 64},
+	// 	PolicyBiases:      []bool{true, true},
+	// 	PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU()},
+	// 	LeafLayers:        [][]int{{64}, {64}},
+	// 	LeafBiases:        [][]bool{{true}, {true}},
+	// 	LeafActivations:   [][]*network.Activation{{network.ReLU()}, {network.ReLU()}},
+
+	// 	ValueFnLayers:      []int{64, 64},
+	// 	ValueFnBiases:      []bool{true, true},
+	// 	ValueFnActivations: []*network.Activation{network.ReLU(), network.ReLU()},
+
+	// 	InitWFn:      gorgonia.GlorotN(0.5),
+	// 	PolicySolver: gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.0005)),
+	// 	VSolver:      gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.0001)),
+
+	// 	ValueGradSteps: 1,
+	// 	EpochLength:    1000,
+	// 	Lambda:         0.95,
+	// 	Gamma:          0.99,
+	// }
+
+	// // args := vanillapg.TreePolicyConfig{
+	// // 	Policy:            vanillapg.Gaussian,
+	// // 	PolicyLayers:      []int{64},
+	// // 	PolicyBiases:      []bool{false},
+	// // 	PolicyActivations: []*network.Activation{network.ReLU()},
+	// // 	LeafLayers:        [][]int{{}, {}},
+	// // 	LeafBiases:        [][]bool{{}, {}},
+	// // 	LeafActivations:   [][]*network.Activation{{}, {}},
+
+	// // 	ValueFnLayers:      []int{64},
+	// // 	ValueFnBiases:      []bool{true},
+	// // 	ValueFnActivations: []*network.Activation{network.ReLU()},
+
+	// // 	InitWFn:      gorgonia.GlorotU(1.0),
+	// // 	PolicySolver: gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.005)),
+	// // 	VSolver:      gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.005)),
+
+	// // 	ValueGradSteps: 100,
+	// // 	EpochLength:    1000,
+	// // 	Lambda:         0.95,
+	// // 	Gamma:          0.99,
+	// // }
+
+	args := vanillapg.CategoricalMLPConfig{
+		Policy:            vanillapg.Categorical,
+		PolicyLayers:      []int{100, 50, 25},
+		PolicyBiases:      []bool{true, true, true},
+		PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+
+		ValueFnLayers:      []int{100, 50, 25},
+		ValueFnBiases:      []bool{true, true, true},
+		ValueFnActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+
+		InitWFn:      G.GlorotN(1.0),
+		PolicySolver: G.NewAdamSolver(G.WithLearnRate(5e-3), G.WithBatchSize(1000)),
+		VSolver:      G.NewAdamSolver(G.WithLearnRate(5e-3), G.WithBatchSize(1000)),
+
+		ValueGradSteps: 5,
 		EpochLength:    1000,
-		Lambda:         0.95,
+		Lambda:         0.97,
 		Gamma:          0.99,
 	}
 
-	agent, err := args.CreateAgent(m, useed)
+	env := m
+
+	agent, err := args.CreateAgent(env, useed)
 	if err != nil {
 		panic(err)
 	}
 
 	start := time.Now()
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := experiment.NewOnline(m, agent, 1000*100, []tracker.Tracker{saver}, nil)
+	e := experiment.NewOnline(env, agent, 1000*7000, []tracker.Tracker{saver}, nil)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
 	data := tracker.LoadData("./data.bin")
 	fmt.Println(data)
+
+	// ===================================
+	// mlp, err := network.NewTreeMLP(1, 4, 2, gorgonia.NewGraph(), []int{64, 64}, []bool{true, true}, []*network.Activation{network.ReLU(), network.ReLU()},
+	// 	[][]int{{64}}, [][]bool{{true}}, [][]*network.Activation{{network.ReLU()}}, gorgonia.GlorotU(1.0))
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// mlp, err := network.NewMultiHeadMLP(1, 4, 2, gorgonia.NewGraph(),
+	// 	[]int{64, 64}, []bool{true, true}, gorgonia.GlorotU(1.0), []*network.Activation{network.ReLU(), network.ReLU()})
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// targets := gorgonia.NewMatrix(mlp.Graph(), tensor.Float64, gorgonia.WithShape(mlp.Prediction()[0].Shape()...))
+
+	// loss := gorgonia.Must(gorgonia.Sub(targets, mlp.Prediction()[0]))
+	// loss = gorgonia.Must(gorgonia.Square(loss))
+	// loss = gorgonia.Must(gorgonia.Mean(loss))
+	// // loss2 := gorgonia.Must(gorgonia.Sub(mlp.Prediction()[1], targets))
+	// // loss2 = gorgonia.Must(gorgonia.Square(loss2))
+	// // loss2 = gorgonia.Must(gorgonia.Mean(loss2))
+	// // loss := gorgonia.Must(gorgonia.Add(loss1, loss2))
+
+	// _, err = gorgonia.Grad(loss, mlp.Learnables()...)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// solver := gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.01))
+	// vm := gorgonia.NewTapeMachine(mlp.Graph(), gorgonia.BindDualValues(mlp.Learnables()...))
+
+	// targetsTensor := tensor.NewDense(tensor.Float64, tensor.Shape([]int{2, 4}), tensor.WithBacking([]float64{1, 2, 3, 4, 5, 6, 7, 8}))
+	// for i := 0; i < 1000; i++ {
+	// 	gorgonia.Let(targets, targetsTensor)
+	// 	mlp.SetInput([]float64{0, 2, 4, 6})
+	// 	vm.RunAll()
+
+	// 	err := solver.Step(mlp.Model())
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	fmt.Println(mlp.Output()[0])
+	// 	vm.Reset()
+	// }
+
+	// fmt.Println()
+	// mlp.SetInput([]float64{4, 5, 6, 7})
+	// vm.RunAll()
+	// fmt.Println(mlp.Output())
+	// vm.Reset()
+
+	// vanillapg.TestBuffer()
 
 	// ======================================
 	// ======================================
@@ -74,7 +211,7 @@ func main() {
 	// g := gorgonia.NewGraph()
 	// p, err := policy.NewGaussianTreeMLP(
 	// 	m,
-	// 	1,
+	// 	2,
 	// 	g,
 	// 	[]int{100, 50},
 	// 	[]bool{true, true},
@@ -89,8 +226,17 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 
-	// fmt.Println(p)
-	// fmt.Println(p.SelectAction(step))
+	// // fmt.Println(p)
+	// // fmt.Println(p.SelectAction(step))
+
+	// vm := gorgonia.NewTapeMachine(p.Network().Graph())
+	// _, _ = p.LogProbOf([]float64{1.0, 0.1, -0.1, -0.9}, []float64{0.5, 0.5})
+	// vm.RunAll()
+	// fmt.Println(policy.LogProb)
+	// fmt.Printf("norm = s.norm(loc=%v, scale=%v); norm.logpdf(0.5)\n", p.(*policy.GaussianTreeMLP).Mean()[0], p.(*policy.GaussianTreeMLP).Std()[0])
+	// fmt.Printf("norm = s.norm(loc=%v, scale=%v); norm.logpdf(0.5)\n", p.(*policy.GaussianTreeMLP).Mean()[1], p.(*policy.GaussianTreeMLP).Std()[1])
+	// vm.Reset()
+
 	// ==============================
 	// ==============================
 	// ==============================

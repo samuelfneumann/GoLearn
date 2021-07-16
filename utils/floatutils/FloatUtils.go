@@ -21,6 +21,14 @@ func ClipInterval(value float64, interval r1.Interval) float64 {
 	return Clip(value, interval.Min, interval.Max)
 }
 
+// ClipSlice clips all elements of a slice in-place.
+func ClipSlice(slice []float64, min, max float64) []float64 {
+	for i := range slice {
+		slice[i] = Clip(slice[i], min, max)
+	}
+	return slice
+}
+
 // Max gets the maximum value and indices of the maximum values in
 // a slice of float64.
 func MaxSlice(values []float64) (max float64, indices []int) {
@@ -57,4 +65,61 @@ func Max(floats ...float64) float64 {
 		}
 	}
 	return max
+}
+
+// NonZero returns true if slice contains nonzero elements and false
+// otherwise,
+func NonZero(slice []float64) bool {
+	for i := range slice {
+		if slice[i] != 0.0 {
+			return true
+		}
+	}
+	return false
+}
+
+// Contains returns true if slice contains value and false otherwise.
+func Contains(slice []float64, value float64) bool {
+	for i := range slice {
+		if slice[i] == value {
+			return true
+		}
+	}
+	return false
+}
+
+// ArgMax returns the indices of the maximum values in a list of floats
+func ArgMax(floats ...float64) []int {
+	ind := []int{0}
+	max := floats[0]
+
+	for i := 0; i < len(floats); i++ {
+		if floats[i] > max {
+			ind = []int{i}
+			max = floats[i]
+		} else if floats[i] == max {
+			ind = append(ind, i)
+		}
+	}
+
+	return ind
+}
+
+// Unique returns the unique values in a float slice
+func Unique(floats ...float64) []float64 {
+	set := make(map[float64]bool)
+	count := 0
+	for _, float := range floats {
+		if !set[float] {
+			count++
+		}
+		set[float] = true
+	}
+
+	uniq := make([]float64, 0, count)
+	for key := range set {
+		uniq = append(uniq, key)
+	}
+
+	return uniq
 }

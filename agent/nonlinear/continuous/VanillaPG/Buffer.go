@@ -37,6 +37,21 @@ type vpgBuffer struct {
 	// log_p_buffer []float64
 }
 
+func TestBuffer() {
+	b := newVPGBuffer(2, 1, 3, 0.0, 0.99)
+
+	b.store([]float64{0., 1.}, []float64{2.}, -1.0, -1.0)
+	b.store([]float64{3., 4.}, []float64{5.}, -1.0, -1.5)
+	b.store([]float64{6., 7.}, []float64{8.}, -1.0, -2.0)
+
+	b.finishPath(-3.0)
+	fmt.Println("Bootstrap value", -3.0)
+	fmt.Println("Return:", b.retBuffer)
+	fmt.Println("Reward:", b.rewBuffer)
+	fmt.Println("Advantage:", b.advBuffer)
+	fmt.Println("Values", b.valBuffer)
+}
+
 func newVPGBuffer(obsDim, actDim, size int, lambda, gamma float64) *vpgBuffer {
 	obsBuffer := make([]float64, size*obsDim)
 	actBuffer := make([]float64, size*actDim)
@@ -62,9 +77,19 @@ func newVPGBuffer(obsDim, actDim, size int, lambda, gamma float64) *vpgBuffer {
 	}
 }
 
+func (v *vpgBuffer) Reset() {
+	v.obsBuffer = make([]float64, len(v.obsBuffer))
+	v.actBuffer = make([]float64, len(v.actBuffer))
+	v.advBuffer = make([]float64, len(v.advBuffer))
+	v.rewBuffer = make([]float64, len(v.rewBuffer))
+	v.retBuffer = make([]float64, len(v.retBuffer))
+	v.valBuffer = make([]float64, len(v.valBuffer))
+
+}
+
 // store stores a single timestep state, action, reward, and value to
 // the vpgBuffer.
-func (v *vpgBuffer) store(obs, act []float64, rew, val, dis float64) error {
+func (v *vpgBuffer) store(obs, act []float64, rew, val float64) error {
 	if v.currentPos >= v.maxSize {
 		return fmt.Errorf("store: cannot add new transition, buffer at" +
 			"maximum capacity")
@@ -96,6 +121,7 @@ func (v *vpgBuffer) finishPath(lastVal float64) {
 	start := v.pathStartIdx
 	stop := v.currentPos
 	rews := append(v.rewBuffer[start:stop], lastVal)
+	// fmt.Println("LENGTH OF REWS", len(rews))
 	vals := append(v.valBuffer[start:stop], lastVal)
 
 	// GAE-lambda advantage calculation
@@ -105,13 +131,16 @@ func (v *vpgBuffer) finishPath(lastVal float64) {
 
 	deltas := mat.NewVecDense(stateVals.Len(), nil)
 	deltas.AddScaledVec(rewards, v.gamma, nextStateVals)
-	deltas.AddScaledVec(deltas, -1.0, stateVals)
+	deltas.SubVec(deltas, stateVals)
 
 	copy(v.advBuffer[start:stop],
 		discountCumSum(deltas, v.gamma*v.lambda))
 
-	// Rewardsw-to-go
+	// Rewards-to-go
+	rewards = mat.NewVecDense(len(rews), rews)
 	rewsToGo := discountCumSum(rewards, v.gamma)
+
+	// fmt.Println("Max", floatutils.Max(rewsToGo...), len(rewsToGo), cap(rewsToGo))
 	copy(v.retBuffer[start:stop], rewsToGo[:len(rewsToGo)-1])
 
 	v.pathStartIdx = v.currentPos
@@ -147,12 +176,29 @@ func (v *vpgBuffer) get() ([]float64, []float64, []float64, []float64, error) {
 	// Advantage normalization
 	adv := mat.NewVecDense(len(v.advBuffer), v.advBuffer)
 	ones := matutils.VecOnes(adv.Len())
-	mean, std := stat.MeanStdDev(v.advBuffer, nil)
+	mean := stat.Mean(v.advBuffer, nil)
+	std := stat.StdDev(v.advBuffer, nil) + 1e-8
 	stdVec := mat.NewVecDense(adv.Len(), nil)
 	stdVec.AddScaledVec(stdVec, std, ones)
 
 	adv.AddScaledVec(adv, -mean, ones)
 	adv.DivElemVec(adv, stdVec)
 
+	// fmt.Println(v.rewBuffer[:250])
+	// fmt.Println(v.retBuffer[:250])
+	// log.Fatal()
+
 	return v.obsBuffer, v.actBuffer, adv.RawVector().Data, v.retBuffer, nil
+	// return v.obsBuffer, v.actBuffer, v.advBuffer, v.retBuffer, nil
+}
+
+func TestBuffer2() {
+	buffer := newVPGBuffer(2, 1, 3, 0.5, 1.0)
+
+	buffer.store([]float64{1.0, 1.0}, []float64{1.0}, 1.0, 1.0)
+	buffer.store([]float64{1.0, 1.0}, []float64{1.0}, 1.0, 1.0)
+	buffer.store([]float64{1.0, 1.0}, []float64{1.0}, 1.0, 1.0)
+
+	buffer.finishPath(10.0)
+	fmt.Println(buffer.advBuffer)
 }

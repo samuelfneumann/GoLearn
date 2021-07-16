@@ -146,8 +146,14 @@ func NewMultiHeadMLP(features, batch, outputs int, g *G.ExprGraph,
 	input := G.NewMatrix(g, tensor.Float64, G.WithShape(batch, features),
 		G.WithName("input"), G.WithInit(G.Zeroes()))
 
-	return newMultiHeadMLPFromInput([]*G.Node{input}, outputs, g, hiddenSizes,
+	net, err := newMultiHeadMLPFromInput([]*G.Node{input}, outputs, g, hiddenSizes,
 		biases, init, activations, "", "", true)
+
+	return net, err
+}
+
+func (e *MultiHeadMLP) Layers() []Layer {
+	return e.layers
 }
 
 // Graph returns the computational graph of the MultiHeadMLP.
@@ -319,11 +325,11 @@ func (m *MultiHeadMLP) Model() []G.ValueGrad {
 
 // computeModel computes the model for the network
 func (e *MultiHeadMLP) computeModel() []G.ValueGrad {
-	model := make([]G.ValueGrad, 0, 2*len(e.layers))
-	for _, node := range e.Learnables() {
-		model = append(model, node)
-	}
-	return model
+	// model := make([]G.ValueGrad, 0, 2*len(e.layers))
+	// for _, node := range e.Learnables() {
+	// 	model = append(model, node)
+	// }
+	return G.NodesToValueGrads(e.Learnables())
 }
 
 // fwd performs the forward pass of the MultiHeadMLP on the input

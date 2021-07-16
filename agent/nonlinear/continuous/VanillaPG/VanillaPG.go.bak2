@@ -1,0 +1,401 @@
+package vanillapg
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+
+	"gonum.org/v1/gonum/mat"
+	G "gorgonia.org/gorgonia"
+	"gorgonia.org/tensor"
+	"sfneuman.com/golearn/agent"
+	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
+	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/network"
+	ts "sfneuman.com/golearn/timestep"
+)
+
+var globalFloats []float64
+
+// var flag bool = false
+var CLoss *G.Node
+var CLossVal G.Value
+var Prediction G.Value
+var LogProb *G.Node
+
+// TODO:
+// Config should take in architecutres and then CreateAgent will return
+// an appropriate agent
+//
+//	Critic should be called ValueFn not Critic
+//
+// Can have:
+//	Vanilla PG (V + Q + ER) -- Actor Critic
+//	Vanilla PG with GAE --> Forward view which is equivalent to:
+//					REINFORCE -> Vanilla PG with GAE lambda = 1
+//
+// ! EPOCH END --> ENV RESET
+// ! 	INTERESTING: if we don't reset the env, the last epoch used to state value on the last timestep
+// !					to estimate the rest of the rewards. If we do NOT reset the environment, then
+// !					the next epoch will begin with an episode halfway through, but this may not be
+// !					the worst thing in the world. We will still accurately estimate that state's value and the policy gradient.
+// !	FIXES FOR ENDING ENV ON EPOCH END:
+// !		1. Don't
+// !		2. Let agents send the the experiment signals at every Observe()
+//!			3. Create an OnlineEpochExperiment type that resets episodes at the end of an epoch !!!!!!!!!!!!!!!!!!!!
+//
+
+// !
+// ! SPINNING UP IS COOL BECAUSE IT'S BASICALLY FANCY REINFORCE!!!!!!!!!!!!!!!!!!!!
+
+// ! Currently only works with a batch size of 1 == 1 entire trajectory
+type VPG struct {
+	// Policy
+	behaviour    agent.NNPolicy        // Has its own VM
+	trainPolicy  agent.PolicyLogProber // Policy struct that is learned
+	policySolver G.Solver
+	policyVM     G.VM
+	advantage    *G.Node
+
+	buffer           *vpgBuffer
+	epochLength      int
+	currentEpochElem int
+	completedEpochs  int
+	eval             bool
+
+	prevStep   ts.TimeStep
+	actionDims int
+
+	// State value critic
+	vCritic        network.NeuralNet
+	vVM            G.VM
+	vTrainCritic   network.NeuralNet
+	vTrainVM       G.VM
+	vNextVal       *G.Node
+	vSolver        G.Solver
+	valueGradSteps int
+
+	PLoss G.Value
+}
+
+func New(env environment.Environment, c Config,
+	seed int64) (*VPG, error) {
+	if !c.ValidAgent(&VPG{}) {
+		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
+	}
+
+	config, ok := c.(*TreePolicyConfig)
+	if !ok {
+		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
+	}
+
+	// Validate and adjust policy/critics as needed
+	err := config.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("new: %v", err)
+	}
+
+	features := env.ObservationSpec().Shape.Len()
+	actionDims := env.ActionSpec().Shape.Len()
+	epochLength := config.EpochLength
+	buffer := newVPGBuffer(features, actionDims, epochLength, config.Lambda,
+		config.Gamma)
+
+	behaviour := config.behaviour
+	trainPolicy := config.policy
+
+	// Monte-Carlo method: vNextVal == sum of rewards following current step
+	vCritic := config.vCritic
+	vVM := G.NewTapeMachine(vCritic.Graph())
+
+	vTrainCritic := config.vTrainCritic
+	prediction := G.Must(G.Ravel(vTrainCritic.Prediction()[0]))
+	vNextVal := G.NewVector(
+		vTrainCritic.Graph(),
+		tensor.Float64,
+		G.WithShape(prediction.Shape()...),
+		G.WithName(fmt.Sprintf("%vNextValue", "vTrainCritic")),
+	)
+	G.Read(prediction, &Prediction)
+
+	// Critic loss
+	// fmt.Println(vTrainCritic.Prediction()[0].Shape())
+	// fmt.Println(vNextVal.Shape())
+	loss := G.Must(G.Sub(prediction, vNextVal))
+	loss = G.Must(G.Square(loss))
+	loss = G.Must(G.Mean(loss))
+	CLoss = loss
+	G.Read(CLoss, &CLossVal)
+
+	// Gradient of loss
+	_, err = G.Grad(loss, vTrainCritic.Learnables()...)
+	if err != nil {
+		// This should never happen
+		msg := fmt.Sprintf("new: could not compute gradient: %v", err)
+		panic(msg)
+	}
+	vTrainVM := G.NewTapeMachine(vTrainCritic.Graph(), G.BindDualValues(vTrainCritic.Learnables()...))
+	// fmt.Println(vTrainCritic.Prediction()[0].Shape())
+
+	// Construct policy loss
+	statesPlaceholder := make([]float64, features*epochLength)
+	actionsPlaceholder := make([]float64, actionDims*epochLength)
+	logProb, err := trainPolicy.LogProbOf(statesPlaceholder, actionsPlaceholder)
+	if err != nil {
+		return nil, fmt.Errorf("new: could not compute log(∇π): %v", err)
+	}
+	LogProb = logProb
+
+	advantage := G.NewVector(
+		trainPolicy.Network().Graph(),
+		tensor.Float64,
+		G.WithShape(logProb.Shape()...),
+		G.WithName("advantage"),
+	)
+
+	negative := G.NewConstant(-1.0)
+	policyLoss := G.Must(G.HadamardProd(logProb, advantage))
+
+	// In reality the policy loss is summed over the trajectory, but
+	// many implementations take the mean instead.
+	// policyLoss = G.Must(G.Sum(policyLoss))
+	policyLoss = G.Must(G.Mean(policyLoss))
+
+	policyLoss = G.Must(G.Mul(negative, policyLoss))
+
+	// Gradient of policy loss
+	_, err = G.Grad(policyLoss, trainPolicy.Network().Learnables()...)
+	if err != nil {
+		panic(fmt.Sprintf("new: could not compute policy gradient: %v", err))
+	}
+	// policyVM := G.NewTapeMachine(
+	// 	graph,
+	// 	G.BindDualValues(trainPolicy.Network().Learnables()...),
+	// )
+
+	retVal := &VPG{
+		trainPolicy:  trainPolicy,
+		behaviour:    behaviour,
+		policySolver: config.PolicySolver,
+		advantage:    advantage,
+		// policyVM:     policyVM,
+
+		buffer:           buffer,
+		epochLength:      config.EpochLength,
+		currentEpochElem: 0,
+		completedEpochs:  0,
+
+		eval:       false,
+		actionDims: actionDims,
+		prevStep:   ts.TimeStep{},
+
+		vCritic:        vCritic,
+		vVM:            vVM,
+		vTrainCritic:   vTrainCritic,
+		vNextVal:       vNextVal,
+		vTrainVM:       vTrainVM,
+		vSolver:        config.VSolver,
+		valueGradSteps: config.ValueGradSteps,
+	}
+
+	G.Read(policyLoss, &retVal.PLoss)
+	policyVM := G.NewTapeMachine(
+		trainPolicy.Network().Graph(),
+		G.BindDualValues(trainPolicy.Network().Learnables()...),
+	)
+	retVal.policyVM = policyVM
+	ioutil.WriteFile("net.dot", []byte(trainPolicy.Network().Graph().ToDot()), 0644)
+
+	return retVal, nil
+}
+
+func (v *VPG) SelectAction(t ts.TimeStep) *mat.VecDense {
+	if v.eval {
+		switch p := v.behaviour.(type) {
+		case *policy.GaussianTreeMLP:
+			p.SelectAction(t)
+			return mat.NewVecDense(len(p.Mean()), p.Mean())
+
+		default:
+			panic(fmt.Sprintf("selectAction: invalid behaviour policy "+
+				"%T", v.behaviour))
+		}
+	}
+
+	// return mat.NewVecDense(1, []float64{0.1})
+	// time.Sleep(time.Millisecond * 10)
+	action := v.behaviour.SelectAction(t)
+
+	return action
+}
+
+func (v *VPG) EndEpisode() {}
+
+func (v *VPG) Eval() {
+	v.eval = true
+}
+
+func (v *VPG) Train() {
+	v.eval = false
+}
+
+func (v *VPG) ObserveFirst(t ts.TimeStep) {
+	// flag = false
+	if !t.First() {
+		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
+			"called on the first timestep (current timestep = %d)", t.Number)
+	}
+	v.prevStep = t
+}
+
+// Observe observes and records any timestep other than the first timestep
+func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
+	// if flag {
+	// return
+	// }
+
+	if action.Len() != v.actionDims {
+		msg := fmt.Sprintf("observe: illegal action dimensions \n\twant(%v)"+
+			"\n\thave(%v)", v.actionDims, action.Len())
+		panic(msg)
+	}
+
+	// Store data in the buffer
+	state := v.prevStep.Observation.RawVector().Data
+	err := v.vCritic.SetInput(state)
+	if err != nil {
+		panic(fmt.Sprintf("observe: cannot set critic input for advantage "+
+			"estimation: %v", err))
+	}
+	v.vVM.RunAll()
+	stateVal := v.vCritic.Output()[0].Data().([]float64)[0]
+	v.vVM.Reset()
+
+	a := action.(*mat.VecDense).RawVector().Data
+	reward := nextStep.Reward
+	// discount := nextStep.Discount
+	v.buffer.store(state, a, reward, stateVal)
+
+	v.prevStep = nextStep
+
+	// If the episode has ended, finsih the path in the buffer by computing
+	// the advantages for the episode
+	v.currentEpochElem += 1
+	if v.currentEpochElem >= v.epochLength || v.prevStep.CutoffEnd() {
+		v.vCritic.SetInput(nextStep.Observation.RawVector().Data)
+
+		v.vVM.RunAll()
+		nextStateVal := v.vCritic.Output()[0].Data().([]float64)[0]
+		v.vVM.Reset()
+		v.buffer.finishPath(nextStateVal)
+
+		// flag = true
+	} else if v.prevStep.TerminalEnd() {
+		v.buffer.finishPath(0.0)
+		// flag = true
+	} else if v.prevStep.Last() && v.prevStep.UnspecifiedEnd() {
+		panic("observe: unknown ending type of episode")
+	}
+}
+
+func (v *VPG) TdError(ts.Transition) float64 {
+	panic("tderror: not implemented")
+}
+
+func (v *VPG) Step() {
+	// Only update at the end of an epoch
+	if v.currentEpochElem < v.epochLength {
+		return
+	}
+
+	state, action, adv, ret, err := v.buffer.get()
+	if err != nil {
+		panic(fmt.Sprintf("could not sample from buffer: %v", err))
+	}
+
+	// Set the advantage in the trainPolicy's computational graph
+	advantage := tensor.NewDense(tensor.Float64, v.advantage.Shape(),
+		tensor.WithBacking(adv))
+	err = G.Let(v.advantage, advantage)
+	if err != nil {
+		panic(fmt.Sprintf("step: could not set advantages in policy "+
+			"gradient: %v", err))
+	}
+
+	// Set the states and actions to compute the log probability of
+	// for the trainPolicy's gradient in its graph
+	_, err = v.trainPolicy.LogProbOf(state, action)
+	if err != nil {
+		panic(fmt.Sprintf("step: could not calculate log probabilities: %v",
+			err))
+	}
+
+	v.policyVM.RunAll()
+	// fmt.Println(v.trainPolicy.LogProb().Value())
+	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).Std())
+	// fmt.Println("Advantage", advantage)
+	// fmt.Println("Sum", floats.Sum(advantage.Data().([]float64)))
+	fmt.Println()
+	// ioutil.WriteFile("net.dot", []byte(v.trainPolicy.Network().Graph().ToDot()), 0644)
+
+	v.trainPolicy.(*policy.GaussianTreeMLP).PrintVals()
+	// fmt.Println(v.buffer.actBuffer)
+
+	// fmt.Println("=== PLoss", v.PLoss)
+	fmt.Println()
+
+	// time.Sleep(time.Millisecond * 1000)
+	err = v.policySolver.Step(v.trainPolicy.Network().Model())
+	if err != nil {
+		panic(fmt.Sprintf("step: could not step policy: %v", err))
+	}
+	v.policyVM.Reset()
+
+	// v.trainPolicy.(*policy.GaussianTreeMLP).PrintVals()
+
+	// Monte-Carlo method: nextValue = sum of rewards
+	returns := tensor.NewDense(tensor.Float64, v.vNextVal.Shape(),
+		tensor.WithBacking(ret))
+
+	for i := 0; i < v.valueGradSteps; i++ {
+		// Set state inputs
+		err = v.vTrainCritic.SetInput(state)
+		if err != nil {
+			panic(fmt.Sprintf("step: could not step critic state input: %v", err))
+		}
+
+		// Set targets
+		err = G.Let(v.vNextVal, returns)
+		if err != nil {
+			panic(fmt.Sprintf("step: could not set state critic update target: %v",
+				err))
+		}
+
+		v.vTrainVM.RunAll()
+
+		// ioutil.WriteFile("net.dot", []byte(v.vTrainCritic.Graph().ToDot()), 0644)
+
+		// fmt.Println("=== CLoss", CLossVal)
+		// fmt.Println("=== Prediction", Prediction.Data().([]float64)[:3], floats.Min(Prediction.Data().([]float64)), floats.Max(Prediction.Data().([]float64)))
+		// fmt.Println("=== Targets", ret[:2], floats.Min(ret))
+		// fmt.Println("=== Pred Has NaN", floats.HasNaN(Prediction.Data().([]float64)))
+		// fmt.Println("=== Target Has NaN", floats.HasNaN(ret))
+		// fmt.Println("=== Advantages", adv[:3], adv[len(adv)-3:])
+		// fmt.Println("=== Advantage NaNs", floats.HasNaN(adv))
+		// fmt.Println(ret[:250])
+		// log.Fatal()
+		fmt.Println(i)
+		// fmt.Println(v.vTrainCritic.(*network.MultiHeadMLP).Layers()[0].Weights().Grad())
+
+		err := v.vSolver.Step(v.vTrainCritic.Model())
+		if err != nil {
+			panic(fmt.Sprintf("step: could not step value function: %v", err))
+		}
+		v.vTrainVM.Reset()
+	}
+
+	v.currentEpochElem = 0
+	v.completedEpochs++
+	network.Set(v.behaviour.Network(), v.trainPolicy.Network())
+	network.Set(v.vCritic, v.vTrainCritic)
+}

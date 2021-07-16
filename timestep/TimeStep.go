@@ -19,12 +19,17 @@ const (
 
 // EndType denotes how the last episode ended. The episode could end
 // due to a time limit or due to reaching the goal.
-type EndType int
+type EndType string
 
 const (
-	TerminalStateReached EndType = iota
-	Timeout
-	nilEnd // TimeStep was not last TimeStep
+	// Terminal state (either goal, out-of-bounds, or ... reached)
+	TerminalStateReached EndType = "terminal"
+
+	// Episode was cutoff due to a timeout
+	Timeout EndType = "timeout"
+
+	// TimeStep was not last TimeStep or unspecified ending type
+	nilEnd = "nil"
 )
 
 // String converts a StepType into a string representation
@@ -99,6 +104,13 @@ func (t *TimeStep) TerminalEnd() bool {
 // an episode being cutoff
 func (t *TimeStep) CutoffEnd() bool {
 	return t.EndType == Timeout
+}
+
+// UnspecifiedEnd returns true if the ending type of the episode is
+// unspecified. This may occurr if the TimeStep is not the last in the
+// episode, or if it is the last but no end type was specified.
+func (t *TimeStep) UnspecifiedEnd() bool {
+	return t.EndType == nilEnd
 }
 
 // First returns whether a TimeStep is the first in an environment

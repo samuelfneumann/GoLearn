@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
@@ -15,14 +14,27 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
+var globalFloats []float64
+
+var flag bool = false
+
+// var flag bool = false
+var CLoss *G.Node
+var CLossVal G.Value
+var Prediction G.Value
+var LogProbVal G.Value
+
+var PolicyLoss G.Value
+var ValueLoss G.Value
+
 // TODO:
 // Config should take in architecutres and then CreateAgent will return
 // an appropriate agent
 //
-//	Critic should be called ValueFn not Critic
+//	ValueFn should be called ValueFn not ValueFn
 //
 // Can have:
-//	Vanilla PG (V + Q + ER) -- Actor Critic
+//	Vanilla PG (V + Q + ER) -- Actor ValueFn
 //	Vanilla PG with GAE --> Forward view which is equivalent to:
 //					REINFORCE -> Vanilla PG with GAE lambda = 1
 //
@@ -34,40 +46,39 @@ import (
 // !	FIXES FOR ENDING ENV ON EPOCH END:
 // !		1. Don't
 // !		2. Let agents send the the experiment signals at every Observe()
-//!			3. Create an OnlineEpochExperiment type that resets episodes at the end of an epoch
+//!			3. Create an OnlineEpochExperiment type that resets episodes at the end of an epoch !!!!!!!!!!!!!!!!!!!!
 //
-// ! SAVE COPIES OF THIS FILE, DO GAE FIRST FOLLOWING SPINNING UP THEN:
-// ! REWORK THIS FILE TO BE VANILLA PG --> USE ER BUFFER --> Test with fully online
+
 // !
 // ! SPINNING UP IS COOL BECAUSE IT'S BASICALLY FANCY REINFORCE!!!!!!!!!!!!!!!!!!!!
 
 // ! Currently only works with a batch size of 1 == 1 entire trajectory
 type VPG struct {
 	// Policy
-	behaviour    agent.NNPolicy        // Has its own VM
-	trainPolicy  agent.PolicyLogProber // Policy struct that is learned
-	policySolver G.Solver
-	policyVM     G.VM
-	advantage    *G.Node
+	behaviour         agent.NNPolicy        // Has its own VM
+	trainPolicy       agent.PolicyLogProber // Policy struct that is learned
+	trainPolicySolver G.Solver
+	trainPolicyVM     G.VM
+	advantages        *G.Node
+	logProb           *G.Node
 
 	buffer           *vpgBuffer
 	epochLength      int
-	currentEpochElem int
+	currentEpochStep int
 	completedEpochs  int
 	eval             bool
-	prevStep         ts.TimeStep
-	actionDims       int
+
+	prevStep   ts.TimeStep
+	actionDims int
 
 	// State value critic
-	vCritic        network.NeuralNet
-	vVM            G.VM
-	vTrainCritic   network.NeuralNet
-	vTrainVM       G.VM
-	vNextVal       *G.Node
-	vSolver        G.Solver
-	valueGradSteps int
-
-	PLoss G.Value
+	vValueFn             network.NeuralNet
+	vVM                  G.VM
+	vTrainValueFn        network.NeuralNet
+	vTrainValueFnVM      G.VM
+	vTrainValueFnTargets *G.Node
+	vSolver              G.Solver
+	valueGradSteps       int
 }
 
 func New(env environment.Environment, c Config,
@@ -76,7 +87,7 @@ func New(env environment.Environment, c Config,
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
 
-	config, ok := c.(*TreePolicyConfig)
+	config, ok := c.(*CategoricalMLPConfig)
 	if !ok {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
@@ -87,219 +98,170 @@ func New(env environment.Environment, c Config,
 		return nil, fmt.Errorf("new: %v", err)
 	}
 
+	// Create the VPG buffer
 	features := env.ObservationSpec().Shape.Len()
 	actionDims := env.ActionSpec().Shape.Len()
-	epochLength := config.EpochLength
-	buffer := newVPGBuffer(features, actionDims, epochLength, config.Lambda,
-		config.Gamma)
+	buffer := newVPGBuffer(features, actionDims, config.BatchSize(),
+		config.Lambda, config.Gamma)
 
-	// Construct behaviour and training policy
-	// behaviour, err := config.policy.CloneWithBatch(1)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("new: could not construct behaviour policy: %v",
-	// 		err)
-	// }
-	behaviour := config.behaviour
-	trainPolicy := config.policy
-	// fmt.Println("Train policy", trainPolicy.Actions())
-	// fmt.Println("Behave policy", trainPolicy.Actions())
+	// Create the prediction value function
+	valueFn := config.vValueFn
+	vVM := G.NewTapeMachine(valueFn.Graph())
 
-	// Monte-Carlo method: vNextVal == sum of rewards following current step
-	vCritic := config.vCritic
-	vVM := G.NewTapeMachine(vCritic.Graph())
+	// Create the training value function
+	trainValueFn := config.vTrainValueFn
 
-	vTrainCritic, err := vCritic.CloneWithBatch(epochLength)
-	if err != nil {
-		return nil, fmt.Errorf("new: could not clone train critic: %v", err)
-	}
-	vTrainCritic, vNextVal, vTrainVM, err := addMSELoss(vTrainCritic, "stateNetwork")
-	if err != nil {
-		return nil, fmt.Errorf("new: could not create state critic: %v", err)
-	}
-	network.Set(vCritic, vTrainCritic)
-
-	// Construct policy loss
-	graph := trainPolicy.Network().Graph()
-	statesPlaceholder := make([]float64, features*epochLength)
-	actionsPlaceholder := make([]float64, actionDims*epochLength)
-	logProb, err := trainPolicy.LogProbOf(statesPlaceholder, actionsPlaceholder)
-	if err != nil {
-		return nil, fmt.Errorf("new: could not compute log(∇π): %v", err)
-	}
-	advantage := G.NewVector(
-		graph,
+	trainValueFnTargets := G.NewMatrix(
+		trainValueFn.Graph(),
 		tensor.Float64,
-		G.WithShape(logProb.Shape()...),
-		G.WithName("advantage"),
+		G.WithShape(trainValueFn.Prediction()[0].Shape()...),
+		G.WithName("Value Function Update Target"),
 	)
 
-	negative := G.NewConstant(-1.0)
-	policyLoss := G.Must(G.HadamardProd(logProb, advantage))
-	// policyLoss = G.Must(G.Sum(policyLoss))
-	policyLoss = G.Must(G.Mean(policyLoss))
-	policyLoss = G.Must(G.Mul(negative, policyLoss))
+	valueFnLoss := G.Must(G.Sub(trainValueFn.Prediction()[0], trainValueFnTargets))
+	valueFnLoss = G.Must(G.Square(valueFnLoss))
+	valueFnLoss = G.Must(G.Mean(valueFnLoss))
+	G.Read(valueFnLoss, &ValueLoss)
 
-	// Gradient of policy loss
+	_, err = G.Grad(valueFnLoss, trainValueFn.Learnables()...)
+	if err != nil {
+		panic(err)
+	}
+
+	trainValueFnVM := G.NewTapeMachine(trainValueFn.Graph(), G.BindDualValues(trainValueFn.Learnables()...))
+
+	// Create the prediction policy
+	behaviour := config.behaviour
+
+	// Create the training policy
+	trainPolicy := config.policy
+	logProb := trainPolicy.(*policy.CategoricalMLP).LogProbNode()
+	advantages := G.NewVector(
+		trainPolicy.Network().Graph(),
+		tensor.Float64,
+		G.WithName("Advantages"),
+		G.WithShape(config.EpochLength),
+	)
+
+	policyLoss := G.Must(G.HadamardProd(logProb, advantages))
+	policyLoss = G.Must(G.Mean(policyLoss))
+	policyLoss = G.Must(G.Neg(policyLoss))
+
 	_, err = G.Grad(policyLoss, trainPolicy.Network().Learnables()...)
 	if err != nil {
-		panic(fmt.Sprintf("new: could not compute policy gradient: %v", err))
+		panic(err)
 	}
-	// policyVM := G.NewTapeMachine(
-	// 	graph,
-	// 	G.BindDualValues(trainPolicy.Network().Learnables()...),
-	// )
+	G.Read(trainPolicy.(*policy.CategoricalMLP).LogProbNode(), &LogProbVal)
+	G.Read(policyLoss, &PolicyLoss)
 
-	retVal := &VPG{
-		trainPolicy:  trainPolicy,
-		behaviour:    behaviour,
-		policySolver: config.PolicySolver,
-		advantage:    advantage,
-		// policyVM:     policyVM,
+	trainPolicyVM := G.NewTapeMachine(trainPolicy.Network().Graph(), G.BindDualValues(trainPolicy.Network().Learnables()...))
+
+	vpg := &VPG{
+		behaviour:         behaviour,
+		trainPolicy:       trainPolicy,
+		trainPolicyVM:     trainPolicyVM,
+		trainPolicySolver: config.PolicySolver,
+		advantages:        advantages,
+		logProb:           logProb,
+
+		vValueFn: valueFn,
+		vVM:      vVM,
+
+		vTrainValueFn:        trainValueFn,
+		vTrainValueFnTargets: trainValueFnTargets,
+		vTrainValueFnVM:      trainValueFnVM,
+		vSolver:              config.VSolver,
+		valueGradSteps:       config.ValueGradSteps,
 
 		buffer:           buffer,
 		epochLength:      config.EpochLength,
-		currentEpochElem: 0,
+		currentEpochStep: 0,
 		completedEpochs:  0,
-
-		eval:       false,
-		actionDims: actionDims,
-		prevStep:   ts.TimeStep{},
-
-		vCritic:        vCritic,
-		vVM:            vVM,
-		vTrainCritic:   vTrainCritic,
-		vNextVal:       vNextVal,
-		vTrainVM:       vTrainVM,
-		vSolver:        config.VSolver,
-		valueGradSteps: config.ValueGradSteps,
+		eval:             false,
 	}
 
-	G.Read(policyLoss, &retVal.PLoss)
-	policyVM := G.NewTapeMachine(
-		graph,
-		G.BindDualValues(trainPolicy.Network().Learnables()...),
-	)
-	retVal.policyVM = policyVM
-
-	return retVal, nil
-}
-
-// Returns network, next value, reward, and discount for creating the
-// target plus the VM for running the network
-func addMSELoss(net network.NeuralNet, name string) (network.NeuralNet,
-	*G.Node, G.VM, error) {
-	graph := net.Graph()
-
-	if len(net.Prediction()) > 1 {
-		// This should never happen
-		msg := fmt.Sprintf("addMSELoss: illegal number of outputs for "+
-			"critic \n\twant(1)\n\thave(%v)", len(net.Prediction()))
-		panic(msg)
-	}
-
-	// Add critic update target input (next state value, reward, discount)
-	nextVal := G.NewVector(
-		graph,
-		tensor.Float64,
-		G.WithShape(net.BatchSize()),
-		G.WithName(fmt.Sprintf("%vNextValue", name)),
-	)
-
-	// Critic loss
-	loss := G.Must(G.Sub(nextVal, net.Prediction()[0]))
-	loss = G.Must(G.Square(loss))
-	loss = G.Must(G.Mean(loss))
-
-	// Gradient of loss
-	_, err := G.Grad(loss, net.Learnables()...)
-	if err != nil {
-		// This should never happen
-		msg := fmt.Sprintf("new: could not compute gradient: %v", err)
-		panic(msg)
-	}
-
-	// Compute gradient on critic loss
-	criticVM := G.NewTapeMachine(
-		graph,
-		G.BindDualValues(net.Learnables()...),
-	)
-	return net, nextVal, criticVM, nil
+	return vpg, nil
 }
 
 func (v *VPG) SelectAction(t ts.TimeStep) *mat.VecDense {
-	if v.eval {
-		switch p := v.behaviour.(type) {
-		case *policy.GaussianTreeMLP:
-			p.SelectAction(t)
-			return mat.NewVecDense(len(p.Mean()), p.Mean())
-
-		default:
-			panic(fmt.Sprintf("selectAction: invalid behaviour policy "+
-				"%T", v.behaviour))
-		}
+	if t != v.prevStep {
+		panic("selectAction: timestep is different from that previously " +
+			"recorded")
 	}
-
-	// return mat.NewVecDense(1, []float64{0.1})
-	// time.Sleep(time.Millisecond * 10)
 	action := v.behaviour.SelectAction(t)
-
-	// fmt.Println("Action:", action)
-
+	// fmt.Println(action)
 	return action
 }
 
 func (v *VPG) EndEpisode() {}
 
-func (v *VPG) Eval() {
-	v.eval = true
-}
+func (v *VPG) Eval() {}
 
-func (v *VPG) Train() {
-	v.eval = false
-}
+func (v *VPG) Train() {}
 
 func (v *VPG) ObserveFirst(t ts.TimeStep) {
 	if !t.First() {
 		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
 			"called on the first timestep (current timestep = %d)", t.Number)
 	}
+	flag = false
 	v.prevStep = t
 }
 
 // Observe observes and records any timestep other than the first timestep
 func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
-	if action.Len() != v.actionDims {
-		msg := fmt.Sprintf("observe: illegal action dimensions \n\twant(%v)"+
-			"\n\thave(%v)", v.actionDims, action.Len())
-		panic(msg)
+	// Finish current episode to end epoch
+	if flag {
+		v.prevStep = nextStep
+		return
 	}
 
-	// Store data in the buffer
-	state := v.prevStep.Observation.RawVector().Data
-	err := v.vCritic.SetInput(state)
+	// Calculate value of previous step
+	o := v.prevStep.Observation.RawVector().Data
+	err := v.vValueFn.SetInput(o)
 	if err != nil {
-		panic(fmt.Sprintf("observe: cannot set critic input for advantage "+
-			"estimation: %v", err))
+		panic(err)
 	}
-	v.vVM.RunAll()
-	stateVal := v.vCritic.Output()[0].Data().([]float64)[0]
+	err = v.vVM.RunAll()
+	if err != nil {
+		panic(err)
+	}
+	vT := v.vValueFn.Output()[0].Data().([]float64)
 	v.vVM.Reset()
-
-	a := action.(*mat.VecDense).RawVector().Data
-	reward := nextStep.Reward
-	discount := nextStep.Discount
-	v.buffer.store(state, a, reward, stateVal, discount)
-
-	// If the episode has ended, finsih the path in the buffer by computing
-	// the advantages for the episode
-	v.currentEpochElem += 1
-	if v.currentEpochElem >= v.epochLength {
-		v.buffer.finishPath(stateVal)
-	} else if v.prevStep.Last() {
-		v.buffer.finishPath(0.0)
+	if len(vT) != 1 {
+		panic("observe: multiple values predicted for state value")
 	}
+	r := nextStep.Reward
+	a := action.(*mat.VecDense).RawVector().Data
+	v.buffer.store(o, a, r, vT[0])
 
+	// Update obs (critical!)
 	v.prevStep = nextStep
+	o = nextStep.Observation.RawVector().Data
+
+	v.currentEpochStep++
+	terminal := nextStep.Last() || v.currentEpochStep == v.epochLength
+	if terminal {
+		if nextStep.TerminalEnd() {
+			v.buffer.finishPath(0.0)
+		} else {
+			err := v.vValueFn.SetInput(o)
+			if err != nil {
+				panic(err)
+			}
+			err = v.vVM.RunAll()
+			if err != nil {
+				panic(err)
+			}
+			lastVal := v.vValueFn.Output()[0].Data().([]float64)
+			v.vVM.Reset()
+			if len(lastVal) != 1 {
+				panic("observe: multiple values predicted for next state value")
+			}
+			v.buffer.finishPath(lastVal[0])
+			flag = v.currentEpochStep == v.epochLength
+		}
+	}
 }
 
 func (v *VPG) TdError(ts.Transition) float64 {
@@ -307,68 +269,89 @@ func (v *VPG) TdError(ts.Transition) float64 {
 }
 
 func (v *VPG) Step() {
-	if v.currentEpochElem < v.epochLength {
+	if v.currentEpochStep < v.epochLength {
 		return
 	}
-	// fmt.Println("=== === Step() ")
 
-	state, action, adv, ret, err := v.buffer.get()
+	obs, act, adv, ret, err := v.buffer.get()
 	if err != nil {
-		panic(fmt.Sprintf("could not sample from buffer: %v", err))
+		panic(err)
 	}
 
-	// Set the advantage in the trainPolicy's computational graph
-	advantage := tensor.NewDense(tensor.Float64, v.advantage.Shape(),
-		tensor.WithBacking(adv))
-	err = G.Let(v.advantage, advantage)
+	// Policy gradient step
+	advantagesTensor := tensor.NewDense( // * technically this needs to be called only once
+		tensor.Float64,
+		v.advantages.Shape(),
+		tensor.WithBacking(adv),
+	)
+	err = G.Let(v.advantages, advantagesTensor)
 	if err != nil {
-		panic(fmt.Sprintf("step: could not set advantages in policy "+
-			"gradient: %v", err))
+		panic(err)
+	}
+	v.trainPolicy.(*policy.CategoricalMLP).LogProbOf(obs, act)
+	if err := v.trainPolicyVM.RunAll(); err != nil {
+		panic(err)
+	}
+	// fmt.Println("Policy Gradient")
+
+	// grad, err := v.trainPolicy.Network().(*network.MultiHeadMLP).Layers()[3].Weights().Grad()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(floatutils.NonZero(grad.Data().([]float64)))
+
+	fmt.Println(v.trainPolicy.Network().(*network.MultiHeadMLP).Layers()[3].Weights().Grad())
+	if err := v.trainPolicySolver.Step(v.trainPolicy.Network().Model()); err != nil {
+		panic(err)
 	}
 
-	// Set the states and actions to compute the log probability of
-	// for the trainPolicy's gradient in its graph
-	_, err = v.trainPolicy.LogProbOf(state, action)
+	fmt.Println("Policy Loss:", PolicyLoss)
+	// fmt.Println("Logits:", v.trainPolicy.(*policy.CategoricalMLP).Logits())
+	fmt.Println("Log Prob:", v.trainPolicy.(*policy.CategoricalMLP).LogProbInputActionsVal)
+	fmt.Println("Log Sum Exp:", v.trainPolicy.(*policy.CategoricalMLP).LogSumExp)
+
+	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).Std)
+	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).Mean)
+	// fmt.Println(v.trainPolicy.(*policy.CategoricalMLP).LogProbNode().Value())
+	// fmt.Println(LogProbVal)
+	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).ExternActionsLogProbVal)
+	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).ExternActionsVal)
+	// fmt.Println("=============================")
+	// fmt.Println()
+	// fmt.Println()
+
+	v.trainPolicyVM.Reset()
+
+	// Value function update
+	trainValueFnTargetsTensor := tensor.NewDense( // * this actually can be called once and saved
+		tensor.Float64,
+		v.vTrainValueFnTargets.Shape(),
+		tensor.WithBacking(ret),
+	)
+	err = G.Let(v.vTrainValueFnTargets, trainValueFnTargetsTensor)
 	if err != nil {
-		panic(fmt.Sprintf("step: could not calculate log probabilities: %v",
-			err))
+		panic(err)
+	}
+	if err := v.vTrainValueFnVM.RunAll(); err != nil {
+		panic(err)
+	}
+	// fmt.Println("Value Function Gradient")
+	// grad, err = v.vTrainValueFn.(*network.MultiHeadMLP).Layers()[3].Weights().Grad()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(floatutils.NonZero(grad.Data().([]float64)))
+	// fmt.Println(v.vTrainValueFn.(*network.MultiHeadMLP).Layers()[3].Weights().Grad())
+	if err := v.vSolver.Step(v.vTrainValueFn.Model()); err != nil {
+		panic(err)
 	}
 
-	v.policyVM.RunAll()
-	// fmt.Println(v.trainPolicy.LogProb().Value())
-	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).Std())
-	fmt.Println("Advantage", advantage)
-	fmt.Println("Sum", floats.Sum(advantage.Data().([]float64)))
-	fmt.Println()
+	// fmt.Println("Value Loss:", ValueLoss)
+	v.vTrainValueFnVM.Reset()
 
-	v.trainPolicy.(*policy.GaussianTreeMLP).PrintVals()
-
-	fmt.Println("Loss", v.PLoss)
-	fmt.Println()
-
-	// time.Sleep(time.Millisecond * 1000)
-	v.policySolver.Step(v.trainPolicy.Network().Model())
-	v.policyVM.Reset()
-
-	// v.trainPolicy.(*policy.GaussianTreeMLP).PrintVals()
-
-	// Monte-Carlo method: nextValue = sum of rewards
-	returns := tensor.NewDense(tensor.Float64, v.vNextVal.Shape(),
-		tensor.WithBacking(ret))
-	err = G.Let(v.vNextVal, returns)
-	if err != nil {
-		panic(fmt.Sprintf("step: could not set state critic update target: %v",
-			err))
-	}
-
-	for i := 0; i < v.valueGradSteps; i++ {
-		v.vVM.RunAll()
-		v.vSolver.Step(v.vTrainCritic.Model())
-		v.vVM.Reset()
-	}
-
-	v.currentEpochElem = 0
-	v.completedEpochs++
+	// Update behaviour policy and prediction value funcion
 	network.Set(v.behaviour.Network(), v.trainPolicy.Network())
-	network.Set(v.vCritic, v.vTrainCritic)
+	network.Set(v.vValueFn, v.vTrainValueFn)
+	v.completedEpochs++
+	v.currentEpochStep = 0
 }
