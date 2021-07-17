@@ -2,12 +2,9 @@ package policy
 
 import (
 	"fmt"
-
-	"golang.org/x/exp/rand"
+	"math/rand"
 
 	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/stat/distuv"
-	"gonum.org/v1/gonum/stat/sampleuv"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 	"sfneuman.com/golearn/agent"
@@ -15,9 +12,10 @@ import (
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
+	"sfneuman.com/golearn/utils/floatutils"
 )
 
-type CategoricalMLP struct {
+type DeterministicCategoricalMLP struct {
 	net network.NeuralNet
 	vm  G.VM
 
@@ -25,8 +23,6 @@ type CategoricalMLP struct {
 
 	logits     *G.Node
 	logitsVals G.Value
-	probs      *G.Node
-	probsVal   G.Value
 
 	// logProbSelectedActions *G.Node
 
@@ -37,24 +33,24 @@ type CategoricalMLP struct {
 	batchForLogProb int
 	numActions      int
 
-	source rand.Source
+	rng *rand.Rand // RNG for breaking action ties
 }
 
-// NewCategoricalMLP creates a new CategoricalMLP. The CategoricalMLP
+// NewDeterministicCategoricalMLP creates a new CategoricalMLP. The CategoricalMLP
 // policy selects actions from a given environment env. The MLP is
 // populated on a given Gorgonia ExprGraph.
 //
 // The parameters hiddenSizes, biases, and activations determine the
 // architecture of the MLP.
-func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
+func NewDeterministicCategoricalMLP(env environment.Environment, batchForLogProb int,
 	g *G.ExprGraph, hiddenSizes []int, biases []bool,
 	activations []*network.Activation, init G.InitWFn,
-	seed uint64) (agent.PolicyLogProber, error) {
+	seed int64) (agent.PolicyLogProber, error) {
 	// Error checking
 	if env.ActionSpec().Cardinality == spec.Continuous {
-		err := fmt.Errorf("newCategoricalMLP: softmax policy cannot be " +
+		err := fmt.Errorf("newDeterministicCategoricalMLP: softmax policy cannot be " +
 			"used with continuous actions")
-		return &CategoricalMLP{}, err
+		return &DeterministicCategoricalMLP{}, err
 	}
 
 	features := env.ObservationSpec().Shape.Len()
@@ -65,17 +61,14 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 	net, err := network.NewMultiHeadMLP(features, batchForLogProb, numActions, g,
 		hiddenSizes, biases, init, activations)
 	if err != nil {
-		return &CategoricalMLP{}, fmt.Errorf("newCategoricalMLP: could "+
+		return &DeterministicCategoricalMLP{}, fmt.Errorf("newCategoricalMLP: could "+
 			"not create policy network: %v", err)
 	}
 
 	logits := net.Prediction()[0]
-	probs := G.Must(G.Exp(logits))
 
 	// // Calculate the log prob of selected action
 	// // Selected actions will have highest logits
-	// ! This needs to be reworkd -> selected action != max always!
-	// ! We need another one-hot row matrix to choose selected actions
 	// max := G.Must(G.Max(logits, 1))
 	// logSumExp := LogSumExp(logits, 1)
 	// logProbSelectedActions := G.Must(G.Sub(max, logSumExp))
@@ -95,11 +88,11 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 
 	// Create the rng for breaking action ties
 	source := rand.NewSource(seed)
+	rng := rand.New(source)
 
-	pol := &CategoricalMLP{
+	pol := &DeterministicCategoricalMLP{
 		net:    net,
 		logits: logits,
-		probs:  probs,
 
 		actionIndices: actionIndices,
 		// logProbSelectedActions: logProbSelectedActions,
@@ -109,12 +102,11 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 		batchForLogProb: batchForLogProb,
 		numActions:      numActions,
 
-		source: source,
+		rng: rng,
 	}
 	G.Read(pol.logits, &pol.logitsVals)
 	G.Read(pol.logProbInputActions, &pol.LogProbInputActionsVal)
 	G.Read(inputsLogSumExp, &pol.LogSumExp)
-	G.Read(probs, &pol.probsVal)
 
 	if batchForLogProb == 1 {
 		vm := G.NewTapeMachine(net.Graph())
@@ -124,30 +116,15 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 	return pol, nil
 }
 
-func LogSumExp(logits *G.Node, along int) *G.Node {
-	// Calculate the max logit per row
-	max := G.Must(G.Max(logits, along))
-
-	exponent := G.Must(G.BroadcastSub(logits, max, nil, []byte{1}))
-	exponent = G.Must(G.Exp(exponent))
-
-	// Sum along rows
-	sum := G.Must(G.Sum(exponent, along))
-
-	log := G.Must(G.Log(sum))
-
-	return G.Must(G.Add(max, log))
-}
-
-// func (c *CategoricalMLP) LogProbSelectedActions() *G.Node {
+// func (c *DeterministicCategoricalMLP) LogProbSelectedActions() *G.Node {
 // 	return c.logProbSelectedActions
 // }
 
-func (c *CategoricalMLP) Logits() G.Value {
+func (c *DeterministicCategoricalMLP) Logits() G.Value {
 	return c.logitsVals
 }
 
-func (c *CategoricalMLP) LogProbOf(s, a []float64) (*G.Node, error) {
+func (c *DeterministicCategoricalMLP) LogProbOf(s, a []float64) (*G.Node, error) {
 	if err := c.Network().SetInput(s); err != nil {
 		panic(err)
 	}
@@ -162,13 +139,12 @@ func (c *CategoricalMLP) LogProbOf(s, a []float64) (*G.Node, error) {
 		[]int{c.batchForLogProb, c.numActions},
 		tensor.WithBacking(actionIndices),
 	)
-	fmt.Println(actionIndicesTensor)
 	G.Let(c.actionIndices, actionIndicesTensor)
 
 	return c.LogProbNode(), nil
 }
 
-func (c *CategoricalMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
+func (c *DeterministicCategoricalMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 
 	obs := t.Observation.RawVector().Data
 
@@ -179,30 +155,29 @@ func (c *CategoricalMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	if err := c.vm.RunAll(); err != nil {
 		panic(err)
 	}
-	logProbActions := c.probsVal.Data().([]float64)
+	logProbActions := c.logitsVals.Data().([]float64)
 	c.vm.Reset()
 
-	dist := distuv.NewCategorical(logProbActions, c.source)
-	sampler := sampleuv.IIDer{Dist: dist}
+	actions := floatutils.ArgMax(logProbActions...)
+	index := c.rng.Int() % len(actions)
+	action := float64(actions[index])
 
-	action := mat.NewVecDense(1, nil) // ? This needs to be N-dim action
-	sampler.Sample(action.RawVector().Data)
+	return mat.NewVecDense(1, []float64{action})
 
-	return action
 }
 
-func (c *CategoricalMLP) LogProbNode() *G.Node {
+func (c *DeterministicCategoricalMLP) LogProbNode() *G.Node {
 	return c.logProbInputActions
 }
 
-func (c *CategoricalMLP) Clone() (agent.NNPolicy, error) {
+func (c *DeterministicCategoricalMLP) Clone() (agent.NNPolicy, error) {
 	return nil, fmt.Errorf("clone: not implemented")
 }
 
-func (c *CategoricalMLP) CloneWithBatch(int) (agent.NNPolicy, error) {
+func (c *DeterministicCategoricalMLP) CloneWithBatch(int) (agent.NNPolicy, error) {
 	return nil, fmt.Errorf("cloneWithBatch: not implemented")
 }
 
-func (c *CategoricalMLP) Network() network.NeuralNet {
+func (c *DeterministicCategoricalMLP) Network() network.NeuralNet {
 	return c.net
 }

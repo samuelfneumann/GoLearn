@@ -36,17 +36,6 @@ const stdOffset = 1e-8
 // var LogProb G.Value
 // var Mean, Std G.Value
 
-// GaussianTreeMLP implements a Gaussian policy that uses a tree MLP to
-// predict the mean and log standard deviation of its policy. Given an
-// environment with N-dimensional actions, this policy will produce
-// an N-dimensional action, sampled from a Gaussian distribution, in
-// each input state.
-//
-// GaussianTreeMLP simply populates a gorgonia.ExprGraph with
-// the neural network function approximator and selects actions
-// based on the output of this neural network, which predicts the
-// standard deviation and mean of a Gaussian policy, conditioned on
-// a given input state. That is:
 //
 //		π(A|S) ~ N(μ, σ)
 //
