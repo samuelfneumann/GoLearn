@@ -66,24 +66,22 @@ type EGreedyNNPolicy interface {
 	Epsilon() float64
 }
 
-type PolicyLogProber interface {
+type LogPDFer interface {
 	NNPolicy
 
-	// // LogProb returns the node that calculates the log probability of
-	// // the policy's selected actions
-	LogProbNode() *G.Node
+	// LogPdfNode returns the node that calculates the log probability
+	// of the policy's selected actions
+	LogPdfNode() *G.Node
 
-	// // Actions returns the actions selected by the policy. This may
-	// // be a batch of actions if the .Network().SetInput() is called
-	// // on the policy or a single action if SelectAction() was last
-	// // called on the policy.
-	// Actions() *G.Node
+	// LogPdfVal returns the value of the node returned by
+	// LogProbNode()
+	LogPdfVal() G.Value
 
-	// LogProbOf returns the log probability of taking the argument
+	// LogPdfOf returns the log probability of taking the argument
 	// actions in the argument states. Inputs should be constructed in
 	// row major order.
 	//
 	// This function is needed for non-TD implementations of policy
 	// gradient algorithms.
-	LogProbOf(states, actions []float64) (*G.Node, error)
+	LogPdfOf(states, actions []float64) (*G.Node, error)
 }
