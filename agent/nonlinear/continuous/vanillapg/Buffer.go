@@ -13,46 +13,35 @@ import (
 	"sfneuman.com/golearn/utils/matutils"
 )
 
-// This could be implemented as an expreplay with a null remover
-// and a fifo sampler. Min capacity = max capcacity = episode length
-// it does seem a bit forced though.
-//
-type vpgBuffer struct {
-	obsSize      int
-	actionSize   int
-	maxSize      int // Max buffer size
-	currentPos   int
-	pathStartIdx int
-	lambda       float64
-	gamma        float64
+// Interesting: This is a GAE(λ) buffer. What about n-Step GAE?
 
+// gaeBuffer implements a forward view generalized advantage estimate -
+// GAE(λ) -  buffer following https://arxiv.org/abs/1506.02438. This
+// implementation is adapted from:
+//
+// https://github.com/openai/spinningup/tree/master/spinup/algos/tf1/vpg
+type gaeBuffer struct {
+	obsSize    int // Size of state observations
+	actionSize int // Number of action dimensions
+	maxSize    int // Max buffer size
+
+	currentPos   int // Current position in the buffer
+	pathStartIdx int // Position in the buffere where current trajectory starts
+
+	lambda float64 // λ for GAE(λ) calculation
+	gamma  float64 // Discount factor ℽ; overwrites env discount factor
+
+	// Buffers for storing data
 	obsBuffer []float64
 	actBuffer []float64
 	advBuffer []float64
 	rewBuffer []float64
 	retBuffer []float64
 	valBuffer []float64
-
-	// For estimating KL divergence between old and new policies
-	// log_p_buffer []float64
 }
 
-func TestBuffer() {
-	b := newVPGBuffer(2, 1, 3, 0.0, 0.99)
-
-	b.store([]float64{0., 1.}, []float64{2.}, -1.0, -1.0)
-	b.store([]float64{3., 4.}, []float64{5.}, -1.0, -1.5)
-	b.store([]float64{6., 7.}, []float64{8.}, -1.0, -2.0)
-
-	b.finishPath(-3.0)
-	fmt.Println("Bootstrap value", -3.0)
-	fmt.Println("Return:", b.retBuffer)
-	fmt.Println("Reward:", b.rewBuffer)
-	fmt.Println("Advantage:", b.advBuffer)
-	fmt.Println("Values", b.valBuffer)
-}
-
-func newVPGBuffer(obsDim, actDim, size int, lambda, gamma float64) *vpgBuffer {
+// newGAEBuffer creates and returns a new gaeBuffer.
+func newGAEBuffer(obsDim, actDim, size int, lambda, gamma float64) *gaeBuffer {
 	obsBuffer := make([]float64, size*obsDim)
 	actBuffer := make([]float64, size*actDim)
 	advBuffer := make([]float64, size)
@@ -60,7 +49,7 @@ func newVPGBuffer(obsDim, actDim, size int, lambda, gamma float64) *vpgBuffer {
 	retBuffer := make([]float64, size)
 	valBuffer := make([]float64, size)
 
-	return &vpgBuffer{
+	return &gaeBuffer{
 		obsSize:      obsDim,
 		actionSize:   actDim,
 		maxSize:      size,
@@ -77,19 +66,9 @@ func newVPGBuffer(obsDim, actDim, size int, lambda, gamma float64) *vpgBuffer {
 	}
 }
 
-func (v *vpgBuffer) Reset() {
-	v.obsBuffer = make([]float64, len(v.obsBuffer))
-	v.actBuffer = make([]float64, len(v.actBuffer))
-	v.advBuffer = make([]float64, len(v.advBuffer))
-	v.rewBuffer = make([]float64, len(v.rewBuffer))
-	v.retBuffer = make([]float64, len(v.retBuffer))
-	v.valBuffer = make([]float64, len(v.valBuffer))
-
-}
-
 // store stores a single timestep state, action, reward, and value to
-// the vpgBuffer.
-func (v *vpgBuffer) store(obs, act []float64, rew, val float64) error {
+// the gaeBuffer.
+func (v *gaeBuffer) store(obs, act []float64, rew, val float64) error {
 	if v.currentPos >= v.maxSize {
 		return fmt.Errorf("store: cannot add new transition, buffer at" +
 			"maximum capacity")
@@ -117,11 +96,23 @@ func (v *vpgBuffer) store(obs, act []float64, rew, val float64) error {
 	return nil
 }
 
-func (v *vpgBuffer) finishPath(lastVal float64) {
+// finishPath computes advatange estimates using GAE(λ) and
+// rewards-to-go estiamtes for each state for the current trajectory.
+// This should be called at the end of a trajectory or when one gets
+// cut off by an epoch ending.
+//
+// The lastVal argument should be 0 if the trajectory ended because
+// the agent reached a terminal state, and otherwise it should be
+// v(s), the value estimate of the current state. This allows for
+// bootstrapping the rewards-to-go calculation to account for timesteps
+// beyond the arbitrary episode horizon or epoch cutoff. The lastVal
+// parameter is also used to compute the generalized advantage estimate
+// for all states. See SpinningUp's Tensorflow implementation of
+// vpgBuffer for more details (https://github.com/openai/spinningup).
+func (v *gaeBuffer) finishPath(lastVal float64) {
 	start := v.pathStartIdx
 	stop := v.currentPos
 	rews := append(v.rewBuffer[start:stop], lastVal)
-	// fmt.Println("LENGTH OF REWS", len(rews))
 	vals := append(v.valBuffer[start:stop], lastVal)
 
 	// GAE-lambda advantage calculation
@@ -140,12 +131,22 @@ func (v *vpgBuffer) finishPath(lastVal float64) {
 	rewards = mat.NewVecDense(len(rews), rews)
 	rewsToGo := discountCumSum(rewards, v.gamma)
 
-	// fmt.Println("Max", floatutils.Max(rewsToGo...), len(rewsToGo), cap(rewsToGo))
 	copy(v.retBuffer[start:stop], rewsToGo[:len(rewsToGo)-1])
 
 	v.pathStartIdx = v.currentPos
 }
 
+// discountCumSum computes and returns the discounted cumulative sum
+// of all elements of a vector. Given a vector v = [x0 x1 x2 ... xN]
+// and discount ℽ, this function computes and returns:
+//
+// [
+//	x0 + ℽ x1 + ℽ^2 x2 + ℽ^3 x3 + ... + ℽ^(N-1) x(N-1) + ℽ^N xN
+//	x1 + ℽ^1 x2 + ℽ^2 x3 + ... + ℽ^(N-2) x(N-1) + ℽ^(N-1) xN
+//	x2 + ℽ^1 x3 + ... + ℽ^(N-3) x(N-1) + ℽ^(N-2) xN
+// ...
+// xN
+// ]
 func discountCumSum(x *mat.VecDense, discount float64) []float64 {
 	discounts := mat.NewVecDense(x.Len(), nil)
 	cumSums := make([]float64, x.Len())
@@ -163,8 +164,10 @@ func discountCumSum(x *mat.VecDense, discount float64) []float64 {
 	return cumSums
 }
 
-// returns state, next state, action, next action, reward, discount
-func (v *vpgBuffer) get() ([]float64, []float64, []float64, []float64, error) {
+// get returns the observations, action, advantages, and returns stored
+// in the buffer. Advantages are first standardized to mean 0 and
+// standard deviation 1.
+func (v *gaeBuffer) get() ([]float64, []float64, []float64, []float64, error) {
 	if v.currentPos != v.maxSize {
 		err := fmt.Errorf("get: buffer must be full before sampling")
 		return nil, nil, nil, nil, err
@@ -184,21 +187,5 @@ func (v *vpgBuffer) get() ([]float64, []float64, []float64, []float64, error) {
 	adv.AddScaledVec(adv, -mean, ones)
 	adv.DivElemVec(adv, stdVec)
 
-	// fmt.Println(v.rewBuffer[:250])
-	// fmt.Println(v.retBuffer[:250])
-	// log.Fatal()
-
 	return v.obsBuffer, v.actBuffer, adv.RawVector().Data, v.retBuffer, nil
-	// return v.obsBuffer, v.actBuffer, v.advBuffer, v.retBuffer, nil
-}
-
-func TestBuffer2() {
-	buffer := newVPGBuffer(2, 1, 3, 0.5, 1.0)
-
-	buffer.store([]float64{1.0, 1.0}, []float64{1.0}, 1.0, 1.0)
-	buffer.store([]float64{1.0, 1.0}, []float64{1.0}, 1.0, 1.0)
-	buffer.store([]float64{1.0, 1.0}, []float64{1.0}, 1.0, 1.0)
-
-	buffer.finishPath(10.0)
-	fmt.Println(buffer.advBuffer)
 }

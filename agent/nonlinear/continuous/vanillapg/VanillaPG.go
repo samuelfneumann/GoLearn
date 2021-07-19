@@ -60,7 +60,7 @@ type VPG struct {
 	advantages        *G.Node // For gradient construction
 	logProb           *G.Node // For gradient construction
 
-	buffer           *vpgBuffer
+	buffer           *gaeBuffer
 	epochLength      int
 	currentEpochStep int
 	completedEpochs  int
@@ -88,7 +88,7 @@ type VPG struct {
 }
 
 // New creates and returns a new VanillaPG.
-func New(env environment.Environment, c Config, seed int64) (*VPG, error) {
+func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) {
 	if !c.ValidAgent(&VPG{}) {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
@@ -107,7 +107,7 @@ func New(env environment.Environment, c Config, seed int64) (*VPG, error) {
 	// Create the VPG buffer
 	features := env.ObservationSpec().Shape.Len()
 	actionDims := env.ActionSpec().Shape.Len()
-	buffer := newVPGBuffer(features, actionDims, config.BatchSize(),
+	buffer := newGAEBuffer(features, actionDims, config.BatchSize(),
 		config.Lambda, config.Gamma)
 
 	// Create the prediction value function
@@ -295,6 +295,8 @@ func (v *VPG) Step() {
 		panic(err)
 	}
 
+	fmt.Println("Epoch:", v.completedEpochs)
+
 	// Policy gradient step
 	advantagesTensor := tensor.NewDense( // * technically this needs to be called only once
 		tensor.Float64,
@@ -312,6 +314,7 @@ func (v *VPG) Step() {
 	if err := v.trainPolicySolver.Step(v.trainPolicy.Network().Model()); err != nil {
 		panic(err)
 	}
+	fmt.Println("Policy Loss:", PolicyLoss)
 	v.trainPolicyVM.Reset()
 
 	// Value function update
@@ -331,6 +334,7 @@ func (v *VPG) Step() {
 		if err := v.vSolver.Step(v.vTrainValueFn.Model()); err != nil {
 			panic(err)
 		}
+		fmt.Println("Value Loss:", ValueFnLoss)
 		v.vTrainValueFnVM.Reset()
 	}
 
