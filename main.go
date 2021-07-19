@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"time"
 
-	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
 	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
+	"sfneuman.com/golearn/environment/gridworld"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/network"
@@ -18,123 +16,69 @@ import (
 
 func main() {
 
-	// vanillapg.TestBuffer2()
-	var useed uint64 = 192382
-	// var seed int64 = 192382
+	// // vanillapg.TestBuffer2()
+	var useed uint64 = 1923812121431427
+	// // var seed int64 = 192382
 
-	// Create the environment
-	// Use an artificially easier problem for testing
-	goalPosition := mountaincar.GoalPosition - 0.45
-	position := r1.Interval{Min: -0.6, Max: -0.4}
-	velocity := r1.Interval{Min: 0.0, Max: 0.0}
+	// // Create the environment
+	// // Use an artificially easier problem for testing
+	// goalPosition := mountaincar.GoalPosition //- 0.45
+	// position := r1.Interval{Min: -0.6, Max: -0.4}
+	// velocity := r1.Interval{Min: 0.0, Max: 0.0}
 
-	s := environment.NewUniformStarter([]r1.Interval{position, velocity}, useed)
-	task := mountaincar.NewGoal(s, 500, goalPosition) // ! Make the env easier and see if it learns
-	m, step := mountaincar.NewDiscrete(task, 0.99)
-	fmt.Println(step)
+	// s := environment.NewUniformStarter([]r1.Interval{position, velocity}, useed)
+	// task := mountaincar.NewGoal(s, 500, goalPosition)
+	// m, step := mountaincar.NewDiscrete(task, 0.99)
+	// fmt.Println(step)
 
-	c, err := policy.NewCategoricalMLP(m, 3, G.NewGraph(), []int{10}, []bool{true},
-		[]*network.Activation{network.ReLU()}, G.GlorotU(1.0), 10)
+	r, c := 5, 5
+
+	// Create the start-state distribution
+	starter, err := gridworld.NewSingleStart(0, 0, r, c)
 	if err != nil {
-		panic(err)
+		fmt.Println("Could not create starter")
+		return
 	}
 
-	// fmt.Println(c.SelectAction(step))
+	// Create the gridworld task of reaching a goal state. The goals
+	// are specified as a []int, representing (x, y) coordinates
+	goalX, goalY := []int{4}, []int{4}
+	timestepReward, goalReward := -0.1, 1.0
+	goal, err := gridworld.NewGoal(starter, goalX, goalY, r, c,
+		timestepReward, goalReward)
 
-	vm := G.NewTapeMachine(c.Network().Graph())
-	c.LogPdfOf([]float64{0.1, 0.2, 0.1, 0.3, 1.0, 9.1}, []float64{1.0, 2.0, 0.0})
-	vm.RunAll()
-	vm.Reset()
-	fmt.Println("\nLogProb of input actions\n", c.(*policy.CategoricalMLP).LogPdfNode().Value())
+	if err != nil {
+		fmt.Println("Could not create goal")
+		return
+	}
 
-	fmt.Println("\nLogits of each obs")
-	fmt.Println(c.(*policy.CategoricalMLP).Logits())
+	// Create the gridworld
+	discount := 0.99
+	env, t := gridworld.New(r, c, goal, discount)
+	fmt.Println(t)
 
-	// fmt.Println("LogProb of selected actions")
-	// fmt.Println(c.(*policy.CategoricalMLP).LogProbSelectedActions().Value())
-
-	// ===========================================================================
-	// ===========================================================================
-	// ===========================================================================
-	// ===========================================================================
-	// ===========================================================================
-
-	// ioutil.WriteFile("net.dot", []byte(c.Network().Graph().ToDot()), 0644)
-
-	// // g, err := policy.NewGaussianTreeMLP(m, 10, gorgonia.NewGraph(), []int{64}, []bool{false}, []*network.Activation{network.ReLU()},
-	// // 	[][]int{{}, {}}, [][]bool{{}, {}}, [][]*network.Activation{{}, {}}, gorgonia.GlorotU(1.0), useed)
-	// // if err != nil {
-	// // 	panic(err)
-	// // }
-	// // ioutil.WriteFile("net.dot", []byte(g.Network().Graph().ToDot()), 0644)
-
-	// args := vanillapg.TreePolicyConfig{
-	// 	Policy:            vanillapg.Gaussian,
-	// 	PolicyLayers:      []int{64, 64},
-	// 	PolicyBiases:      []bool{true, true},
-	// 	PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU()},
-	// 	LeafLayers:        [][]int{{64}, {64}},
-	// 	LeafBiases:        [][]bool{{true}, {true}},
-	// 	LeafActivations:   [][]*network.Activation{{network.ReLU()}, {network.ReLU()}},
-
-	// 	ValueFnLayers:      []int{64, 64},
-	// 	ValueFnBiases:      []bool{true, true},
-	// 	ValueFnActivations: []*network.Activation{network.ReLU(), network.ReLU()},
-
-	// 	InitWFn:      gorgonia.GlorotN(0.5),
-	// 	PolicySolver: gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.0005)),
-	// 	VSolver:      gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.0001)),
-
-	// 	ValueGradSteps: 1,
-	// 	EpochLength:    1000,
-	// 	Lambda:         0.95,
-	// 	Gamma:          0.99,
-	// }
-
-	// // args := vanillapg.TreePolicyConfig{
-	// // 	Policy:            vanillapg.Gaussian,
-	// // 	PolicyLayers:      []int{64},
-	// // 	PolicyBiases:      []bool{false},
-	// // 	PolicyActivations: []*network.Activation{network.ReLU()},
-	// // 	LeafLayers:        [][]int{{}, {}},
-	// // 	LeafBiases:        [][]bool{{}, {}},
-	// // 	LeafActivations:   [][]*network.Activation{{}, {}},
-
-	// // 	ValueFnLayers:      []int{64},
-	// // 	ValueFnBiases:      []bool{true},
-	// // 	ValueFnActivations: []*network.Activation{network.ReLU()},
-
-	// // 	InitWFn:      gorgonia.GlorotU(1.0),
-	// // 	PolicySolver: gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.005)),
-	// // 	VSolver:      gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.005)),
-
-	// // 	ValueGradSteps: 100,
-	// // 	EpochLength:    1000,
-	// // 	Lambda:         0.95,
-	// // 	Gamma:          0.99,
-	// // }
-
+	nonlinearity := network.ReLU()
 	args := vanillapg.CategoricalMLPConfig{
 		Policy:            vanillapg.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
 		PolicyBiases:      []bool{true, true, true},
-		PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+		PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
 		ValueFnLayers:      []int{100, 50, 25},
 		ValueFnBiases:      []bool{true, true, true},
-		ValueFnActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
-		InitWFn:      G.GlorotN(1.0),
-		PolicySolver: G.NewAdamSolver(G.WithLearnRate(5e-4), G.WithBatchSize(1000)),
-		VSolver:      G.NewAdamSolver(G.WithLearnRate(5e-4), G.WithBatchSize(1000)),
+		InitWFn:      G.GlorotN(math.Sqrt(2)),
+		PolicySolver: G.NewAdamSolver(G.WithLearnRate(1e-2)),
+		VSolver:      G.NewAdamSolver(G.WithLearnRate(1e-2)),
 
-		ValueGradSteps: 1,
-		EpochLength:    10000,
-		Lambda:         0.97,
+		ValueGradSteps: 25,
+		EpochLength:    50000,
+		Lambda:         1.0,
 		Gamma:          0.99,
 	}
 
-	env := m
+	// env := m
 
 	agent, err := args.CreateAgent(env, useed)
 	if err != nil {
@@ -143,7 +87,7 @@ func main() {
 
 	start := time.Now()
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := experiment.NewOnline(env, agent, 1000*7000, []tracker.Tracker{saver}, nil)
+	e := experiment.NewOnline(env, agent, 50000*1000, []tracker.Tracker{saver}, nil)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
