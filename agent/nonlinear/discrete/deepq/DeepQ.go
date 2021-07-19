@@ -310,6 +310,10 @@ func (d *DeepQ) Observe(action mat.Vector, nextStep ts.TimeStep) {
 
 // Step updates the weights of the Agent's Policies.
 func (d *DeepQ) Step() {
+	if d.eval {
+		return
+	}
+
 	// Don't update if replay buffer is empty or has insufficient
 	// samples to sample
 	S, A, R, discount, NextS, _, err := d.replay.Sample()
