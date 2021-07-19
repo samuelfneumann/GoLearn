@@ -82,7 +82,7 @@ type CategoricalMLP struct {
 func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 	g *G.ExprGraph, hiddenSizes []int, biases []bool,
 	activations []*network.Activation, init G.InitWFn,
-	seed uint64) (agent.LogPDFer, error) {
+	seed uint64) (agent.LogPdfOfer, error) {
 	// Categorical policies can only be used with discrete actions
 	if env.ActionSpec().Cardinality == spec.Continuous {
 		err := fmt.Errorf("newCategoricalMLP: softmax policy cannot be " +

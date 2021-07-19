@@ -53,8 +53,8 @@ var PolicyLoss, ValueFnLoss G.Value // Debugging
 // https://github.com/openai/spinningup/blob/master/spinup/algos/tf1/vpg/vpg.py
 type VPG struct {
 	// Policy
-	behaviour         agent.NNPolicy // Has its own VM
-	trainPolicy       agent.LogPDFer // Policy struct that is learned
+	behaviour         agent.NNPolicy   // Has its own VM
+	trainPolicy       agent.LogPdfOfer // Policy struct that is learned
 	trainPolicySolver G.Solver
 	trainPolicyVM     G.VM
 	advantages        *G.Node // For gradient construction

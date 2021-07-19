@@ -66,7 +66,7 @@ type EGreedyNNPolicy interface {
 	Epsilon() float64
 }
 
-type LogPDFer interface {
+type LogPdfOfer interface {
 	NNPolicy
 
 	// LogPdfNode returns the node that calculates the log probability

@@ -134,8 +134,8 @@ const (
 
 type CategoricalMLPConfig struct {
 	// Policy neural net
-	policy            agent.LogPDFer // VPG.trainPolicy
-	behaviour         agent.NNPolicy // VPG.behaviour
+	policy            agent.LogPdfOfer // VPG.trainPolicy
+	behaviour         agent.NNPolicy   // VPG.behaviour
 	Policy            PolicyType
 	PolicyLayers      []int
 	PolicyBiases      []bool
