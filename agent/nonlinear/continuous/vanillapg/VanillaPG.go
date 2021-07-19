@@ -14,53 +14,51 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
-var globalFloats []float64
+var PolicyLoss, ValueFnLoss G.Value // Debugging
 
-var flag bool = false
-
-// var flag bool = false
-var CLoss *G.Node
-var CLossVal G.Value
-var Prediction G.Value
-var LogProbVal G.Value
-
-var PolicyLoss G.Value
-var ValueLoss G.Value
-
-// TODO:
-// Config should take in architecutres and then CreateAgent will return
-// an appropriate agent
+// Note: Step() is called on each timestep. When the epoch is finished
+// the current episode may not be finised, but Step() will be called,
+// updating the current policy. In this case, we will finish the
+// episode with an updated policy, but none of this data will be
+// recorded or used to update the policy. Instead, we finish the episode
+// and start the next epoch from the beginning of the next episode.
 //
-//	ValueFn should be called ValueFn not ValueFn
+// Since the data collected at the end of the last episode will be
+// collected with the updated policy, we could
+// actually keep this data and begin adding it to the new buffer. Then
+// we would be updating using the new buffer, which contains data from
+// the middle of an episode. But, since this data is collected with the
+// current policy, all the data used to update will be from the same
+// policy, and everything would work fine if we updated with this
+// data. Since many current implementations do not do this but rather
+// throw out the data remaining in the episode, we also follow this
+// practice, but note that in our implementation the other method is
+// not incorrect.
 //
-// Can have:
-//	Vanilla PG (V + Q + ER) -- Actor ValueFn
-//	Vanilla PG with GAE --> Forward view which is equivalent to:
-//					REINFORCE -> Vanilla PG with GAE lambda = 1
-//
-// ! EPOCH END --> ENV RESET
-// ! 	INTERESTING: if we don't reset the env, the last epoch used to state value on the last timestep
-// !					to estimate the rest of the rewards. If we do NOT reset the environment, then
-// !					the next epoch will begin with an episode halfway through, but this may not be
-// !					the worst thing in the world. We will still accurately estimate that state's value and the policy gradient.
-// !	FIXES FOR ENDING ENV ON EPOCH END:
-// !		1. Don't
-// !		2. Let agents send the the experiment signals at every Observe()
-//!			3. Create an OnlineEpochExperiment type that resets episodes at the end of an epoch !!!!!!!!!!!!!!!!!!!!
-//
+// One caveat with the current implementation is that if given a
+// timestep budget to learn, the current implementation will not
+// update its policy at the end of training if the last timestep of
+// training is not the last timestep needed in the epoch. With the
+// altered implementation, we could say have 25,000 timesteps of
+// learning, then easily say we want 5 epochs of 5,000 timesteps, and
+// the final update would be done at the end of training. In the current
+// implementation, we don't know how many timesteps will be disregraded
+// due to epoch ends (but episodes not ending), so there is no way
+// to ensure that the policy will update again at the end of training.
 
-// !
-// ! SPINNING UP IS COOL BECAUSE IT'S BASICALLY FANCY REINFORCE!!!!!!!!!!!!!!!!!!!!
-
-// ! Currently only works with a batch size of 1 == 1 entire trajectory
+// VPG implements the Vanilla Policy Gradient algorithm with generalized
+// advantage estimation. This implementation is adapted from:
+//
+// https://spinningup.openai.com/en/latest/algorithms/vpg.html
+// https://github.com/openai/spinningup/blob/master/spinup/algos/tf1/vpg/vpg.py
 type VPG struct {
 	// Policy
-	behaviour         agent.NNPolicy        // Has its own VM
-	trainPolicy       agent.PolicyLogProber // Policy struct that is learned
+	behaviour         agent.NNPolicy // Has its own VM
+	trainPolicy       agent.LogPDFer // Policy struct that is learned
 	trainPolicySolver G.Solver
 	trainPolicyVM     G.VM
-	advantages        *G.Node
-	logProb           *G.Node
+	advantages        *G.Node // For gradient construction
+	logProb           *G.Node // For gradient construction
 
 	buffer           *vpgBuffer
 	epochLength      int
@@ -68,8 +66,16 @@ type VPG struct {
 	completedEpochs  int
 	eval             bool
 
-	prevStep   ts.TimeStep
-	actionDims int
+	// finishEpoch becomes true when the number of steps recorded
+	// is equal to the total number of steps allowed in the epoch.
+	// In this case, the agent continues to act in the environment,
+	// but we can no longer store any data in the buffer. Hence, the
+	// rest of the episode is finished, but its data discarded.
+	//
+	// See note above.
+	finishEpoch bool
+
+	prevStep ts.TimeStep
 
 	// State value critic
 	vValueFn             network.NeuralNet
@@ -81,8 +87,8 @@ type VPG struct {
 	valueGradSteps       int
 }
 
-func New(env environment.Environment, c Config,
-	seed int64) (*VPG, error) {
+// New creates and returns a new VanillaPG.
+func New(env environment.Environment, c Config, seed int64) (*VPG, error) {
 	if !c.ValidAgent(&VPG{}) {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
@@ -121,13 +127,13 @@ func New(env environment.Environment, c Config,
 	valueFnLoss := G.Must(G.Sub(trainValueFn.Prediction()[0], trainValueFnTargets))
 	valueFnLoss = G.Must(G.Square(valueFnLoss))
 	valueFnLoss = G.Must(G.Mean(valueFnLoss))
-	G.Read(valueFnLoss, &ValueLoss)
 
 	_, err = G.Grad(valueFnLoss, trainValueFn.Learnables()...)
 	if err != nil {
 		panic(err)
 	}
 
+	G.Read(valueFnLoss, &ValueFnLoss)
 	trainValueFnVM := G.NewTapeMachine(trainValueFn.Graph(), G.BindDualValues(trainValueFn.Learnables()...))
 
 	// Create the prediction policy
@@ -135,7 +141,7 @@ func New(env environment.Environment, c Config,
 
 	// Create the training policy
 	trainPolicy := config.policy
-	logProb := trainPolicy.(*policy.CategoricalMLP).LogProbNode()
+	logProb := trainPolicy.(*policy.CategoricalMLP).LogPdfNode()
 	advantages := G.NewVector(
 		trainPolicy.Network().Graph(),
 		tensor.Float64,
@@ -151,9 +157,8 @@ func New(env environment.Environment, c Config,
 	if err != nil {
 		panic(err)
 	}
-	G.Read(trainPolicy.(*policy.CategoricalMLP).LogProbNode(), &LogProbVal)
-	G.Read(policyLoss, &PolicyLoss)
 
+	G.Read(policyLoss, &PolicyLoss)
 	trainPolicyVM := G.NewTapeMachine(trainPolicy.Network().Graph(), G.BindDualValues(trainPolicy.Network().Learnables()...))
 
 	vpg := &VPG{
@@ -178,40 +183,54 @@ func New(env environment.Environment, c Config,
 		currentEpochStep: 0,
 		completedEpochs:  0,
 		eval:             false,
+		finishEpoch:      false,
 	}
 
 	return vpg, nil
 }
 
+// SelectAction returns an action at the given timestep.
 func (v *VPG) SelectAction(t ts.TimeStep) *mat.VecDense {
 	if t != v.prevStep {
 		panic("selectAction: timestep is different from that previously " +
 			"recorded")
 	}
-	action := v.behaviour.SelectAction(t)
-	// fmt.Println(action)
-	return action
+	if !v.eval {
+		return v.behaviour.SelectAction(t)
+	} else {
+		panic("selectAction: offline action selection not implemented")
+	}
 }
 
-func (v *VPG) EndEpisode() {}
+// EndEpisode performs cleanup at the end of an episode.
+func (v *VPG) EndEpisode() {
+	// If the previous epoch finished before the episode finished, the
+	// ending of the previous episode would have been thrown out. Since
+	// a new episode is starting now, we can begin storing data for
+	// the current epoch.
+	v.finishEpoch = false
+}
 
-func (v *VPG) Eval() {}
+// Eval sets the algorithm into evaluation mode
+func (v *VPG) Eval() { v.eval = true }
 
-func (v *VPG) Train() {}
+// Train sets the algorithm into training mode
+func (v *VPG) Train() { v.eval = false }
 
+// ObserveFirst observes and records information about the first
+// timestep in an episode.
 func (v *VPG) ObserveFirst(t ts.TimeStep) {
 	if !t.First() {
 		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
 			"called on the first timestep (current timestep = %d)", t.Number)
 	}
-	flag = false
 	v.prevStep = t
 }
 
 // Observe observes and records any timestep other than the first timestep
 func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
 	// Finish current episode to end epoch
-	if flag {
+	if v.finishEpoch {
 		v.prevStep = nextStep
 		return
 	}
@@ -259,17 +278,15 @@ func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
 				panic("observe: multiple values predicted for next state value")
 			}
 			v.buffer.finishPath(lastVal[0])
-			flag = v.currentEpochStep == v.epochLength
+			v.finishEpoch = v.currentEpochStep == v.epochLength
 		}
 	}
 }
 
-func (v *VPG) TdError(ts.Transition) float64 {
-	panic("tderror: not implemented")
-}
-
+// Step updates the agent. If the agent is in evaluation mode, then
+// this function simply returns.
 func (v *VPG) Step() {
-	if v.currentEpochStep < v.epochLength {
+	if v.currentEpochStep < v.epochLength || v.eval {
 		return
 	}
 
@@ -288,70 +305,43 @@ func (v *VPG) Step() {
 	if err != nil {
 		panic(err)
 	}
-	v.trainPolicy.(*policy.CategoricalMLP).LogProbOf(obs, act)
+	v.trainPolicy.(*policy.CategoricalMLP).LogPdfOf(obs, act)
 	if err := v.trainPolicyVM.RunAll(); err != nil {
 		panic(err)
 	}
-	// fmt.Println("Policy Gradient")
-
-	// grad, err := v.trainPolicy.Network().(*network.MultiHeadMLP).Layers()[3].Weights().Grad()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(floatutils.NonZero(grad.Data().([]float64)))
-
-	fmt.Println(v.trainPolicy.Network().(*network.MultiHeadMLP).Layers()[3].Weights().Grad())
 	if err := v.trainPolicySolver.Step(v.trainPolicy.Network().Model()); err != nil {
 		panic(err)
 	}
-
-	fmt.Println("Policy Loss:", PolicyLoss)
-	// fmt.Println("Logits:", v.trainPolicy.(*policy.CategoricalMLP).Logits())
-	fmt.Println("Log Prob:", v.trainPolicy.(*policy.CategoricalMLP).LogProbInputActionsVal)
-	fmt.Println("Log Sum Exp:", v.trainPolicy.(*policy.CategoricalMLP).LogSumExp)
-
-	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).Std)
-	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).Mean)
-	// fmt.Println(v.trainPolicy.(*policy.CategoricalMLP).LogProbNode().Value())
-	// fmt.Println(LogProbVal)
-	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).ExternActionsLogProbVal)
-	// fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).ExternActionsVal)
-	// fmt.Println("=============================")
-	// fmt.Println()
-	// fmt.Println()
-
 	v.trainPolicyVM.Reset()
 
 	// Value function update
-	trainValueFnTargetsTensor := tensor.NewDense( // * this actually can be called once and saved
-		tensor.Float64,
-		v.vTrainValueFnTargets.Shape(),
-		tensor.WithBacking(ret),
-	)
-	err = G.Let(v.vTrainValueFnTargets, trainValueFnTargetsTensor)
-	if err != nil {
-		panic(err)
+	for i := 0; i < v.valueGradSteps; i++ {
+		trainValueFnTargetsTensor := tensor.NewDense(
+			tensor.Float64,
+			v.vTrainValueFnTargets.Shape(),
+			tensor.WithBacking(ret),
+		)
+		err = G.Let(v.vTrainValueFnTargets, trainValueFnTargetsTensor)
+		if err != nil {
+			panic(err)
+		}
+		if err := v.vTrainValueFnVM.RunAll(); err != nil {
+			panic(err)
+		}
+		if err := v.vSolver.Step(v.vTrainValueFn.Model()); err != nil {
+			panic(err)
+		}
+		v.vTrainValueFnVM.Reset()
 	}
-	if err := v.vTrainValueFnVM.RunAll(); err != nil {
-		panic(err)
-	}
-	// fmt.Println("Value Function Gradient")
-	// grad, err = v.vTrainValueFn.(*network.MultiHeadMLP).Layers()[3].Weights().Grad()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(floatutils.NonZero(grad.Data().([]float64)))
-	// fmt.Println(v.vTrainValueFn.(*network.MultiHeadMLP).Layers()[3].Weights().Grad())
-	if err := v.vSolver.Step(v.vTrainValueFn.Model()); err != nil {
-		panic(err)
-	}
-
-	// fmt.Println("Value Loss:", ValueLoss)
-	v.vTrainValueFnVM.Reset()
 
 	// Update behaviour policy and prediction value funcion
 	network.Set(v.behaviour.Network(), v.trainPolicy.Network())
 	network.Set(v.vValueFn, v.vTrainValueFn)
 	v.completedEpochs++
 	v.currentEpochStep = 0
+}
+
+// TdError implements the Agent interface; it always panics.
+func (v *VPG) TdError(ts.Transition) float64 {
+	panic("tderror: not implemented")
 }
