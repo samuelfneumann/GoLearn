@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/VanillaPG"
 	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
+	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/experiment"
@@ -23,11 +23,13 @@ func main() {
 	// var seed int64 = 192382
 
 	// Create the environment
+	// Use an artificially easier problem for testing
+	goalPosition := mountaincar.GoalPosition - 0.45
 	position := r1.Interval{Min: -0.6, Max: -0.4}
-	velocity := r1.Interval{Min: -0.01, Max: 0.01}
+	velocity := r1.Interval{Min: 0.0, Max: 0.0}
 
 	s := environment.NewUniformStarter([]r1.Interval{position, velocity}, useed)
-	task := mountaincar.NewGoal(s, 500, mountaincar.GoalPosition)
+	task := mountaincar.NewGoal(s, 500, goalPosition) // ! Make the env easier and see if it learns
 	m, step := mountaincar.NewDiscrete(task, 0.99)
 	fmt.Println(step)
 
@@ -40,10 +42,10 @@ func main() {
 	// fmt.Println(c.SelectAction(step))
 
 	vm := G.NewTapeMachine(c.Network().Graph())
-	c.LogProbOf([]float64{0.1, 0.2, 0.1, 0.3, 1.0, 9.1}, []float64{1.0, 2.0, 0.0})
+	c.LogPdfOf([]float64{0.1, 0.2, 0.1, 0.3, 1.0, 9.1}, []float64{1.0, 2.0, 0.0})
 	vm.RunAll()
 	vm.Reset()
-	fmt.Println("\nLogProb of input actions\n", c.(*policy.CategoricalMLP).LogProbNode().Value())
+	fmt.Println("\nLogProb of input actions\n", c.(*policy.CategoricalMLP).LogPdfNode().Value())
 
 	fmt.Println("\nLogits of each obs")
 	fmt.Println(c.(*policy.CategoricalMLP).Logits())
@@ -123,11 +125,11 @@ func main() {
 		ValueFnActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
 
 		InitWFn:      G.GlorotN(1.0),
-		PolicySolver: G.NewAdamSolver(G.WithLearnRate(5e-3), G.WithBatchSize(1000)),
-		VSolver:      G.NewAdamSolver(G.WithLearnRate(5e-3), G.WithBatchSize(1000)),
+		PolicySolver: G.NewAdamSolver(G.WithLearnRate(5e-4), G.WithBatchSize(1000)),
+		VSolver:      G.NewAdamSolver(G.WithLearnRate(5e-4), G.WithBatchSize(1000)),
 
-		ValueGradSteps: 5,
-		EpochLength:    1000,
+		ValueGradSteps: 1,
+		EpochLength:    10000,
 		Lambda:         0.97,
 		Gamma:          0.99,
 	}

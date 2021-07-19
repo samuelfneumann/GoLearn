@@ -67,6 +67,17 @@ func Max(floats ...float64) float64 {
 	return max
 }
 
+// CountNonZero returns the number of nonzero elements in a slice
+func CountNonZero(slice []float64) int {
+	count := 0
+	for i := range slice {
+		if slice[i] != 0 {
+			count++
+		}
+	}
+	return count
+}
+
 // NonZero returns true if slice contains nonzero elements and false
 // otherwise,
 func NonZero(slice []float64) bool {
