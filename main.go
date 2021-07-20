@@ -5,8 +5,10 @@ import (
 	"math"
 	"time"
 
+	"gonum.org/v1/gonum/spatial/r1"
 	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
-	"sfneuman.com/golearn/environment/gridworld"
+	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/network"
@@ -18,9 +20,9 @@ func main() {
 
 	// // vanillapg.TestBuffer2()
 	var useed uint64 = 1923812121431427
-	// // var seed int64 = 192382
+	// var seed int64 = 192382
 
-	// // Create the environment
+	// Create the environment
 	// // Use an artificially easier problem for testing
 	// goalPosition := mountaincar.GoalPosition //- 0.45
 	// position := r1.Interval{Min: -0.6, Max: -0.4}
@@ -28,34 +30,44 @@ func main() {
 
 	// s := environment.NewUniformStarter([]r1.Interval{position, velocity}, useed)
 	// task := mountaincar.NewGoal(s, 500, goalPosition)
-	// m, step := mountaincar.NewDiscrete(task, 0.99)
+	// env, step := mountaincar.NewDiscrete(task, 0.99)
 	// fmt.Println(step)
 
-	r, c := 5, 5
+	bounds := r1.Interval{Min: -0.05, Max: 0.05}
+	s := environment.NewUniformStarter([]r1.Interval{
+		bounds,
+		bounds,
+		bounds,
+		bounds,
+	}, useed)
+	t := cartpole.NewBalance(s, 500, cartpole.FailAngle)
+	env, _ := cartpole.NewDiscrete(t, 0.99)
 
-	// Create the start-state distribution
-	starter, err := gridworld.NewSingleStart(0, 0, r, c)
-	if err != nil {
-		fmt.Println("Could not create starter")
-		return
-	}
+	// r, c := 5, 5
 
-	// Create the gridworld task of reaching a goal state. The goals
-	// are specified as a []int, representing (x, y) coordinates
-	goalX, goalY := []int{4}, []int{4}
-	timestepReward, goalReward := -0.1, 1.0
-	goal, err := gridworld.NewGoal(starter, goalX, goalY, r, c,
-		timestepReward, goalReward)
+	// // Create the start-state distribution
+	// starter, err := gridworld.NewSingleStart(0, 0, r, c)
+	// if err != nil {
+	// 	fmt.Println("Could not create starter")
+	// 	return
+	// }
 
-	if err != nil {
-		fmt.Println("Could not create goal")
-		return
-	}
+	// // Create the gridworld task of reaching a goal state. The goals
+	// // are specified as a []int, representing (x, y) coordinates
+	// goalX, goalY := []int{4}, []int{4}
+	// timestepReward, goalReward := -0.1, 1.0
+	// goal, err := gridworld.NewGoal(starter, goalX, goalY, r, c,
+	// 	timestepReward, goalReward)
 
-	// Create the gridworld
-	discount := 0.99
-	env, t := gridworld.New(r, c, goal, discount)
-	fmt.Println(t)
+	// if err != nil {
+	// 	fmt.Println("Could not create goal")
+	// 	return
+	// }
+
+	// // Create the gridworld
+	// discount := 0.99
+	// env, t := gridworld.New(r, c, goal, discount)
+	// fmt.Println(t)
 
 	nonlinearity := network.ReLU()
 	args := vanillapg.CategoricalMLPConfig{
@@ -69,16 +81,14 @@ func main() {
 		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
 		InitWFn:      G.GlorotN(math.Sqrt(2)),
-		PolicySolver: G.NewAdamSolver(G.WithLearnRate(1e-2)),
-		VSolver:      G.NewAdamSolver(G.WithLearnRate(1e-2)),
+		PolicySolver: G.NewAdamSolver(G.WithLearnRate(5e-3)),
+		VSolver:      G.NewAdamSolver(G.WithLearnRate(5e-3)),
 
 		ValueGradSteps: 25,
 		EpochLength:    50000,
 		Lambda:         1.0,
 		Gamma:          0.99,
 	}
-
-	// env := m
 
 	agent, err := args.CreateAgent(env, useed)
 	if err != nil {
@@ -87,7 +97,7 @@ func main() {
 
 	start := time.Now()
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := experiment.NewOnline(env, agent, 50000*1000, []tracker.Tracker{saver}, nil)
+	e := experiment.NewOnline(env, agent, 50000*100, []tracker.Tracker{saver}, nil)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()

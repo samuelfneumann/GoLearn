@@ -8,7 +8,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r1"
 	"sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
 	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
+	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
 	"sfneuman.com/golearn/environment/gridworld"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
@@ -19,31 +19,33 @@ import (
 
 // VanillaPG provides an example on how to use the vanillapg package.
 func VanillaPG() {
-	var useed uint64 = 1923821
+	var useed uint64 = 1923812121431427
 
-	// Create an artificially easier problem for example
-	goalPosition := mountaincar.GoalPosition - 0.45 - 0.25 // Goal == -0.25
-	position := r1.Interval{Min: -0.6, Max: -0.4}
-	velocity := r1.Interval{Min: 0.0, Max: 0.0}
+	bounds := r1.Interval{Min: -0.05, Max: 0.05}
+	starter := environment.NewUniformStarter([]r1.Interval{
+		bounds,
+		bounds,
+		bounds,
+		bounds,
+	}, useed)
 
-	s := environment.NewUniformStarter([]r1.Interval{position, velocity}, useed)
-	task := mountaincar.NewGoal(s, 500, goalPosition)
-	m, step := mountaincar.NewDiscrete(task, 0.99)
-	fmt.Println(step)
+	task := cartpole.NewBalance(starter, 500, cartpole.FailAngle)
+	env, _ := cartpole.NewDiscrete(task, 0.99)
 
-	args := vanillapg.CategoricalMLPConfig{
+	nonlinearity := network.ReLU()
+	config := vanillapg.CategoricalMLPConfig{
 		Policy:            vanillapg.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
 		PolicyBiases:      []bool{true, true, true},
-		PolicyActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+		PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
 		ValueFnLayers:      []int{100, 50, 25},
 		ValueFnBiases:      []bool{true, true, true},
-		ValueFnActivations: []*network.Activation{network.ReLU(), network.ReLU(), network.ReLU()},
+		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
-		InitWFn:      G.GlorotN(1.0),
-		PolicySolver: G.NewAdamSolver(G.WithLearnRate(1e-2), G.WithBatchSize(50000)),
-		VSolver:      G.NewAdamSolver(G.WithLearnRate(1e-2), G.WithBatchSize(50000)),
+		InitWFn:      G.GlorotN(math.Sqrt(2)),
+		PolicySolver: G.NewAdamSolver(G.WithLearnRate(5e-3)),
+		VSolver:      G.NewAdamSolver(G.WithLearnRate(5e-3)),
 
 		ValueGradSteps: 25,
 		EpochLength:    50000,
@@ -51,16 +53,14 @@ func VanillaPG() {
 		Gamma:          0.99,
 	}
 
-	env := m
-
-	agent, err := args.CreateAgent(env, useed)
+	agent, err := config.CreateAgent(env, useed)
 	if err != nil {
 		panic(err)
 	}
 
 	start := time.Now()
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := experiment.NewOnline(env, agent, 50000*1000, []tracker.Tracker{saver}, nil)
+	e := experiment.NewOnline(env, agent, 50000*100, []tracker.Tracker{saver}, nil)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
@@ -71,7 +71,9 @@ func VanillaPG() {
 
 // VanillaPgGridWorld gives an example of VanillaPG running on a
 // gridworld. Note the embarassingly sad performance compared to
-// linear function approximation methods.
+// linear function approximation methods. Note that the gridworld here
+// does not contain a time limit, so VanillaPG may fail to ever finish
+// a single episode.
 func VanillaPgGridWorld() {
 	var useed uint64 = 1923812121431427
 
