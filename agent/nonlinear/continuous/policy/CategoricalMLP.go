@@ -65,6 +65,12 @@ type CategoricalMLP struct {
 	numActions      int         // Number of avalable actions in each state
 	source          rand.Source // Source for action selection RNG
 	seed            uint64      // Seed for source
+
+	// Fields needed for cloning
+	hiddenSizes []int
+	biases      []bool
+	activations []*network.Activation
+	features    int
 }
 
 // NewCategoricalMLP creates a new CategoricalMLP. The CategoricalMLP
@@ -137,6 +143,11 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 
 		source: source,
 		seed:   seed,
+
+		hiddenSizes: hiddenSizes,
+		biases:      biases,
+		activations: activations,
+		features:    features,
 	}
 
 	// Keep track of some node's values
@@ -241,12 +252,79 @@ func (c *CategoricalMLP) LogPdfVal() G.Value {
 
 // Clone clones a CategoricalMLP
 func (c *CategoricalMLP) Clone() (agent.NNPolicy, error) {
-	return nil, fmt.Errorf("clone: not implemented")
+	return c.CloneWithBatch(c.Network().BatchSize())
 }
 
 // CloneWithBatch clones a CategoricalMLP with a new batch size
 func (c *CategoricalMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
-	return nil, fmt.Errorf("cloneWithBatch: not implemented")
+	net, err := network.NewMultiHeadMLP(c.features, batch, c.numActions,
+		G.NewGraph(), c.hiddenSizes, c.biases, G.Zeroes(), c.activations)
+	if err != nil {
+		return &CategoricalMLP{}, fmt.Errorf("newCategoricalMLP: could "+
+			"not create policy network: %v", err)
+	}
+
+	// Logits and probabilities of action selection for the current
+	// policy in the state(s) inputted to the policy's neural net.
+	logits := net.Prediction()[0]
+	probs := G.Must(G.Exp(logits))
+
+	// Compute the log probability of actions that are input by an
+	// external source using the LogProbOf() method.
+	actionIndices := G.NewMatrix(
+		net.Graph(),
+		tensor.Float64,
+		G.WithShape(logits.Shape()...),
+		G.WithInit(G.Zeroes()),
+		G.WithName("Action Indices"),
+	)
+	logitsInputActions := G.Must(G.HadamardProd(actionIndices, logits))
+	logitsInputActions = G.Must(G.Sum(logitsInputActions, 1))
+	inputsLogSumExp := LogSumExp(logits, 1)
+	logProbInputActions := G.Must(G.Sub(logitsInputActions, inputsLogSumExp))
+
+	// Create the rng for breaking action ties
+	source := rand.NewSource(c.seed)
+
+	pol := &CategoricalMLP{
+		net:    net,
+		logits: logits,
+		probs:  probs,
+
+		actionIndices: actionIndices,
+
+		logProbInputActions: logProbInputActions,
+
+		batchForLogProb: batch,
+		numActions:      c.numActions,
+
+		source: source,
+		seed:   c.seed,
+
+		hiddenSizes: c.hiddenSizes,
+		biases:      c.biases,
+		activations: c.activations,
+		features:    c.features,
+	}
+
+	// Keep track of some node's values
+	G.Read(pol.logits, &pol.logitsVals)
+	G.Read(pol.logProbInputActions, &pol.logProbInputActionsVal)
+	G.Read(probs, &pol.probsVal)
+
+	// If using a batch to compute the log probabilities of action
+	// selection, then the policy cannot be used for action selection
+	// at each timestep (which has only 1 action => batch size 1).
+	// In this case, it's assumed that an external VM will be used for
+	// learning the policy's weights.
+	if batch == 1 {
+		pol.vm = G.NewTapeMachine(net.Graph())
+	}
+
+	// Set the prototype's weights to be the original net's weights.
+	network.Set(net, c.net)
+
+	return pol, nil
 }
 
 // Network returns the network of the CategoricalMLP
