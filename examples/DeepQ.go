@@ -47,7 +47,7 @@ func DeepQ() {
 		TargetUpdateInterval: 1,
 		Solver:               G.NewAdamSolver(G.WithLearnRate(0.00001)),
 	}
-	q, err := deepq.New(m, args, seed)
+	q, err := args.CreateAgent(m, useed)
 	if err != nil {
 		panic(err)
 	}

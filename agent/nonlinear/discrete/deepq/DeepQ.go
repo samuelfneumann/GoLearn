@@ -9,7 +9,6 @@ import (
 	"gorgonia.org/tensor"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
-	"sfneuman.com/golearn/agent/nonlinear/discrete/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/expreplay"
 	"sfneuman.com/golearn/network"
@@ -68,8 +67,12 @@ type DeepQ struct {
 }
 
 // New creates and returns a new DeepQ agent
-func New(env environment.Environment, config Config,
+func New(env environment.Environment, c agent.Config,
 	seed int64) (*DeepQ, error) {
+	if !c.ValidAgent(&DeepQ{}) {
+		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
+	}
+
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
 		return &DeepQ{}, fmt.Errorf("deepq: cannot use non-discrete " +
@@ -89,51 +92,25 @@ func New(env environment.Environment, config Config,
 	}
 
 	// Ensure the configuration is valid
-	err := config.Validate()
+	err := c.Validate()
 	if err != nil {
 		return &DeepQ{}, err
 	}
+
+	config := c.(*Config)
 
 	// Extract configuration variables
 	batchSize := config.BatchSize()
 	numActions := int(env.ActionSpec().UpperBound.AtVec(0)) + 1
-	hiddenSizes := config.PolicyLayers
-	biases := config.Biases
-	activations := config.Activations
-	init := config.InitWFn
-	ε := config.Epsilon
 
-	// Behaviour network for selecting actions
-	g := G.NewGraph()
-	behaviourPolicy, err := policy.NewMultiHeadEGreedyMLP(
-		ε,
-		env,
-		g,
-		hiddenSizes,
-		biases,
-		init,
-		activations,
-		seed,
-	)
-	if err != nil {
-		return &DeepQ{}, err
-	}
+	// Create the behaviour policy which selects actions and explores
+	behaviourPolicy := config.behaviourPolicy
 
-	// Create the target policy for selecting actions
-	targetPolicyClone, err := behaviourPolicy.Clone()
-	if err != nil {
-		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
-	}
-	targetPolicy := targetPolicyClone.(agent.EGreedyNNPolicy)
-	targetPolicy.SetEpsilon(0.0)
+	// Create the target policy, which is the policy actually learned
+	targetPolicy := config.targetPolicy
 
 	// Create the target network which provides the update target
-	// targetNetClone, err := behaviourPolicy.ClonePolicyWithBatch(batchSize)
-	// if err != nil {
-	// 	msg := "new: could not create target network: %v"
-	// 	return &DeepQ{}, fmt.Errorf(msg, err)
-	// }
-	targetNet, err := targetPolicy.Network().CloneWithBatch(batchSize) //targetNetClone.(agent.EGreedyNNPolicy)
+	targetNet, err := targetPolicy.Network().CloneWithBatch(batchSize)
 	if err != nil {
 		msg := "new: could not create target network: %v"
 		return &DeepQ{}, fmt.Errorf(msg, err)
@@ -143,20 +120,14 @@ func New(env environment.Environment, config Config,
 			"\n\twnat(1)\n\thave(%v)"
 		return &DeepQ{}, fmt.Errorf(msg, layers)
 	}
-	// targetNet.SetEpsilon(0.0) // Qlearning target policy is greedy
 	targetNetVM := G.NewTapeMachine(targetNet.Graph())
 
 	// Target network update schedule
 	tau := config.Tau
 	targetUpdateInterval := config.TargetUpdateInterval
 
-	// Create a training network which learns the weights
-	// trainNetClone, err := behaviourPolicy.ClonePolicyWithBatch(batchSize)
-	// if err != nil {
-	// 	msg := "new: could not create learning network: %v"
-	// 	return &DeepQ{}, fmt.Errorf(msg, err)
-	// }
-	// trainNet := trainNetClone.(agent.EGreedyNNPolicy)
+	// Create the training network, which is the network whose
+	// parameters the agent learns
 	trainNet, err := behaviourPolicy.Network().CloneWithBatch(batchSize)
 	if err != nil {
 		msg := "new: could not create learning network: %v"
@@ -259,7 +230,7 @@ func New(env environment.Environment, config Config,
 func NewQlearning(env environment.Environment, config qlearning.Config,
 	seed int64, InitWFn G.InitWFn) (*DeepQ, error) {
 	learningRate := config.LearningRate
-	deepQConfig := Config{
+	deepQConfig := &Config{
 		Epsilon:      config.Epsilon,
 		PolicyLayers: []int{},
 		Biases:       []bool{},

@@ -4,6 +4,9 @@ import (
 	"fmt"
 
 	G "gorgonia.org/gorgonia"
+	"sfneuman.com/golearn/agent"
+	"sfneuman.com/golearn/agent/nonlinear/discrete/policy"
+	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/expreplay"
 	"sfneuman.com/golearn/network"
 )
@@ -16,6 +19,12 @@ type Config struct {
 	Activations  []*network.Activation // Activation of each layer
 	InitWFn      G.InitWFn             // Initialization algorithm for weights
 	Solver       G.Solver              // Solver for learning weights
+
+	// The behaviourPolicy selects actions at the current step. The
+	// targetPolicy looks at the next action and selects that with the
+	// highest value for the Q-learning update.
+	behaviourPolicy agent.EGreedyNNPolicy // Action selection
+	targetPolicy    agent.EGreedyNNPolicy // Greedy next-action selection
 
 	Epsilon float64 // Behaviour policy epsilon
 
@@ -32,13 +41,13 @@ type Config struct {
 
 // BatchSize returns the batch size of the agent constructed using this
 // Config
-func (c Config) BatchSize() int {
+func (c *Config) BatchSize() int {
 	return c.Sampler.BatchSize()
 }
 
 // Validate checks a Config to ensure it is a valid configuration of a
 // DeepQ agent.
-func (c Config) Validate() error {
+func (c *Config) Validate() error {
 	// Error checking
 	if len(c.PolicyLayers) != len(c.Biases) {
 		msg := fmt.Sprintf("new: invalid number of biases\n\twant(%v)"+
@@ -60,4 +69,52 @@ func (c Config) Validate() error {
 	}
 
 	return nil
+}
+
+// ValidAgent returns whether the agent is valid for the configuration.
+// That is, whether Agent a can be constructed with Config c.
+func (c *Config) ValidAgent(a agent.Agent) bool {
+	_, ok := a.(*DeepQ)
+	return ok
+}
+
+// CreateAgent creates a new DeepQ agent based on the configuration
+func (c *Config) CreateAgent(e env.Environment, s uint64) (agent.Agent, error) {
+	seed := int64(s)
+
+	// Extract configuration variables
+	hiddenSizes := c.PolicyLayers
+	biases := c.Biases
+	activations := c.Activations
+	init := c.InitWFn
+	ε := c.Epsilon
+
+	// Behaviour policy
+	g := G.NewGraph()
+	behaviourPolicy, err := policy.NewMultiHeadEGreedyMLP(
+		ε,
+		e,
+		g,
+		hiddenSizes,
+		biases,
+		init,
+		activations,
+		seed,
+	)
+	if err != nil {
+		return &DeepQ{}, err
+	}
+
+	// Create the target policy for action selection
+	targetPolicyClone, err := behaviourPolicy.Clone()
+	if err != nil {
+		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
+	}
+	targetPolicy := targetPolicyClone.(agent.EGreedyNNPolicy)
+	targetPolicy.SetEpsilon(0.0)
+
+	c.behaviourPolicy = behaviourPolicy
+	c.targetPolicy = targetPolicy
+
+	return New(e, c, seed)
 }
