@@ -14,8 +14,6 @@ import (
 	ts "sfneuman.com/golearn/timestep"
 )
 
-var PolicyLoss, ValueFnLoss G.Value // Debugging
-
 // Note: Step() is called on each timestep. When the epoch is finished
 // the current episode may not be finised, but Step() will be called,
 // updating the current policy. In this case, we will finish the
@@ -132,8 +130,6 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 	if err != nil {
 		panic(err)
 	}
-
-	G.Read(valueFnLoss, &ValueFnLoss)
 	trainValueFnVM := G.NewTapeMachine(trainValueFn.Graph(), G.BindDualValues(trainValueFn.Learnables()...))
 
 	// Create the prediction policy
@@ -157,8 +153,6 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 	if err != nil {
 		panic(err)
 	}
-
-	G.Read(policyLoss, &PolicyLoss)
 	trainPolicyVM := G.NewTapeMachine(trainPolicy.Network().Graph(), G.BindDualValues(trainPolicy.Network().Learnables()...))
 
 	vpg := &VPG{
@@ -295,8 +289,6 @@ func (v *VPG) Step() {
 		panic(err)
 	}
 
-	fmt.Println("Epoch:", v.completedEpochs)
-
 	// Policy gradient step
 	advantagesTensor := tensor.NewDense( // * technically this needs to be called only once
 		tensor.Float64,
@@ -314,7 +306,6 @@ func (v *VPG) Step() {
 	if err := v.trainPolicySolver.Step(v.trainPolicy.Network().Model()); err != nil {
 		panic(err)
 	}
-	fmt.Println("Policy Loss:", PolicyLoss)
 	v.trainPolicyVM.Reset()
 
 	// Value function update
@@ -334,7 +325,6 @@ func (v *VPG) Step() {
 		if err := v.vSolver.Step(v.vTrainValueFn.Model()); err != nil {
 			panic(err)
 		}
-		fmt.Println("Value Loss:", ValueFnLoss)
 		v.vTrainValueFnVM.Reset()
 	}
 
