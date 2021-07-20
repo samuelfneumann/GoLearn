@@ -17,19 +17,26 @@ import (
 
 // default physical constants
 const (
-	AngleBound          float64 = math.Pi // The angle bounds
-	SpeedBound          float64 = 8.0     // The angular velocity/speed bounds
-	MaxContinuousAction float64 = 2.0     // The torque bounds
+	AngleBound  float64 = math.Pi // +/- Angle bounds
+	SpeedBound  float64 = 8.0     // +/- Speed bounds
+	TorqueBound float64 = 2.0     // +/- Torque bounds
+
+	MaxContinuousAction float64 = TorqueBound
 	MinContinuousAction float64 = -MaxContinuousAction
-	dt                  float64 = 0.05
-	Gravity             float64 = 9.8
-	Mass                float64 = 1.0
-	Length              float64 = 1.0
-	ActionDims          int     = 1
-	ObservationDims     int     = 2
+
+	MaxDiscreteAction float64 = 4.0
+	MinDiscreteAction float64 = 0.0
+
+	dt              float64 = 0.05
+	Gravity         float64 = 9.8
+	Mass            float64 = 1.0
+	Length          float64 = 1.0
+	ActionDims      int     = 1
+	ObservationDims int     = 2
 )
 
-// Pendulum implements the classic control environment Pendulum. In this
+// TODO: This documentation needs to be updated
+// base implements the classic control environment base. In this
 // environment, a pendulum is attached to a fixed base. An agent can
 // swing the pendulum back and forth, but the swinging force /torque is
 // underpowered. In order to be able to swing the pendulum straight up,
@@ -52,8 +59,8 @@ const (
 // Actions outside of this region are clipped to stay within these
 // bounds.
 //
-// Pendulum implements the environment.Environment interface
-type Pendulum struct {
+// base implements the environment.Environment interface
+type base struct {
 	environment.Task
 	dt           float64
 	gravity      float64
@@ -66,19 +73,18 @@ type Pendulum struct {
 	discount     float64
 }
 
-// New creates and returns a new Pendulum environment
-func New(t environment.Task, d float64) (*Pendulum, timestep.TimeStep) {
+// New creates and returns a new base environment
+func newBase(t environment.Task, d float64) (*base, timestep.TimeStep) {
 	angleBounds := r1.Interval{Min: -AngleBound, Max: AngleBound}
 	speedBounds := r1.Interval{Min: -SpeedBound, Max: SpeedBound}
-	torqueBounds := r1.Interval{Min: MinContinuousAction,
-		Max: MaxContinuousAction}
+	torqueBounds := r1.Interval{Min: -TorqueBound, Max: TorqueBound}
 
 	state := t.Start()
 	validateState(state, angleBounds, speedBounds)
 
 	firstStep := timestep.New(timestep.First, 0.0, d, state, 0)
 
-	pendulum := Pendulum{t, dt, Gravity, Mass, Length, angleBounds,
+	pendulum := base{t, dt, Gravity, Mass, Length, angleBounds,
 		speedBounds, torqueBounds, firstStep, d}
 
 	return &pendulum, firstStep
@@ -86,13 +92,13 @@ func New(t environment.Task, d float64) (*Pendulum, timestep.TimeStep) {
 
 // LastTimeStep returns the last TimeStep that occurred in the
 // environment
-func (p *Pendulum) LastTimeStep() timestep.TimeStep {
+func (p *base) LastTimeStep() timestep.TimeStep {
 	return p.lastStep
 }
 
 // Reset resets the environment and returns a starting state drawn from the
 // Starter
-func (p *Pendulum) Reset() timestep.TimeStep {
+func (p *base) Reset() timestep.TimeStep {
 	state := p.Start()
 	validateState(state, p.angleBounds, p.speedBounds)
 	startStep := timestep.New(timestep.First, 0, p.discount, state, 0)
@@ -101,22 +107,18 @@ func (p *Pendulum) Reset() timestep.TimeStep {
 	return startStep
 }
 
-// NextState computes the next state of the environment given a timestep and
-// an action a
-func (p *Pendulum) NextState(t timestep.TimeStep, a mat.Vector) *mat.VecDense {
-	if a.Len() != 1 {
-		panic("only 1D actions are allowed")
-	}
-
+// nextState computes the next state of the environment given a timestep and
+// an amount of torque to apply to the fixed base of the pendulum. The
+// torque is first clipped to the appropriate torque bounds.
+func (p *base) nextState(t timestep.TimeStep, torque float64) *mat.VecDense {
 	obs := t.Observation
 	th, thdot := obs.AtVec(0), obs.AtVec(1)
 
 	// Clip the torque
-	action := a.AtVec(0)
-	action = floatutils.ClipInterval(action, p.torqueBounds)
+	torque = floatutils.ClipInterval(torque, p.torqueBounds)
 
 	newthdot := thdot + (-3*p.gravity/(2*p.length)*math.Sin(th+math.Pi)+
-		3.0/(p.mass*math.Pow(p.length, 2))*action)*p.dt
+		3.0/(p.mass*math.Pow(p.length, 2))*torque)*p.dt
 
 	newth := th + (newthdot * p.dt)
 
@@ -128,39 +130,26 @@ func (p *Pendulum) NextState(t timestep.TimeStep, a mat.Vector) *mat.VecDense {
 	newth = normalizeAngle(newth, p.angleBounds)
 
 	newObs := mat.NewVecDense(2, []float64{newth, newthdot})
-
 	return newObs
 }
 
-// Step takes one environmental step given action a and returns the next
-// timestep as a timestep.TimeStep and a bool indicating whether or not
-// the episode has ended. Actions are 1-dimensional and continuous, c
-// onsisting of the horizontal force to apply to the cart. Actions
-// outside the legal range of [-1, 1] are clipped to stay within this
-// range.
-func (p *Pendulum) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
-	// Ensure action is 1-dimensional
-	if action.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
-	}
+func (p *base) update(action, newState *mat.VecDense) (timestep.TimeStep,
+	bool) {
+	// Create the new timestep
+	reward := p.GetReward(p.LastTimeStep().Observation, action, newState)
+	nextStep := timestep.New(timestep.Mid, reward, p.discount, newState,
+		p.LastTimeStep().Number+1)
 
-	nextState := p.NextState(p.lastStep, action)
-	newth := nextState.AtVec(0)
+	// Check if the step is the last in the episode and adjust step type
+	// if necessary
+	p.End(&nextStep)
 
-	stepNum := p.lastStep.Number + 1
-	stepType := timestep.Mid
-
-	reward := math.Cos(newth)
-	step := timestep.New(stepType, reward, p.discount, nextState, stepNum)
-
-	p.End(&step)
-
-	p.lastStep = step
-	return step, step.Last()
+	p.lastStep = nextStep
+	return nextStep, nextStep.Last()
 }
 
 // DiscountSpec returns the discount specification of the environment
-func (p *Pendulum) DiscountSpec() spec.Environment {
+func (p *base) DiscountSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)
 
 	lowerBound := mat.NewVecDense(1, []float64{p.discount})
@@ -172,21 +161,8 @@ func (p *Pendulum) DiscountSpec() spec.Environment {
 
 }
 
-// ActionSpec returns the action specification of the environment
-func (p *Pendulum) ActionSpec() spec.Environment {
-	shape := mat.NewVecDense(ActionDims, nil)
-
-	minAction, maxAction := p.torqueBounds.Min, p.torqueBounds.Max
-	lowerBound := mat.NewVecDense(ActionDims, []float64{minAction})
-	upperBound := mat.NewVecDense(ActionDims, []float64{maxAction})
-
-	return spec.NewEnvironment(shape, spec.Action, lowerBound, upperBound,
-		spec.Continuous)
-
-}
-
 // ObservationSpec returns the observation specification of the environment
-func (p *Pendulum) ObservationSpec() spec.Environment {
+func (p *base) ObservationSpec() spec.Environment {
 	shape := mat.NewVecDense(ObservationDims, nil)
 
 	minObs := []float64{p.angleBounds.Min, p.speedBounds.Min}
@@ -201,8 +177,8 @@ func (p *Pendulum) ObservationSpec() spec.Environment {
 }
 
 // String converts the environment to a string representation
-func (p *Pendulum) String() string {
-	str := "Pendulum  |  theta: %v  |  theta dot: %v\n"
+func (p *base) String() string {
+	str := "base  |  theta: %v  |  theta dot: %v\n"
 	theta := p.lastStep.Observation.AtVec(0)
 	thetadot := p.lastStep.Observation.AtVec(1)
 
@@ -210,7 +186,7 @@ func (p *Pendulum) String() string {
 }
 
 // Render renders the current timestep to the terminal
-func (p *Pendulum) Render() {
+func (p *base) Render() {
 	angle := p.lastStep.Observation.AtVec(0)
 	var frame string
 
