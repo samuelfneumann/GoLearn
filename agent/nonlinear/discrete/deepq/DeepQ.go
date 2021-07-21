@@ -12,6 +12,7 @@ import (
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/expreplay"
 	"sfneuman.com/golearn/network"
+	"sfneuman.com/golearn/solver"
 	"sfneuman.com/golearn/spec"
 	ts "sfneuman.com/golearn/timestep"
 )
@@ -24,16 +25,14 @@ type DeepQ struct {
 	targetPolicy    agent.EGreedyNNPolicy // Target greedy policy
 
 	// Policy for learning weights that takes in batches of inputs
-	// * This could easily be changed to a copy of the behaviour/target
-	// * policies' NeuralNets
-	trainNet   network.NeuralNet //agent.EGreedyNNPolicy // Policy whose weights are adapted
+	trainNet   network.NeuralNet // Policy whose weights are adapted
 	trainNetVM G.VM
 	solver     G.Solver // Adapts the weights of trainNet
 
 	// Policy that provides the update target for a batch of inputs
 	// Note that this is a target network, providing the update target.
 	// It is not the network for the target policy
-	targetNet   network.NeuralNet //agent.EGreedyNNPolicy
+	targetNet   network.NeuralNet
 	targetNetVM G.VM
 
 	// Variables to track target network updates
@@ -230,13 +229,17 @@ func New(env environment.Environment, c agent.Config,
 func NewQlearning(env environment.Environment, config qlearning.Config,
 	seed int64, InitWFn G.InitWFn) (*DeepQ, error) {
 	learningRate := config.LearningRate
+	sol, err := solver.NewVanilla(learningRate, 1)
+	if err != nil {
+		return nil, fmt.Errorf("newQLearning: cannot create solver: %v", err)
+	}
 	deepQConfig := &Config{
 		Epsilon:      config.Epsilon,
 		PolicyLayers: []int{},
 		Biases:       []bool{},
 		Activations:  []*network.Activation{},
 		InitWFn:      InitWFn,
-		Solver:       G.NewVanillaSolver(G.WithLearnRate(learningRate)),
+		Solver:       sol,
 
 		Tau:                  1.0,
 		TargetUpdateInterval: 1,

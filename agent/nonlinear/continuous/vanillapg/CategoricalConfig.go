@@ -8,6 +8,7 @@ import (
 	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/network"
+	"sfneuman.com/golearn/solver"
 )
 
 // CategoricalConfig implements a configuration for a categorical policy
@@ -15,7 +16,7 @@ type CategoricalMLPConfig struct {
 	// Policy neural net
 	policy            agent.LogPdfOfer // VPG.trainPolicy
 	behaviour         agent.NNPolicy   // VPG.behaviour
-	Policy            PolicyType
+	Policy            agent.PolicyType
 	PolicyLayers      []int
 	PolicyBiases      []bool
 	PolicyActivations []*network.Activation
@@ -28,10 +29,10 @@ type CategoricalMLPConfig struct {
 	ValueFnActivations []*network.Activation
 
 	// Weight init function for all neural nets
-	InitWFn G.InitWFn
+	InitWFn G.InitWFn `json:"-"`
 
-	PolicySolver G.Solver
-	VSolver      G.Solver
+	PolicySolver *solver.Solver
+	VSolver      *solver.Solver
 
 	// Number of gradient steps to take for the value functions per
 	// epoch
@@ -56,9 +57,9 @@ func (c *CategoricalMLPConfig) Validate() error {
 		return fmt.Errorf("cannot have epoch length < 1")
 	}
 
-	if c.Policy != Categorical {
+	if c.Policy != agent.Categorical {
 		return fmt.Errorf("cannot create %v policy from categorical "+
-			"configuration, must be %v", c.Policy, Categorical)
+			"configuration, must be %v", c.Policy, agent.Categorical)
 	}
 
 	return nil
@@ -76,7 +77,7 @@ func (c *CategoricalMLPConfig) ValidAgent(a agent.Agent) bool {
 // CreateAgent creates and returns the agent determine by the configuration
 func (c *CategoricalMLPConfig) CreateAgent(e env.Environment,
 	seed uint64) (agent.Agent, error) {
-	if c.Policy != Categorical {
+	if c.Policy != agent.Categorical {
 		panic(fmt.Sprintf("createAgent: mlp policy %v not implemented",
 			c.Policy))
 	}

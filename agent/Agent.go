@@ -4,7 +4,6 @@ package agent
 import (
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
-	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/timestep"
 )
@@ -85,18 +84,4 @@ type LogPdfOfer interface {
 	// This function is needed for non-TD implementations of policy
 	// gradient algorithms.
 	LogPdfOf(states, actions []float64) (*G.Node, error)
-}
-
-// Config represents a configuration for creating an agent
-type Config interface {
-	// CreateAgent creates the agent that the config describes
-	CreateAgent(env environment.Environment, seed uint64) (Agent, error)
-
-	// ValidAgent returns whether the argument agent is valid for the
-	// Config
-	ValidAgent(Agent) bool
-
-	// Validate returns an error describing whether or not the
-	// configuration is valid or not.
-	Validate() error
 }

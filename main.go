@@ -1,17 +1,21 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
+	"sfneuman.com/golearn/agent"
 	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/network"
+	"sfneuman.com/golearn/solver"
 
 	G "gorgonia.org/gorgonia"
 )
@@ -69,9 +73,12 @@ func main() {
 	// env, t := gridworld.New(r, c, goal, discount)
 	// fmt.Println(t)
 
+	policySolver, _ := solver.NewDefaultAdam(5e-3, 1)
+	valueSolver, _ := solver.NewDefaultAdam(5e-3, 1)
+
 	nonlinearity := network.ReLU()
 	args := vanillapg.CategoricalMLPConfig{
-		Policy:            vanillapg.Categorical,
+		Policy:            agent.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
 		PolicyBiases:      []bool{true, true, true},
 		PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
@@ -81,14 +88,36 @@ func main() {
 		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
 		InitWFn:      G.GlorotN(math.Sqrt(2)),
-		PolicySolver: G.NewAdamSolver(G.WithLearnRate(5e-3)),
-		VSolver:      G.NewAdamSolver(G.WithLearnRate(5e-3)),
+		PolicySolver: policySolver,
+		VSolver:      valueSolver,
 
 		ValueGradSteps: 25,
 		EpochLength:    50000,
 		Lambda:         1.0,
 		Gamma:          0.99,
 	}
+
+	outfile, err := os.Create("args.json")
+	if err != nil {
+		panic(err)
+	}
+	enc := json.NewEncoder(outfile)
+	enc.SetIndent("", "\t")
+	err = enc.Encode(args)
+	if err != nil {
+		panic(err)
+	}
+	outfile.Close()
+
+	infile, err := os.Open("args.json")
+	if err != nil {
+		panic(err)
+	}
+	dec := json.NewDecoder(infile)
+	var a *vanillapg.CategoricalMLPConfig
+	dec.Decode(&a)
+	fmt.Println(a.VSolver.Type, a.VSolver.Config)
+	fmt.Println("JSON DONE")
 
 	agent, err := args.CreateAgent(env, useed)
 	if err != nil {

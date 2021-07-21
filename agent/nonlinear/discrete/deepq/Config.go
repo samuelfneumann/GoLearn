@@ -9,16 +9,21 @@ import (
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/expreplay"
 	"sfneuman.com/golearn/network"
+	"sfneuman.com/golearn/solver"
 )
 
 // Config implements a configuration for a DeepQ agent
 type Config struct {
+	Policy agent.PolicyType // Type of policy to create
+
 	// Policy       agent.EGreedyNNPolicy
 	PolicyLayers []int                 // Layer sizes in neural net
 	Biases       []bool                // Whether each layer should have a bias
 	Activations  []*network.Activation // Activation of each layer
-	InitWFn      G.InitWFn             // Initialization algorithm for weights
-	Solver       G.Solver              // Solver for learning weights
+	Solver       *solver.Solver        // Solver for learning weights
+
+	// Initialization algorithm for weights
+	InitWFn G.InitWFn `json:"-"`
 
 	// The behaviourPolicy selects actions at the current step. The
 	// targetPolicy looks at the next action and selects that with the
@@ -49,6 +54,11 @@ func (c *Config) BatchSize() int {
 // DeepQ agent.
 func (c *Config) Validate() error {
 	// Error checking
+	if c.Policy != agent.EGreedy {
+		return fmt.Errorf("cannot create %v policy for DeepQ "+
+			"configuration, must be %v", c.Policy, agent.EGreedy)
+	}
+
 	if len(c.PolicyLayers) != len(c.Biases) {
 		msg := fmt.Sprintf("new: invalid number of biases\n\twant(%v)"+
 			"\n\thave(%v)", len(c.PolicyLayers), len(c.Biases))

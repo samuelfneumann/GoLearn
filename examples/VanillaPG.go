@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
+	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
@@ -13,6 +14,7 @@ import (
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/network"
+	"sfneuman.com/golearn/solver"
 
 	G "gorgonia.org/gorgonia"
 )
@@ -32,9 +34,17 @@ func VanillaPG() {
 	task := cartpole.NewBalance(starter, 500, cartpole.FailAngle)
 	env, _ := cartpole.NewDiscrete(task, 0.99)
 
+	policySolver, err := solver.NewDefaultAdam(5e-3, 1)
+	if err != nil {
+		panic(err)
+	}
+	valueSolver, err := solver.NewDefaultAdam(5e-3, 1)
+	if err != nil {
+		panic(err)
+	}
 	nonlinearity := network.ReLU()
 	config := vanillapg.CategoricalMLPConfig{
-		Policy:            vanillapg.Categorical,
+		Policy:            agent.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
 		PolicyBiases:      []bool{true, true, true},
 		PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
@@ -44,8 +54,8 @@ func VanillaPG() {
 		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
 		InitWFn:      G.GlorotN(math.Sqrt(2)),
-		PolicySolver: G.NewAdamSolver(G.WithLearnRate(5e-3)),
-		VSolver:      G.NewAdamSolver(G.WithLearnRate(5e-3)),
+		PolicySolver: policySolver,
+		VSolver:      valueSolver,
 
 		ValueGradSteps: 25,
 		EpochLength:    50000,
@@ -104,8 +114,16 @@ func VanillaPgGridWorld() {
 	fmt.Println(t)
 
 	nonlinearity := network.ReLU()
+	policySolver, err := solver.NewDefaultAdam(1e-2, 1)
+	if err != nil {
+		panic(err)
+	}
+	valueSolver, err := solver.NewDefaultAdam(1e-2, 1)
+	if err != nil {
+		panic(err)
+	}
 	args := vanillapg.CategoricalMLPConfig{
-		Policy:            vanillapg.Categorical,
+		Policy:            agent.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
 		PolicyBiases:      []bool{true, true, true},
 		PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
@@ -115,8 +133,8 @@ func VanillaPgGridWorld() {
 		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
 		InitWFn:      G.GlorotN(math.Sqrt(2)),
-		PolicySolver: G.NewAdamSolver(G.WithLearnRate(1e-2)),
-		VSolver:      G.NewAdamSolver(G.WithLearnRate(1e-2)),
+		PolicySolver: policySolver,
+		VSolver:      valueSolver,
 
 		ValueGradSteps: 25,
 		EpochLength:    50000,

@@ -6,6 +6,7 @@ import (
 
 	"gonum.org/v1/gonum/spatial/r1"
 	G "gorgonia.org/gorgonia"
+	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
 	"sfneuman.com/golearn/environment"
@@ -15,6 +16,7 @@ import (
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/expreplay"
 	"sfneuman.com/golearn/network"
+	"sfneuman.com/golearn/solver"
 )
 
 func DeepQ() {
@@ -28,8 +30,15 @@ func DeepQ() {
 	task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
 	m, _ := mountaincar.NewDiscrete(task, 1.0)
 
+	// Create the solver
+	sol, err := solver.NewDefaultAdam(0.00001, 1)
+	if err != nil {
+		panic(err)
+	}
+
 	// Create the learning algorithm
 	args := deepq.Config{
+		Policy:       agent.EGreedy,
 		PolicyLayers: []int{100, 50, 25},
 		Biases:       []bool{true, true, true},
 		Activations: []*network.Activation{
@@ -45,7 +54,7 @@ func DeepQ() {
 		MinimumCapacity:      1,
 		Tau:                  1.0,
 		TargetUpdateInterval: 1,
-		Solver:               G.NewAdamSolver(G.WithLearnRate(0.00001)),
+		Solver:               sol,
 	}
 	q, err := args.CreateAgent(m, useed)
 	if err != nil {
