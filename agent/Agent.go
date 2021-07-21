@@ -66,6 +66,11 @@ type EGreedyNNPolicy interface {
 	Epsilon() float64
 }
 
+// LogPdfOfer implements a policy type that can calculate the log
+// of the probability density function of the policy for taking some
+// (externally inputted) action in some (externally inputted) state.
+// Because of this, the gradient will not be computed through the
+// action selection process.
 type LogPdfOfer interface {
 	NNPolicy
 
