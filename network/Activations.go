@@ -1,6 +1,7 @@
 package network
 
 import (
+	"encoding/json"
 	"fmt"
 
 	G "gorgonia.org/gorgonia"
@@ -40,6 +41,27 @@ func (a *Activation) IsIdentity() bool {
 // IsNil returns whether an activation is nil
 func (a *Activation) IsNil() bool {
 	return a.activationType == nil_
+}
+
+// MarshalJSON implements the json.Marshaler interface
+func (a *Activation) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.activationType)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface
+func (a *Activation) UnmarshalJSON(data []byte) error {
+	decoded := activationType(data)
+	switch decoded {
+	case relu:
+		*a = *ReLU()
+	case identity:
+		*a = *Identity()
+	case tanh:
+		*a = *TanH()
+	default:
+		return fmt.Errorf("unmarshalJSON: illegal Activation type")
+	}
+	return nil
 }
 
 // GobEncode implements the gob.GobEncoder interface
