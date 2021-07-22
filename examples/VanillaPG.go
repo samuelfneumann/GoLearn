@@ -13,10 +13,9 @@ import (
 	"sfneuman.com/golearn/environment/gridworld"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
+	"sfneuman.com/golearn/initwfn"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/solver"
-
-	G "gorgonia.org/gorgonia"
 )
 
 // VanillaPG provides an example on how to use the vanillapg package.
@@ -42,6 +41,10 @@ func VanillaPG() {
 	if err != nil {
 		panic(err)
 	}
+	initWFn, err := initwfn.NewGlorotN(math.Sqrt(2.0))
+	if err != nil {
+		panic(err)
+	}
 	nonlinearity := network.ReLU()
 	config := vanillapg.CategoricalMLPConfig{
 		Policy:            agent.Categorical,
@@ -53,7 +56,7 @@ func VanillaPG() {
 		ValueFnBiases:      []bool{true, true, true},
 		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
-		InitWFn:      G.GlorotN(math.Sqrt(2)),
+		InitWFn:      initWFn,
 		PolicySolver: policySolver,
 		VSolver:      valueSolver,
 
@@ -122,6 +125,10 @@ func VanillaPgGridWorld() {
 	if err != nil {
 		panic(err)
 	}
+	initWFn, err := initwfn.NewGlorotN(math.Sqrt(2.0))
+	if err != nil {
+		panic(err)
+	}
 	args := vanillapg.CategoricalMLPConfig{
 		Policy:            agent.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
@@ -132,7 +139,7 @@ func VanillaPgGridWorld() {
 		ValueFnBiases:      []bool{true, true, true},
 		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
-		InitWFn:      G.GlorotN(math.Sqrt(2)),
+		InitWFn:      initWFn,
 		PolicySolver: policySolver,
 		VSolver:      valueSolver,
 

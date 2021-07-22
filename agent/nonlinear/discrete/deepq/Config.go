@@ -24,7 +24,7 @@ type Config struct {
 	Solver       *solver.Solver        // Solver for learning weights
 
 	// Initialization algorithm for weights
-	InitWFn initwfn.InitWFn
+	InitWFn *initwfn.InitWFn
 
 	// The behaviourPolicy selects actions at the current step. The
 	// targetPolicy looks at the next action and selects that with the

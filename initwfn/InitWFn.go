@@ -17,6 +17,7 @@ type Type string
 const (
 	GlorotU Type = "GlorotU"
 	GlorotN Type = "GlorotN"
+	Zeroes  Type = "Zeroes"
 )
 
 // InitWFn wraps Gorgonia InitWFn so that they can be JSON marshalled and

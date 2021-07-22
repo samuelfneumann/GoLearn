@@ -228,7 +228,7 @@ func New(env environment.Environment, c agent.Config,
 // That is, the algorithm uses linear function approximation to learn
 // online with no target networks.
 func NewQlearning(env environment.Environment, config qlearning.Config,
-	seed int64, InitWFn initwfn.InitWFn) (*DeepQ, error) {
+	seed int64, InitWFn *initwfn.InitWFn) (*DeepQ, error) {
 	learningRate := config.LearningRate
 	sol, err := solver.NewVanilla(learningRate, 1)
 	if err != nil {

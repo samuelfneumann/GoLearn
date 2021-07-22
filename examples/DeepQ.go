@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	G "gorgonia.org/gorgonia"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
@@ -15,6 +14,7 @@ import (
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/expreplay"
+	"sfneuman.com/golearn/initwfn"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/solver"
 )
@@ -35,6 +35,10 @@ func DeepQ() {
 	if err != nil {
 		panic(err)
 	}
+	initWFn, err := initwfn.NewGlorotU(1.0)
+	if err != nil {
+		panic(err)
+	}
 
 	// Create the learning algorithm
 	args := deepq.Config{
@@ -46,7 +50,7 @@ func DeepQ() {
 			network.ReLU(),
 			network.ReLU(),
 		},
-		InitWFn:              G.GlorotU(1.0),
+		InitWFn:              initWFn,
 		Epsilon:              0.1,
 		Remover:              expreplay.NewFifoSelector(1),
 		Sampler:              expreplay.NewUniformSelector(1, seed),
@@ -99,7 +103,11 @@ func QLearning() {
 		LearningRate: 0.01,
 		Epsilon:      0.1,
 	}
-	q, err := deepq.NewQlearning(tm, args, seed, G.Zeroes())
+	init, err := initwfn.NewZeroes()
+	if err != nil {
+		panic(err)
+	}
+	q, err := deepq.NewQlearning(tm, args, seed, init)
 	if err != nil {
 		panic(err)
 	}
