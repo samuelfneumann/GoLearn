@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	G "gorgonia.org/gorgonia"
 )
@@ -50,7 +51,8 @@ func (a *Activation) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaler interface
 func (a *Activation) UnmarshalJSON(data []byte) error {
-	decoded := activationType(data)
+	stringData := strings.Trim(string(data), "\"")
+	decoded := activationType(stringData)
 	switch decoded {
 	case relu:
 		*a = *ReLU()

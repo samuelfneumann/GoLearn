@@ -91,7 +91,7 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
 
-	config, ok := c.(*CategoricalMLPConfig)
+	config, ok := c.(CategoricalMLPConfig)
 	if !ok {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}

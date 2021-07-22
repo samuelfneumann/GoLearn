@@ -8,6 +8,7 @@ import (
 	"sfneuman.com/golearn/agent/nonlinear/discrete/policy"
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/expreplay"
+	"sfneuman.com/golearn/initwfn"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/solver"
 )
@@ -23,7 +24,7 @@ type Config struct {
 	Solver       *solver.Solver        // Solver for learning weights
 
 	// Initialization algorithm for weights
-	InitWFn G.InitWFn `json:"-"`
+	InitWFn initwfn.InitWFn
 
 	// The behaviourPolicy selects actions at the current step. The
 	// targetPolicy looks at the next action and selects that with the
@@ -96,7 +97,7 @@ func (c *Config) CreateAgent(e env.Environment, s uint64) (agent.Agent, error) {
 	hiddenSizes := c.PolicyLayers
 	biases := c.Biases
 	activations := c.Activations
-	init := c.InitWFn
+	init := c.InitWFn.InitWFn()
 	ε := c.Epsilon
 
 	// Behaviour policy

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"time"
@@ -14,13 +15,73 @@ import (
 	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
+	"sfneuman.com/golearn/initwfn"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/solver"
-
-	G "gorgonia.org/gorgonia"
 )
 
 func main() {
+	nonlinearity := network.ReLU()
+
+	policySolvers := make([]*solver.Solver, 2)
+	for i := range policySolvers {
+		policySolvers[i], _ = solver.NewDefaultAdam(5e-3*float64(i+1), 1)
+	}
+	valueSolvers := make([]*solver.Solver, 3)
+	for i := range policySolvers {
+		valueSolvers[i], _ = solver.NewVanilla(5e-3*float64(i+1), 1)
+	}
+	init, _ := initwfn.NewGlorotU(math.Sqrt(2))
+	configs := vanillapg.CategoricalMLPConfigs{
+		Policy:            agent.Categorical,
+		PolicyLayers:      [][]int{{100, 50, 25}},
+		PolicyBiases:      [][]bool{{true, true, true}},
+		PolicyActivations: [][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
+
+		ValueFnLayers:      [][]int{{100, 50, 25}},
+		ValueFnBiases:      [][]bool{{true, true, true}},
+		ValueFnActivations: [][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
+
+		InitWFn:      []*initwfn.InitWFn{init},
+		PolicySolver: policySolvers,
+		VSolver:      valueSolvers,
+
+		ValueGradSteps: []int{25, 50, 75, 100},
+		EpochLength:    []int{50000},
+		Lambda:         []float64{1.0},
+		Gamma:          []float64{0.99},
+	}
+
+	fmt.Println(configs.Len())
+	fmt.Println(configs)
+	fmt.Println(agent.ConfigAt(1, configs))
+
+	outfile, err := os.Create("args.json")
+	if err != nil {
+		panic(err)
+	}
+	enc := json.NewEncoder(outfile)
+	enc.SetIndent("", "\t")
+	err = enc.Encode(configs)
+	if err != nil {
+		panic(err)
+	}
+	outfile.Close()
+
+	infile, err := os.Open("args.json")
+	if err != nil {
+		panic(err)
+	}
+	dec := json.NewDecoder(infile)
+	var c vanillapg.CategoricalMLPConfigs
+	dec.Decode(&c)
+
+	fmt.Println(c)
+	fmt.Println("JSON DONE")
+	infile.Close()
+	log.Fatal("ouch")
+
+	// =========================================
 
 	// // vanillapg.TestBuffer2()
 	var useed uint64 = 1923812121431427
@@ -75,8 +136,7 @@ func main() {
 
 	policySolver, _ := solver.NewDefaultAdam(5e-3, 1)
 	valueSolver, _ := solver.NewDefaultAdam(5e-3, 1)
-
-	nonlinearity := network.ReLU()
+	Wfn, _ := initwfn.NewGlorotN(math.Sqrt(2))
 	args := vanillapg.CategoricalMLPConfig{
 		Policy:            agent.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
@@ -87,7 +147,7 @@ func main() {
 		ValueFnBiases:      []bool{true, true, true},
 		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
-		InitWFn:      G.GlorotN(math.Sqrt(2)),
+		InitWFn:      Wfn,
 		PolicySolver: policySolver,
 		VSolver:      valueSolver,
 
@@ -97,11 +157,11 @@ func main() {
 		Gamma:          0.99,
 	}
 
-	outfile, err := os.Create("args.json")
+	outfile, err = os.Create("args.json")
 	if err != nil {
 		panic(err)
 	}
-	enc := json.NewEncoder(outfile)
+	enc = json.NewEncoder(outfile)
 	enc.SetIndent("", "\t")
 	err = enc.Encode(args)
 	if err != nil {
@@ -109,15 +169,16 @@ func main() {
 	}
 	outfile.Close()
 
-	infile, err := os.Open("args.json")
+	infile, err = os.Open("args.json")
 	if err != nil {
 		panic(err)
 	}
-	dec := json.NewDecoder(infile)
-	var a *vanillapg.CategoricalMLPConfig
-	dec.Decode(&a)
-	fmt.Println(a.VSolver.Type, a.VSolver.Config)
+	dec = json.NewDecoder(infile)
+	dec.Decode(&args)
+	fmt.Println(args.VSolver.Type, args.VSolver.Config)
 	fmt.Println("JSON DONE")
+
+	fmt.Println(args)
 
 	agent, err := args.CreateAgent(env, useed)
 	if err != nil {
