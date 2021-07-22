@@ -2,24 +2,8 @@
 
 # Algorithms
 ##Learner
-`Learner`s can be regular `Learner`s or `BatchLearner`s. Regular
-`Learner`s learn from the latest timestep alone. `BatchLearner`s will
-take in an experience replay and sample from it to learn.
-
-Learners/Policies may need to be split into linear learners and nonlinear
-learner and linear polices and nonlinear policies to deal with the setting
-and getting of weights. Nonlinear will use Gorgonia networks, while linear
-will use Gonum matrices.
-
 ## Value-Based Algorithms
-A number of value-based learning algorithms are included. So far, only
-linear/tabular versions of `Q-Learning` and `Expected Sarsa` are implemented.
-Value-based learning algorithms work with discrete action spaces. Actions
-are selected from `(0, 1, 2, ..., N)` where `N` is the largest possible
-action.
-
 ## Policy Gradient Algorithms
-No policy gradient algorithms are implemented
 # Environments
 This library makes a separation between an `Environment` and a `Task`. An
 `Environment` is simply some domain that can be acted in, but does not
@@ -225,19 +209,19 @@ tracked.
 
 # ToDo
 
-- [ ] Use Gorgonia for linear methods perhaps. This will keep initializers, etc. consistent between linear and nonlinear methods
-- [ ] UniformStarter needs documentation
-- [ ] TileCoding and TileCoder could benefit from improved documentation
-
-- [ ] Tasks and learners should both follow the Null Object pattern
-
-- [ ] Cartpole needs `Render()` method
-
-- [ ] timesteps should be changed to use a Matrix for state observations so that pixel environments can also be used
-
-- [ ] EGreedyMLP doesn't satisfy policy interface...
-- [ ] Could NN policies have their own VM that would take care of selecting an action? THen the learner could have its own VM for learning? I don't think so, since the graph is compiled the weights will be different between the two VMs.
+- [ ] To implement Serializable:
+	- [ ] DeepQ
+	- [ ] EGreedyMLP
+	- [ ] TreeMLP
+	- [ ] GaussianTreeMLP
 
 
-- [ ] If we compute the slice of learnables when we create a network and then Learnables() just returns this backing slice, this will reduce computational time!
-- [ ] Create un-exported struct for multiHeadMLP that takes in an input node and returns and MLP that has that input node as its input node. Then, MultiHeadMLP can just use this struct, and TreeMLP can also use it for the observation + leaf networks.
+- [ ] Gaussian TreeMLP needs to be redone. StdDev can be clipped using G.Max and Min = G.Max(G.Neg()) or using an offset and G.MAX()
+- [ ] Create agent Configs which hold "lists" of agent Config structs. Each agent package has its own Config and Configs
+- [ ] To successfully JSON seriealize a Configs, we'll need to use reflection and a similar method to Solvers where we create a container that holds the type and the Configs value
+- [ ] VPG needs TdError method
+- [ ] Environment configs might be a good idea eventually. For now, experiments can work on the default (AIGym) environments.
+- [ ] Pendulum needs documentation
+- [ ] VPG needs eval mode
+- [ ] VPG should have option to finish the current episode before starting the next epoch or to just start the next epoch from the current episode
+- [ ] Experiment configuration should have agent Configs wrapper + Environment name + Number of timesteps for each experiment. There will be a single concrete type for the experiment config.
