@@ -46,6 +46,7 @@ func NewOnline(e env.Environment, a agent.Agent, steps uint,
 		trackers = t
 	}
 
+	// Create a progress bar for watching experiment progress
 	progBar := progressbar.NewProgressBar(50, int(steps), time.Second, true)
 	progBar.Display()
 

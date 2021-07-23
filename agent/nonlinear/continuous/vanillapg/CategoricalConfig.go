@@ -39,8 +39,9 @@ type CategoricalMLPConfigList struct {
 
 	// Number of gradient steps to take for the value functions per
 	// epoch
-	ValueGradSteps []int
-	EpochLength    []int
+	ValueGradSteps          []int
+	EpochLength             []int
+	FinishEpisodeOnEpochEnd []bool
 
 	// Generalized Advantage Estimation
 	Lambda []float64
@@ -63,6 +64,7 @@ func NewCategoricalMLPConfigList(
 	VSolver []*solver.Solver,
 	ValueGradSteps []int,
 	EpochLength []int,
+	FinishEpisodeOnEpochEnd []bool,
 	Lambda []float64,
 	Gamma []float64,
 ) agent.TypedConfigList {
@@ -80,10 +82,12 @@ func NewCategoricalMLPConfigList(
 		PolicySolver: PolicySolver,
 		VSolver:      VSolver,
 
-		ValueGradSteps: ValueGradSteps,
-		EpochLength:    EpochLength,
-		Lambda:         Lambda,
-		Gamma:          Gamma,
+		ValueGradSteps:          ValueGradSteps,
+		EpochLength:             EpochLength,
+		FinishEpisodeOnEpochEnd: FinishEpisodeOnEpochEnd,
+
+		Lambda: Lambda,
+		Gamma:  Gamma,
 	}
 
 	return agent.NewTypedConfigList(config)
@@ -143,6 +147,15 @@ type CategoricalMLPConfig struct {
 	// epoch
 	ValueGradSteps int
 	EpochLength    int
+
+	// FinishEpisodeOnEpochEnd denotes if the current episode should
+	// be finished before starting a new epoch. If true, then the
+	// agent is updated when the current epoch ends, then the current
+	// episode is finished, then the next epoch starts. If false, the
+	// agent is updated when the current epoch is finished, and the
+	// next epoch starts at the next timestep, which may be in the
+	// middle of an episode.
+	FinishEpisodeOnEpochEnd bool
 
 	// Generalized Advantage Estimation
 	Lambda float64

@@ -71,7 +71,16 @@ type VPG struct {
 	// rest of the episode is finished, but its data discarded.
 	//
 	// See note above.
-	finishEpoch bool
+	finishingEpisode bool
+
+	// finishEpisodeOnEpochEnd denotes if the current episode should
+	// be finished before starting a new epoch. If true, then the
+	// agent is updated when the current epoch ends, then the current
+	// episode is finished, then the next epoch starts. If false, the
+	// agent is updated when the current epoch is finished, and the
+	// next epoch starts at the next timestep, which may be in the
+	// middle of an episode.
+	finishEpisodeOnEpochEnd bool
 
 	prevStep ts.TimeStep
 
@@ -172,12 +181,13 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 		vSolver:              config.VSolver,
 		valueGradSteps:       config.ValueGradSteps,
 
-		buffer:           buffer,
-		epochLength:      config.EpochLength,
-		currentEpochStep: 0,
-		completedEpochs:  0,
-		eval:             false,
-		finishEpoch:      false,
+		buffer:                  buffer,
+		epochLength:             config.EpochLength,
+		currentEpochStep:        0,
+		completedEpochs:         0,
+		eval:                    false,
+		finishingEpisode:        false,
+		finishEpisodeOnEpochEnd: config.FinishEpisodeOnEpochEnd,
 	}
 
 	return vpg, nil
@@ -202,7 +212,7 @@ func (v *VPG) EndEpisode() {
 	// ending of the previous episode would have been thrown out. Since
 	// a new episode is starting now, we can begin storing data for
 	// the current epoch.
-	v.finishEpoch = false
+	v.finishingEpisode = false
 }
 
 // Eval sets the algorithm into evaluation mode
@@ -224,7 +234,7 @@ func (v *VPG) ObserveFirst(t ts.TimeStep) {
 // Observe observes and records any timestep other than the first timestep
 func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
 	// Finish current episode to end epoch
-	if v.finishEpoch {
+	if v.finishingEpisode {
 		v.prevStep = nextStep
 		return
 	}
@@ -272,7 +282,8 @@ func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
 				panic("observe: multiple values predicted for next state value")
 			}
 			v.buffer.finishPath(lastVal[0])
-			v.finishEpoch = v.currentEpochStep == v.epochLength
+			v.finishingEpisode = (v.currentEpochStep == v.epochLength) &&
+				v.finishEpisodeOnEpochEnd
 		}
 	}
 }
