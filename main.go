@@ -3,16 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"os"
+	"strconv"
 	"time"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	"sfneuman.com/golearn/agent"
 	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
+	"sfneuman.com/golearn/environment/envconfig"
 	"sfneuman.com/golearn/experiment"
+	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/experiment/tracker"
 	"sfneuman.com/golearn/initwfn"
 	"sfneuman.com/golearn/network"
@@ -20,6 +21,56 @@ import (
 )
 
 func main() {
+	expFile, err := os.Open(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	dec := json.NewDecoder(expFile)
+
+	var expConf experiment.Config
+	dec.Decode(&expConf)
+	expFile.Close()
+
+	numSettings := int64(expConf.AgentConf.Len())
+	hpIndex, err := strconv.ParseInt(os.Args[2], 0, 0)
+	if err != nil {
+		panic(err)
+	}
+	run := uint64(hpIndex / numSettings)
+
+	// Print some information about the experiment
+	fmt.Println("=== Experiment Starting")
+	fmt.Printf("\t Total Configurations: \t\t%v\n", numSettings)
+	fmt.Printf("\t Run: \t\t\t\t%v\n", run)
+	fmt.Printf("\t Configuration Index: \t\t%v\n", hpIndex%numSettings)
+	fmt.Println()
+	fmt.Printf("\t Environment: \t\t\t%v\n", expConf.EnvConf.Environment)
+	fmt.Printf("\t Environment Configuration: \t%v\n", expConf.EnvConf)
+	fmt.Println()
+	fmt.Printf("\t Agent: \t\t\t%v\n", expConf.AgentConf.Type)
+	fmt.Printf("\t Agent Configuration: \t\t%v\n", expConf.AgentConf.At(int(hpIndex)))
+	fmt.Println()
+
+	filename := fmt.Sprintf(
+		"data_%v_%v_run%v.bin",
+		expConf.AgentConf.Type,
+		expConf.EnvConf.Environment,
+		run,
+	)
+	trackers := []tracker.Tracker{tracker.NewReturn(filename)}
+	var checkpointers []checkpointer.Checkpointer = nil
+
+	exp := expConf.CreateExp(int(hpIndex), run, trackers, checkpointers)
+	start := time.Now()
+	exp.Run()
+	fmt.Println("Elapsed:", time.Since(start))
+	exp.Save()
+
+	data := tracker.LoadData("./data.bin")
+	fmt.Println(data)
+}
+
+func Main2() {
 	nonlinearity := network.ReLU()
 
 	policySolvers := make([]*solver.Solver, 2)
@@ -119,15 +170,47 @@ func main() {
 	// env, step := mountaincar.NewDiscrete(task, 0.99)
 	// fmt.Println(step)
 
-	bounds := r1.Interval{Min: -0.05, Max: 0.05}
-	s := environment.NewUniformStarter([]r1.Interval{
-		bounds,
-		bounds,
-		bounds,
-		bounds,
-	}, useed)
-	t := cartpole.NewBalance(s, 500, cartpole.FailAngle)
-	env, _ := cartpole.NewDiscrete(t, 0.99)
+	// bounds := r1.Interval{Min: -0.05, Max: 0.05}
+	// s := environment.NewUniformStarter([]r1.Interval{
+	// 	bounds,
+	// 	bounds,
+	// 	bounds,
+	// 	bounds,
+	// }, useed)
+	// t := cartpole.NewBalance(s, 500, cartpole.FailAngle)
+	// env, _ := cartpole.NewDiscrete(t, 0.99)
+
+	envConf := envconfig.NewConfig(envconfig.Cartpole, envconfig.Balance,
+		false, 500, 0.99, false)
+	env, _ := envConf.CreateEnv(useed)
+	fmt.Println(env)
+
+	outfile, _ = os.Create("envConf.json")
+	enc = json.NewEncoder(outfile)
+	enc.SetIndent("", "\t")
+	enc.Encode(envConf)
+	outfile.Close()
+
+	infile, _ = os.Open("envConf.json")
+	dec = json.NewDecoder(infile)
+	var envConf2 envconfig.Config
+	dec.Decode(&envConf2)
+	fmt.Println(envConf2)
+
+	expConf := experiment.Config{
+		Type:      experiment.OnlineExp,
+		MaxSteps:  100000,
+		EnvConf:   envConf,
+		AgentConf: jconfigs,
+	}
+	outfile, _ = os.Create("experiment.json")
+	enc = json.NewEncoder(outfile)
+	enc.SetIndent("", "\t")
+	enc.Encode(expConf)
+	outfile.Close()
+	log.Fatal()
+
+	log.Fatal()
 
 	// r, c := 5, 5
 
