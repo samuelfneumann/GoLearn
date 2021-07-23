@@ -9,7 +9,11 @@ type ZeroesConfig struct {
 func NewZeroes() (*InitWFn, error) {
 	config := ZeroesConfig{}
 
-	return newInitWFn(Zeroes, config)
+	return newInitWFn(config)
+}
+
+func (z ZeroesConfig) Type() Type {
+	return Zeroes
 }
 
 func (g ZeroesConfig) Create() G.InitWFn {

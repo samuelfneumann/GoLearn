@@ -4,16 +4,16 @@ package initwfn
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
 
 	G "gorgonia.org/gorgonia"
 )
 
-// Type describes different types of InitWFn that are available
+// Type describes different types of InitWFn that are available.
+// Type is used to implement a basic type system of InitWFn's.
 type Type string
 
-// Available solver types
+// Available InitWFn types
 const (
 	GlorotU Type = "GlorotU"
 	GlorotN Type = "GlorotN"
@@ -28,19 +28,17 @@ type InitWFn struct {
 	Config
 }
 
-func (w *InitWFn) InitWFn() G.InitWFn {
-	return w.initWFn
-}
-
-func newInitWFn(t Type, c Config) (*InitWFn, error) {
-	if !c.ValidType(t) {
-		return nil, fmt.Errorf("newSolver: invalid InitWFn type %v for "+
-			"configuration %T", t, c)
-	}
-	init := InitWFn{Type: t, Config: c}
+// newInitWFn returns a new InitWFn
+func newInitWFn(c Config) (*InitWFn, error) {
+	init := InitWFn{Type: c.Type(), Config: c}
 	init.initWFn = init.Config.Create()
 
 	return &init, nil
+}
+
+// InitWFn returns the wrapped Gorgonia InitWFn
+func (w *InitWFn) InitWFn() G.InitWFn {
+	return w.initWFn
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface
@@ -92,12 +90,12 @@ func unmarshalConfig(data []byte, typeJsonField, valueJsonField string,
 	return concreteValue, Type(typeName), nil
 }
 
-// Config implements a Gorgonia Solver configuration and can be used to
-// create Gorgonia Solvers they describe.
+// Config implements a Gorgonia InitWFn configuration and can be used to
+// create the described Gorgonia InitWFn's.
 type Config interface {
+	// Create returns the Gorgonia InitWFn that the Config describes
 	Create() G.InitWFn
 
-	// ValidType returns whether a specific Solver type can be created
-	// with the Config
-	ValidType(Type) bool
+	// Type returns the type of Gorgonia InitWFn that is returned
+	Type() Type
 }
