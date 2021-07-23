@@ -2,6 +2,11 @@
 package experiment
 
 import (
+	"fmt"
+
+	"sfneuman.com/golearn/agent"
+	"sfneuman.com/golearn/environment/envconfig"
+	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/experiment/tracker"
 	ts "sfneuman.com/golearn/timestep"
 )
@@ -37,4 +42,34 @@ type Experiment interface {
 
 	// Saves the current state of all agents
 	checkpoint(ts.TimeStep)
+}
+
+type Type string
+
+const (
+	OnlineExp Type = "OnlineExperiment"
+)
+
+// Config represents a configuration of an experiment.
+type Config struct {
+	Type
+	MaxSteps  uint
+	EnvConf   envconfig.Config
+	AgentConf agent.TypedConfigList
+}
+
+func (c Config) CreateExp(i int, seed uint64, t []tracker.Tracker,
+	check []checkpointer.Checkpointer) Experiment {
+	env, _ := c.EnvConf.CreateEnv(seed)
+	agent, err := c.AgentConf.At(i).CreateAgent(env, seed)
+	if err != nil {
+		panic(fmt.Sprintf("createExp: could not create agent: %v", err))
+	}
+
+	switch c.Type {
+	case OnlineExp:
+		return NewOnline(env, agent, c.MaxSteps, t, check)
+	}
+
+	panic(fmt.Sprintf("createExp: no such experiment type %v", c.Type))
 }
