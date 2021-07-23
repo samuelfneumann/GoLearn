@@ -87,8 +87,9 @@ func unmarshalConfig(data []byte, typeJsonField, valueJsonField string,
 	if err = json.Unmarshal(valueBytes, &value); err != nil {
 		return nil, "", err
 	}
+	concreteValue := reflect.ValueOf(value).Elem().Interface().(Config)
 
-	return value, Type(typeName), nil
+	return concreteValue, Type(typeName), nil
 }
 
 // Config implements a Gorgonia Solver configuration and can be used to
