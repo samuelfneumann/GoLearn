@@ -5,30 +5,20 @@ import (
 	"reflect"
 )
 
-// Type represents a type of an agent. For example VanillaPG, SAV, DQN
-type Type string
-
-// Registered types with the package. Once a Type has been registered
-// with this map, a ConfigList with that type can be created.
-var registeredTypes map[Type]reflect.Type
-
-func init() {
-	registeredTypes = make(map[Type]reflect.Type)
-}
-
-// JSONConfigList wraps a ConfigList to enable a ConfigList type to be
-// JSON marshaled and unmarshaled into its underlying concrete type
+// TypedConfigList implements functionality for typing a ConfigList.
+// In this way, a ConfigList can explicitly have its type stored so
+// that when deserializing the ConfigList, we can deserialize it into
+// its concrete type without knowing beforehand or declaring beforehand
+// a variable of its concrete type.
 type TypedConfigList struct {
 	Type
 	ConfigList
 }
 
+// NewTypedConfigList types the argument ConfigList and returns it
+// as a TypedConfigList which explicitly holds its Type.
 func NewTypedConfigList(c ConfigList) TypedConfigList {
 	return TypedConfigList{Type: c.Type(), ConfigList: c}
-}
-
-func Register(agent Type, configs ConfigList) {
-	registeredTypes[agent] = reflect.TypeOf(configs)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface

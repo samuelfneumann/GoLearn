@@ -13,14 +13,12 @@ import (
 	"sfneuman.com/golearn/solver"
 )
 
-const CategoricalVanillaPG agent.Type = "CategoricalVanillaPG"
-
 func init() {
-	agent.Register(CategoricalVanillaPG, CategoricalMLPConfigList{})
+	agent.Register(agent.CategoricalVanillaPG, CategoricalMLPConfigList{})
 }
 
 // CategoricalMLPConfigList implements functionality for storing a list
-// of CategoricalMLPConfig in a simple way.
+// of CategoricalMLPConfig's in a simple way.
 type CategoricalMLPConfigList struct {
 	PolicyLayers      [][]int
 	PolicyBiases      [][]bool
@@ -47,6 +45,10 @@ type CategoricalMLPConfigList struct {
 	Gamma  []float64
 }
 
+// NewCategoricalMLPConfigList returns a new CategoricalMLPConfigList
+// as an agent.TypedConfigList. Because the returned value is a
+// TypedList, it can safely be JSON serialized and deserialized without
+// remembering what the type of the configuration list is.
 func NewCategoricalMLPConfigList(
 	PolicyLayers [][]int,
 	PolicyBiases [][]bool,
@@ -86,7 +88,7 @@ func NewCategoricalMLPConfigList(
 
 // Type returns the configuration's type
 func (c CategoricalMLPConfigList) Type() agent.Type {
-	return CategoricalVanillaPG
+	return agent.CategoricalVanillaPG
 }
 
 // NumFields gets the total number of settable fields/hyperparameters
@@ -160,7 +162,7 @@ func (c CategoricalMLPConfig) Validate() error {
 
 // Type returns the type of the configuration
 func (c CategoricalMLPConfig) Type() agent.Type {
-	return CategoricalVanillaPG
+	return agent.CategoricalVanillaPG
 }
 
 // ValidAgent returns whether the input agent is valid for this config
