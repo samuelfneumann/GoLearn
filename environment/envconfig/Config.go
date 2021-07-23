@@ -71,9 +71,9 @@ func NewConfig(envName EnvName, taskName TaskName, continuousActions bool,
 	}
 }
 
-// Create returns the environment described by the Config as well as
+// CreateEnv returns the environment described by the Config as well as
 // the first timestep of the environment.
-func (c Config) Create(seed uint64) (env.Environment, ts.TimeStep) {
+func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
 	switch c.Environment {
 	case MountainCar:
 		return CreateMountainCar(c.ContinuousActions, c.Task,
@@ -132,7 +132,7 @@ func CreateCartpole(continuousActions bool, taskName TaskName, cutoff int,
 
 	var task env.Task
 	switch taskName {
-	case Goal:
+	case Balance:
 		task = cartpole.NewBalance(s, cutoff, cartpole.FailAngle)
 
 	default:
