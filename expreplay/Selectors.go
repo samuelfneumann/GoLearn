@@ -6,6 +6,13 @@ import (
 	"sfneuman.com/golearn/utils/intutils"
 )
 
+type SelectorType string
+
+const (
+	Uniform SelectorType = "Uniform"
+	Fifo    SelectorType = "Fifo"
+)
+
 // Selector implements functionality for choosing how data should be
 // sampled and/or removed from an experience replay buffer
 type Selector interface {
@@ -22,6 +29,19 @@ type Selector interface {
 	// so they should be notified if they become a remover to add this
 	// additional behaviour
 	registerAsRemover()
+}
+
+// CreateSelector is a factory method for creating selectors using the
+// SelectorType enums.
+func CreateSelector(t SelectorType, sampleSize int, seed int64) Selector {
+	switch t {
+	case Uniform:
+		return NewUniformSelector(sampleSize, seed)
+
+	case Fifo:
+		return NewFifoSelector(sampleSize)
+	}
+	return nil
 }
 
 // uniformSelector is a Selector which selects data from an experience
@@ -70,7 +90,7 @@ type fifoSelector struct {
 }
 
 // NewFifoSelector returns a new Selector which draws data from an
-// experience replay buffer in as FiFo.
+// experience replay buffer in a FiFo manner.
 func NewFifoSelector(samples int) Selector {
 	return &fifoSelector{samples: samples, remover: false}
 }

@@ -64,6 +64,17 @@ type cache struct {
 	actionSize  int
 }
 
+// Factory is a factory method for creating an ExperienceReplayer
+func Factory(removeMethod, sampleMethod SelectorType, minCapacity, maxCapacity,
+	featureSize, actionSize, removeSize, sampleSize int,
+	seed int64) (ExperienceReplayer, error) {
+	remover := CreateSelector(removeMethod, removeSize, seed)
+	sampler := CreateSelector(sampleMethod, sampleSize, seed)
+
+	return New(remover, sampler, minCapacity, maxCapacity, featureSize,
+		actionSize)
+}
+
 // New creates and returns a new ExperienceReplayer. The remover and
 // sampler paramters are Selectors which determine how data is removed
 // and sampled from the replay buffer. The featureSize and actionSize
