@@ -10,7 +10,8 @@ import (
 	"sfneuman.com/golearn/timestep"
 )
 
-// TODO: This documentation needs to be updated
+// NOTE: This file has not been tested as of yet
+
 // Discrete implements the classic control environment Pendulum. In this
 // environment, a pendulum is attached to a fixed base. An agent can
 // swing the pendulum back and forth, but the swinging force /torque is
@@ -28,11 +29,17 @@ import (
 // velocity is clipped betwee [-SpeedBound, SpeedBound]. Angles are
 // normalized to stay within [-AngleBound, AngleBound] = [-π, π].
 //
-// Actions are continuous and 1-dimensional. Actions determine the
-// torque to apply to the pendulum at its fixed base. Actions are
-// bounded by [-2, 2] = [MinDiscreteAction, MaxDiscreteAction].
-// Actions outside of this region are clipped to stay within these
-// bounds.
+// Actions are discrete and 1-dimensional. Actions determine the
+// torque to apply to the pendulum at its fixed base:
+//
+//		Action		TorqueApplied
+//		0			MinContinuousAction
+//		1			MinContinuousAction / 2.0
+//		2			MinContinuousAction / 4.0
+//		3			0
+//		4			MaxContinuousAction / 4.0
+//		5			MaxContinuousAction / 2.0
+//		6			MaxContinuousAction
 //
 // Discrete implements the environment.Environment interface
 type Discrete struct {
@@ -67,10 +74,14 @@ func (p *Discrete) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	} else if action.AtVec(0) == 1.0 {
 		torque = MinContinuousAction / 2.0
 	} else if action.AtVec(0) == 2.0 {
-		torque = 0.0
+		torque = MinContinuousAction / 4.0
 	} else if action.AtVec(0) == 3.0 {
-		torque = MaxContinuousAction / 2.0
+		torque = 0.0
 	} else if action.AtVec(0) == 4.0 {
+		torque = MaxContinuousAction / 4.0
+	} else if action.AtVec(0) == 5.0 {
+		torque = MaxContinuousAction / 2.0
+	} else if action.AtVec(0) == 6.0 {
 		torque = MaxContinuousAction
 	} else {
 		panic(fmt.Sprintf("step: illegal action %v", action.AtVec(0)))

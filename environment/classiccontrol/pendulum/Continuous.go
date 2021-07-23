@@ -13,7 +13,7 @@ import (
 
 // Continuous implements the classic control environment Pendulum. In this
 // environment, a pendulum is attached to a fixed base. An agent can
-// swing the pendulum back and forth, but the swinging force /torque is
+// swing the pendulum back and forth, but the swinging force/torque is
 // underpowered. In order to be able to swing the pendulum straight up,
 // it must first be rocked back and forth, using the momentum to
 // gradually climb higher until the pendulum can point straight up or

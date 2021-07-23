@@ -24,7 +24,7 @@ const (
 	MaxContinuousAction float64 = TorqueBound
 	MinContinuousAction float64 = -MaxContinuousAction
 
-	MaxDiscreteAction float64 = 4.0
+	MaxDiscreteAction float64 = 6.0
 	MinDiscreteAction float64 = 0.0
 
 	dt              float64 = 0.05
@@ -35,8 +35,7 @@ const (
 	ObservationDims int     = 2
 )
 
-// TODO: This documentation needs to be updated
-// base implements the classic control environment base. In this
+// base implements the classic control environment Pendulum. In this
 // environment, a pendulum is attached to a fixed base. An agent can
 // swing the pendulum back and forth, but the swinging force /torque is
 // underpowered. In order to be able to swing the pendulum straight up,
@@ -52,14 +51,6 @@ const (
 // and positive sign indicating clockwise direction. The angular
 // velocity is clipped betwee [-SpeedBound, SpeedBound]. Angles are
 // normalized to stay within [-AngleBound, AngleBound] = [-π, π].
-//
-// Actions are continuous and 1-dimensional. Actions determine the
-// torque to apply to the pendulum at its fixed base. Actions are
-// bounded by [-2, 2] = [MinContinuousAction, MaxContinuousAction].
-// Actions outside of this region are clipped to stay within these
-// bounds.
-//
-// base implements the environment.Environment interface
 type base struct {
 	environment.Task
 	dt           float64
