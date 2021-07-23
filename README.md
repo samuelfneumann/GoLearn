@@ -228,7 +228,8 @@ tracked.
 - [ ] Policies should have Eval() and Train() methods that set them to evaluation or training mode
 
 - [ ] Cartpole SwingUp would be nice to implement
+- [ ] Would be nice to have the acitons in discrete pendulum determined by min and max discrete actions. E.g. Action i -> (action i / minDiscreteAction) * MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction - MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
 - [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files. This may prove problematic though with the gym-http-api...
 - [ ] Eventually, it may be nice to have a Config and ConfigList for neural networks so that JSON config files can also determine the type of neural network to use with any agent. This is very low on the priority list.
 
-- [ ] DeepQ doesn't seem to learn on Cartpole
+- [ ] DeepQ doesn't seem to learn on Cartpole!! This is honestly probably an issue with the policy cloning. That being said, cloning poicies did work with VPG, so it might be something else. The policy cloning may be fine. ALso, aggregate loss is compute incorrectly.

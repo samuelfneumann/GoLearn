@@ -190,17 +190,27 @@ func (c Config) CreateAgent(e env.Environment, s uint64) (agent.Agent, error) {
 		seed,
 	)
 	if err != nil {
-		return &DeepQ{}, err
+		return &DeepQ{}, fmt.Errorf("createAgent: could not create "+
+			"behaviour policy: %v", err)
 	}
 
 	// Create the target policy for action selection
-	targetPolicyClone, err := behaviourPolicy.Clone()
+	targetPolicy, err := policy.NewMultiHeadEGreedyMLP(
+		0.0,
+		e,
+		g,
+		hiddenSizes,
+		biases,
+		init,
+		activations,
+		seed,
+	)
 	if err != nil {
 		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
 	}
-	targetPolicy := targetPolicyClone.(agent.EGreedyNNPolicy)
-	targetPolicy.SetEpsilon(0.0)
 
+	// Set the policies to have the same weights
+	network.Set(behaviourPolicy.Network(), targetPolicy.Network())
 	c.behaviourPolicy = behaviourPolicy
 	c.targetPolicy = targetPolicy
 

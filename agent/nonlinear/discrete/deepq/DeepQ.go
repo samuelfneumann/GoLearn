@@ -158,6 +158,8 @@ func New(env environment.Environment, c agent.Config,
 		G.WithShape(batchSize, numActions),
 	)
 
+	// ! This is technically wrong, we should sum up the costs then
+	// ! take the gradient on the summed up losses.
 	for _, pred := range trainNet.Prediction() {
 		selectedActionsValue := G.Must(G.HadamardProd(pred,
 			selectedActions))
