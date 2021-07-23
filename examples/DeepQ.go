@@ -40,8 +40,8 @@ func DeepQ() {
 
 	// Create the learning algorithm
 	args := deepq.Config{
-		PolicyLayers: []int{100, 50, 25},
-		Biases:       []bool{true, true, true},
+		Layers: []int{100, 50, 25},
+		Biases: []bool{true, true, true},
 		Activations: []*network.Activation{
 			network.ReLU(),
 			network.ReLU(),

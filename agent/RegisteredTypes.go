@@ -11,8 +11,8 @@ import "reflect"
 type Type string
 
 const (
-	CategoricalVanillaPG Type = "CategoricalVanillaPG"
-	EGreedyDeepQ         Type = "EGreedyDeepQ"
+	CategoricalVanillaPGMLP Type = "CategoricalVanillaPG-MLP"
+	EGreedyDeepQMLP         Type = "EGreedyDeepQ-MLP"
 )
 
 // Registered types with the package. Once a Type has been registered

@@ -17,16 +17,16 @@ import (
 func init() {
 	// Register ConfigList type so that it can be typed using
 	// agent.TypedConfigList to help with serialization/deserialization.
-	agent.Register(agent.EGreedyDeepQ, ConfigList{})
+	agent.Register(agent.EGreedyDeepQMLP, ConfigList{})
 }
 
 // ConfigList implements a list of Config's in a more efficient manner
 // than simply using a slice of Config's.
 type ConfigList struct {
-	PolicyLayers [][]int                 // Layer sizes in neural net
-	Biases       [][]bool                // Whether each layer should have a bias
-	Activations  [][]*network.Activation // Activation of each layer
-	Solver       []*solver.Solver        // Solver for learning weights
+	Layers      [][]int                 // Layer sizes in neural net
+	Biases      [][]bool                // Whether each layer should have a bias
+	Activations [][]*network.Activation // Activation of each layer
+	Solver      []*solver.Solver        // Solver for learning weights
 
 	// Initialization algorithm for weights
 	InitWFn []*initwfn.InitWFn
@@ -46,7 +46,7 @@ type ConfigList struct {
 // serialized and deserialized without specifying what the type of
 // the ConfigList is.
 func NewConfigList(
-	PolicyLayers [][]int,
+	Layers [][]int,
 	Biases [][]bool,
 	Activations [][]*network.Activation,
 	Solver []*solver.Solver,
@@ -57,7 +57,7 @@ func NewConfigList(
 	TargetUpdateInterval []int,
 ) agent.TypedConfigList {
 	configs := ConfigList{
-		PolicyLayers:         PolicyLayers,
+		Layers:               Layers,
 		Biases:               Biases,
 		Activations:          Activations,
 		Solver:               Solver,
@@ -90,17 +90,17 @@ func (c ConfigList) Config() agent.Config {
 
 // Len returns the number of Config's in the list
 func (c ConfigList) Len() int {
-	return len(c.PolicyLayers) * len(c.Biases) * len(c.Activations) *
+	return len(c.Layers) * len(c.Biases) * len(c.Activations) *
 		len(c.Solver) * len(c.InitWFn) * len(c.Epsilon) * len(c.ExpReplay) *
 		len(c.Tau) * len(c.TargetUpdateInterval)
 }
 
 // Config implements a configuration for a DeepQ agent
 type Config struct {
-	PolicyLayers []int                 // Layer sizes in neural net
-	Biases       []bool                // Whether each layer should have a bias
-	Activations  []*network.Activation // Activation of each layer
-	Solver       *solver.Solver        // Solver for learning weights
+	Layers      []int                 // Layer sizes in neural net
+	Biases      []bool                // Whether each layer should have a bias
+	Activations []*network.Activation // Activation of each layer
+	Solver      *solver.Solver        // Solver for learning weights
 
 	// Initialization algorithm for weights
 	InitWFn *initwfn.InitWFn
@@ -129,7 +129,7 @@ func (c Config) BatchSize() int {
 
 // Type returns the type of the configuration
 func (c Config) Type() agent.Type {
-	return agent.EGreedyDeepQ
+	return agent.EGreedyDeepQMLP
 }
 
 // Validate checks a Config to ensure it is a valid configuration of a
@@ -137,15 +137,15 @@ func (c Config) Type() agent.Type {
 func (c Config) Validate() error {
 	// Error checking
 
-	if len(c.PolicyLayers) != len(c.Biases) {
+	if len(c.Layers) != len(c.Biases) {
 		msg := fmt.Sprintf("new: invalid number of biases\n\twant(%v)"+
-			"\n\thave(%v)", len(c.PolicyLayers), len(c.Biases))
+			"\n\thave(%v)", len(c.Layers), len(c.Biases))
 		return fmt.Errorf(msg)
 	}
 
-	if len(c.PolicyLayers) != len(c.Activations) {
+	if len(c.Layers) != len(c.Activations) {
 		msg := fmt.Sprintf("new: invalid number of activations\n\twant(%v)"+
-			"\n\thave(%v)", len(c.PolicyLayers), len(c.Activations))
+			"\n\thave(%v)", len(c.Layers), len(c.Activations))
 		return fmt.Errorf(msg)
 	}
 
@@ -171,7 +171,7 @@ func (c Config) CreateAgent(e env.Environment, s uint64) (agent.Agent, error) {
 	seed := int64(s)
 
 	// Extract configuration variables
-	hiddenSizes := c.PolicyLayers
+	hiddenSizes := c.Layers
 	biases := c.Biases
 	activations := c.Activations
 	init := c.InitWFn.InitWFn()

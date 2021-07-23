@@ -11,10 +11,12 @@ import (
 
 	"sfneuman.com/golearn/agent"
 	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
+	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
 	"sfneuman.com/golearn/environment/envconfig"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/experiment/tracker"
+	"sfneuman.com/golearn/expreplay"
 	"sfneuman.com/golearn/initwfn"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/solver"
@@ -28,7 +30,10 @@ func main() {
 	dec := json.NewDecoder(expFile)
 
 	var expConf experiment.Config
-	dec.Decode(&expConf)
+	err = dec.Decode(&expConf)
+	if err != nil {
+		panic(err)
+	}
 	expFile.Close()
 
 	numSettings := int64(expConf.AgentConf.Len())
@@ -121,8 +126,29 @@ func Main2() {
 		[]float64{0.99},
 	)
 
+	replayer := expreplay.Config{
+		RemoveMethod:      expreplay.Fifo,
+		SampleMethod:      expreplay.Uniform,
+		RemoveSize:        1,
+		SampleSize:        1,
+		MaxReplayCapacity: 100000,
+		MinReplayCapacity: 1000,
+	}
+	deepqConfigs := deepq.NewConfigList(
+		[][]int{{100, 50, 25}},
+		[][]bool{{true, true, true}},
+		[][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
+
+		valueSolvers,
+		[]*initwfn.InitWFn{init},
+		[]float64{0.1},
+		[]expreplay.Config{replayer},
+		[]float64{0.001},
+		[]int{1},
+	)
+
 	// fmt.Println(configs.Len())
-	// fmt.Println(configs)
+	fmt.Println(jconfigs)
 	// fmt.Println(agent.ConfigAt(1, configs))
 
 	// jconfigs := agent.NewTypedConfigList(configs)
@@ -202,7 +228,7 @@ func Main2() {
 		Type:      experiment.OnlineExp,
 		MaxSteps:  100000,
 		EnvConf:   envConf,
-		AgentConf: jconfigs,
+		AgentConf: deepqConfigs,
 	}
 	outfile, _ = os.Create("experiment.json")
 	enc = json.NewEncoder(outfile)

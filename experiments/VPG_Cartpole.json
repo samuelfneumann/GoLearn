@@ -10,7 +10,7 @@
 		"Gym": false
 	},
 	"AgentConf": {
-		"Type": "CategoricalVanillaPG",
+		"Type": "CategoricalVanillaPG-MLP",
 		"ConfigList": {
 			"PolicyLayers": [
 				[
@@ -91,6 +91,9 @@
 			],
 			"EpochLength": [
 				50000
+			],
+			"FinishEpisodeOnEpochEnd": [
+				true
 			],
 			"Lambda": [
 				1

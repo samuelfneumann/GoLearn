@@ -16,7 +16,7 @@ import (
 func init() {
 	// Register ConfigList type so that it can be typed using
 	// agent.TypedConfigList to help with serialization/deserialization.
-	agent.Register(agent.CategoricalVanillaPG, CategoricalMLPConfigList{})
+	agent.Register(agent.CategoricalVanillaPGMLP, CategoricalMLPConfigList{})
 }
 
 // CategoricalMLPConfigList implements functionality for storing a list
@@ -178,7 +178,7 @@ func (c CategoricalMLPConfig) Validate() error {
 
 // Type returns the type of the configuration
 func (c CategoricalMLPConfig) Type() agent.Type {
-	return agent.CategoricalVanillaPG
+	return agent.CategoricalVanillaPGMLP
 }
 
 // ValidAgent returns whether the input agent is valid for this config

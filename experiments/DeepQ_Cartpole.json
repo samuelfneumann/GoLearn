@@ -1,0 +1,88 @@
+{
+	"Type": "OnlineExperiment",
+	"MaxSteps": 100000,
+	"EnvConf": {
+		"Environment": "Cartpole",
+		"Task": "Balance",
+		"ContinuousActions": false,
+		"EpisodeCutoff": 500,
+		"Discount": 0.99,
+		"Gym": false
+	},
+	"AgentConf": {
+		"Type": "EGreedyDeepQ-MLP",
+		"ConfigList": {
+			"Layers": [
+				[
+					100,
+					50,
+					25
+				]
+			],
+			"Biases": [
+				[
+					true,
+					true,
+					true
+				]
+			],
+			"Activations": [
+				[
+					"relu",
+					"relu",
+					"relu"
+				]
+			],
+			"Solver": [
+				{
+					"Type": "Vanilla",
+					"Config": {
+						"StepSize": 0.005,
+						"Batch": 1
+					}
+				},
+				{
+					"Type": "Vanilla",
+					"Config": {
+						"StepSize": 0.01,
+						"Batch": 1
+					}
+				},
+				{
+					"Type": "Vanilla",
+					"Config": {
+						"StepSize": 0.015,
+						"Batch": 1
+					}
+				}
+			],
+			"InitWFn": [
+				{
+					"Type": "GlorotU",
+					"Config": {
+						"Gain": 1.4142135623730951
+					}
+				}
+			],
+			"Epsilon": [
+				0.1
+			],
+			"ExpReplay": [
+				{
+					"RemoveMethod": "Fifo",
+					"SampleMethod": "Uniform",
+					"RemoveSize": 1,
+					"SampleSize": 1,
+					"MaxReplayCapacity": 100000,
+					"MinReplayCapacity": 1000
+				}
+			],
+			"Tau": [
+				0.001
+			],
+			"TargetUpdateInterval": [
+				1
+			]
+		}
+	}
+}

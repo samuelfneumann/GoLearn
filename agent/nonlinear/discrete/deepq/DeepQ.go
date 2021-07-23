@@ -97,7 +97,7 @@ func New(env environment.Environment, c agent.Config,
 		return &DeepQ{}, err
 	}
 
-	config := c.(*Config)
+	config := c.(Config)
 
 	// Extract configuration variables
 	batchSize := config.BatchSize()
@@ -228,12 +228,12 @@ func NewQlearning(env environment.Environment, config qlearning.Config,
 		return nil, fmt.Errorf("newQLearning: cannot create solver: %v", err)
 	}
 	deepQConfig := &Config{
-		Epsilon:      config.Epsilon,
-		PolicyLayers: []int{},
-		Biases:       []bool{},
-		Activations:  []*network.Activation{},
-		InitWFn:      InitWFn,
-		Solver:       sol,
+		Epsilon:     config.Epsilon,
+		Layers:      []int{},
+		Biases:      []bool{},
+		Activations: []*network.Activation{},
+		InitWFn:     InitWFn,
+		Solver:      sol,
 
 		Tau:                  1.0,
 		TargetUpdateInterval: 1,
