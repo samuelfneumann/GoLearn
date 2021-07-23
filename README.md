@@ -226,3 +226,4 @@ tracked.
 - [ ] VPG should have option to finish the current episode before starting the next epoch or to just start the next epoch from the current episode
 - [ ] Experiment configuration should have agent Configs wrapper + Environment name + Number of timesteps for each experiment. There will be a single concrete type for the experiment config.
 - [ ] Experience replay needs to be JSON serializable OR DeepQ should construct its own ER from config fields
+- [ ] DeepQ needs Configs struct

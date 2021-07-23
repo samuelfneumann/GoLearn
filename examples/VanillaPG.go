@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
@@ -47,7 +46,6 @@ func VanillaPG() {
 	}
 	nonlinearity := network.ReLU()
 	config := vanillapg.CategoricalMLPConfig{
-		Policy:            agent.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
 		PolicyBiases:      []bool{true, true, true},
 		PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
@@ -130,7 +128,6 @@ func VanillaPgGridWorld() {
 		panic(err)
 	}
 	args := vanillapg.CategoricalMLPConfig{
-		Policy:            agent.Categorical,
 		PolicyLayers:      []int{100, 50, 25},
 		PolicyBiases:      []bool{true, true, true},
 		PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"time"
@@ -28,33 +27,54 @@ func main() {
 		policySolvers[i], _ = solver.NewDefaultAdam(5e-3*float64(i+1), 1)
 	}
 	valueSolvers := make([]*solver.Solver, 3)
-	for i := range policySolvers {
+	for i := range valueSolvers {
 		valueSolvers[i], _ = solver.NewVanilla(5e-3*float64(i+1), 1)
 	}
+	// fmt.Println(valueSolvers)
 	init, _ := initwfn.NewGlorotU(math.Sqrt(2))
-	configs := vanillapg.CategoricalMLPConfigs{
-		Policy:            agent.Categorical,
-		PolicyLayers:      [][]int{{100, 50, 25}},
-		PolicyBiases:      [][]bool{{true, true, true}},
-		PolicyActivations: [][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
+	// configs := vanillapg.CategoricalMLPConfigList{
+	// 	PolicyLayers:      [][]int{{100, 50, 25}},
+	// 	PolicyBiases:      [][]bool{{true, true, true}},
+	// 	PolicyActivations: [][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
 
-		ValueFnLayers:      [][]int{{100, 50, 25}},
-		ValueFnBiases:      [][]bool{{true, true, true}},
-		ValueFnActivations: [][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
+	// 	ValueFnLayers:      [][]int{{100, 50, 25}},
+	// 	ValueFnBiases:      [][]bool{{true, true, true}},
+	// 	ValueFnActivations: [][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
 
-		InitWFn:      []*initwfn.InitWFn{init},
-		PolicySolver: policySolvers,
-		VSolver:      valueSolvers,
+	// 	InitWFn:      []*initwfn.InitWFn{init},
+	// 	PolicySolver: policySolvers,
+	// 	VSolver:      valueSolvers,
 
-		ValueGradSteps: []int{25, 50, 75, 100},
-		EpochLength:    []int{50000},
-		Lambda:         []float64{1.0},
-		Gamma:          []float64{0.99},
-	}
+	// 	ValueGradSteps: []int{25, 50, 75, 100},
+	// 	EpochLength:    []int{50000},
+	// 	Lambda:         []float64{1.0},
+	// 	Gamma:          []float64{0.99},
+	// }
+	jconfigs := vanillapg.NewCategoricalMLPConfigList(
+		[][]int{{100, 50, 25}},
+		[][]bool{{true, true, true}},
+		[][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
 
-	fmt.Println(configs.Len())
-	fmt.Println(configs)
-	fmt.Println(agent.ConfigAt(1, configs))
+		[][]int{{100, 50, 25}},
+		[][]bool{{true, true, true}},
+		[][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
+
+		[]*initwfn.InitWFn{init},
+		policySolvers,
+		valueSolvers,
+
+		[]int{25, 50, 75, 100},
+		[]int{50000, 75000, 100000},
+		[]float64{1.0},
+		[]float64{0.99},
+	)
+
+	// fmt.Println(configs.Len())
+	// fmt.Println(configs)
+	// fmt.Println(agent.ConfigAt(1, configs))
+
+	// jconfigs := agent.NewTypedConfigList(configs)
+	// fmt.Println(jconfigs)
 
 	outfile, err := os.Create("args.json")
 	if err != nil {
@@ -62,7 +82,7 @@ func main() {
 	}
 	enc := json.NewEncoder(outfile)
 	enc.SetIndent("", "\t")
-	err = enc.Encode(configs)
+	err = enc.Encode(jconfigs)
 	if err != nil {
 		panic(err)
 	}
@@ -73,13 +93,14 @@ func main() {
 		panic(err)
 	}
 	dec := json.NewDecoder(infile)
-	var c vanillapg.CategoricalMLPConfigs
+	var c agent.TypedConfigList
 	dec.Decode(&c)
 
-	fmt.Println(c)
+	fmt.Println(jconfigs, "\n===\n", c, c.ConfigList)
+	fmt.Println()
+	fmt.Println(c.At(0))
 	fmt.Println("JSON DONE")
 	infile.Close()
-	log.Fatal("ouch")
 
 	// =========================================
 
@@ -134,51 +155,51 @@ func main() {
 	// env, t := gridworld.New(r, c, goal, discount)
 	// fmt.Println(t)
 
-	policySolver, _ := solver.NewDefaultAdam(5e-3, 1)
-	valueSolver, _ := solver.NewDefaultAdam(5e-3, 1)
-	Wfn, _ := initwfn.NewGlorotN(math.Sqrt(2))
-	args := vanillapg.CategoricalMLPConfig{
-		Policy:            agent.Categorical,
-		PolicyLayers:      []int{100, 50, 25},
-		PolicyBiases:      []bool{true, true, true},
-		PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
+	// policySolver, _ := solver.NewDefaultAdam(5e-3, 1)
+	// valueSolver, _ := solver.NewDefaultAdam(5e-3, 1)
+	// Wfn, _ := initwfn.NewGlorotN(math.Sqrt(2))
+	// args := vanillapg.CategoricalMLPConfig{
+	// 	PolicyLayers:      []int{100, 50, 25},
+	// 	PolicyBiases:      []bool{true, true, true},
+	// 	PolicyActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
-		ValueFnLayers:      []int{100, 50, 25},
-		ValueFnBiases:      []bool{true, true, true},
-		ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
+	// 	ValueFnLayers:      []int{100, 50, 25},
+	// 	ValueFnBiases:      []bool{true, true, true},
+	// 	ValueFnActivations: []*network.Activation{nonlinearity, nonlinearity, nonlinearity},
 
-		InitWFn:      Wfn,
-		PolicySolver: policySolver,
-		VSolver:      valueSolver,
+	// 	InitWFn:      Wfn,
+	// 	PolicySolver: policySolver,
+	// 	VSolver:      valueSolver,
 
-		ValueGradSteps: 25,
-		EpochLength:    50000,
-		Lambda:         1.0,
-		Gamma:          0.99,
-	}
+	// 	ValueGradSteps: 25,
+	// 	EpochLength:    50000,
+	// 	Lambda:         1.0,
+	// 	Gamma:          0.99,
+	// }
+	args := c.At(0)
 
-	outfile, err = os.Create("args.json")
-	if err != nil {
-		panic(err)
-	}
-	enc = json.NewEncoder(outfile)
-	enc.SetIndent("", "\t")
-	err = enc.Encode(args)
-	if err != nil {
-		panic(err)
-	}
-	outfile.Close()
+	// outfile, err = os.Create("args.json")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// enc = json.NewEncoder(outfile)
+	// enc.SetIndent("", "\t")
+	// err = enc.Encode(args)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// outfile.Close()
 
-	infile, err = os.Open("args.json")
-	if err != nil {
-		panic(err)
-	}
-	dec = json.NewDecoder(infile)
-	dec.Decode(&args)
-	fmt.Println(args.VSolver.Type, args.VSolver.Config)
-	fmt.Println("JSON DONE")
+	// infile, err = os.Open("args.json")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// dec = json.NewDecoder(infile)
+	// dec.Decode(&args)
+	// fmt.Println(args.VSolver.Type, args.VSolver.Config)
+	// fmt.Println("JSON DONE")
 
-	fmt.Println(args)
+	// fmt.Println(args)
 
 	agent, err := args.CreateAgent(env, useed)
 	if err != nil {

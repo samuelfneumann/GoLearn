@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
 	"sfneuman.com/golearn/environment"
@@ -42,7 +41,6 @@ func DeepQ() {
 
 	// Create the learning algorithm
 	args := deepq.Config{
-		Policy:       agent.EGreedy,
 		PolicyLayers: []int{100, 50, 25},
 		Biases:       []bool{true, true, true},
 		Activations: []*network.Activation{

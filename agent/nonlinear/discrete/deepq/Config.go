@@ -13,9 +13,11 @@ import (
 	"sfneuman.com/golearn/solver"
 )
 
+const EGreedyDeepQ agent.Type = "DeepQ"
+
 // Config implements a configuration for a DeepQ agent
 type Config struct {
-	Policy agent.PolicyType // Type of policy to create
+	// Policy agent.PolicyType // Type of policy to create
 
 	// Policy       agent.EGreedyNNPolicy
 	PolicyLayers []int                 // Layer sizes in neural net
@@ -51,14 +53,19 @@ func (c *Config) BatchSize() int {
 	return c.Sampler.BatchSize()
 }
 
+// Type returns the type of the configuration
+func (c *Config) Type() agent.Type {
+	return EGreedyDeepQ
+}
+
 // Validate checks a Config to ensure it is a valid configuration of a
 // DeepQ agent.
 func (c *Config) Validate() error {
 	// Error checking
-	if c.Policy != agent.EGreedy {
-		return fmt.Errorf("cannot create %v policy for DeepQ "+
-			"configuration, must be %v", c.Policy, agent.EGreedy)
-	}
+	// if c.Policy != agent.EGreedy {
+	// 	return fmt.Errorf("cannot create %v policy for DeepQ "+
+	// 		"configuration, must be %v", c.Policy, agent.EGreedy)
+	// }
 
 	if len(c.PolicyLayers) != len(c.Biases) {
 		msg := fmt.Sprintf("new: invalid number of biases\n\twant(%v)"+

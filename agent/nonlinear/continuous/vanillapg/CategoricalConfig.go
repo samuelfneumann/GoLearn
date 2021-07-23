@@ -13,10 +13,15 @@ import (
 	"sfneuman.com/golearn/solver"
 )
 
-// CategoricalMLPConfigs implements functionality for storing a list
+const CategoricalVanillaPG agent.Type = "CategoricalVanillaPG"
+
+func init() {
+	agent.Register(CategoricalVanillaPG, CategoricalMLPConfigList{})
+}
+
+// CategoricalMLPConfigList implements functionality for storing a list
 // of CategoricalMLPConfig in a simple way.
-type CategoricalMLPConfigs struct {
-	Policy            agent.PolicyType
+type CategoricalMLPConfigList struct {
 	PolicyLayers      [][]int
 	PolicyBiases      [][]bool
 	PolicyActivations [][]*network.Activation
@@ -42,21 +47,63 @@ type CategoricalMLPConfigs struct {
 	Gamma  []float64
 }
 
+func NewCategoricalMLPConfigList(
+	PolicyLayers [][]int,
+	PolicyBiases [][]bool,
+	PolicyActivations [][]*network.Activation,
+	ValueFnLayers [][]int,
+	ValueFnBiases [][]bool,
+	ValueFnActivations [][]*network.Activation,
+	InitWFn []*initwfn.InitWFn,
+	PolicySolver []*solver.Solver,
+	VSolver []*solver.Solver,
+	ValueGradSteps []int,
+	EpochLength []int,
+	Lambda []float64,
+	Gamma []float64) agent.TypedConfigList {
+	config := CategoricalMLPConfigList{
+		PolicyLayers:      PolicyLayers,
+		PolicyBiases:      PolicyBiases,
+		PolicyActivations: PolicyActivations,
+
+		ValueFnLayers:      ValueFnLayers,
+		ValueFnBiases:      ValueFnBiases,
+		ValueFnActivations: ValueFnActivations,
+
+		InitWFn: InitWFn,
+
+		PolicySolver: PolicySolver,
+		VSolver:      VSolver,
+
+		ValueGradSteps: ValueGradSteps,
+		EpochLength:    EpochLength,
+		Lambda:         Lambda,
+		Gamma:          Gamma,
+	}
+
+	return agent.NewTypedConfigList(config)
+}
+
+// Type returns the configuration's type
+func (c CategoricalMLPConfigList) Type() agent.Type {
+	return CategoricalVanillaPG
+}
+
 // NumFields gets the total number of settable fields/hyperparameters
 // for the agent configuration
-func (c CategoricalMLPConfigs) NumFields() int {
+func (c CategoricalMLPConfigList) NumFields() int {
 	rValue := reflect.ValueOf(c)
 	return rValue.NumField()
 }
 
 // Config returns an empty Config that is of the type stored by
-// CategoricalMLPConfigs
-func (c CategoricalMLPConfigs) Config() agent.Config {
+// CategoricalMLPConfigList
+func (c CategoricalMLPConfigList) Config() agent.Config {
 	return CategoricalMLPConfig{}
 }
 
 // Len returns the number of configurations stored by the list
-func (c CategoricalMLPConfigs) Len() int {
+func (c CategoricalMLPConfigList) Len() int {
 	return len(c.Lambda) * len(c.Gamma) * len(c.ValueGradSteps) *
 		len(c.EpochLength) * len(c.InitWFn) * len(c.ValueFnActivations) *
 		len(c.ValueFnBiases) * len(c.ValueFnLayers) * len(c.PolicySolver) *
@@ -70,7 +117,6 @@ type CategoricalMLPConfig struct {
 	// Policy neural net
 	policy            agent.LogPdfOfer // VPG.trainPolicy
 	behaviour         agent.NNPolicy   // VPG.behaviour
-	Policy            agent.PolicyType
 	PolicyLayers      []int
 	PolicyBiases      []bool
 	PolicyActivations []*network.Activation
@@ -109,12 +155,12 @@ func (c CategoricalMLPConfig) Validate() error {
 		return fmt.Errorf("cannot have epoch length < 1")
 	}
 
-	if c.Policy != agent.Categorical {
-		return fmt.Errorf("cannot create %v policy from categorical "+
-			"configuration, must be %v", c.Policy, agent.Categorical)
-	}
-
 	return nil
+}
+
+// Type returns the type of the configuration
+func (c CategoricalMLPConfig) Type() agent.Type {
+	return CategoricalVanillaPG
 }
 
 // ValidAgent returns whether the input agent is valid for this config
@@ -129,10 +175,6 @@ func (c CategoricalMLPConfig) ValidAgent(a agent.Agent) bool {
 // CreateAgent creates and returns the agent determine by the configuration
 func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 	seed uint64) (agent.Agent, error) {
-	if c.Policy != agent.Categorical {
-		panic(fmt.Sprintf("createAgent: mlp policy %v not implemented",
-			c.Policy))
-	}
 
 	behaviour, err := policy.NewCategoricalMLP(e, 1, G.NewGraph(),
 		c.PolicyLayers, c.PolicyBiases, c.PolicyActivations, c.InitWFn.InitWFn(), seed)
