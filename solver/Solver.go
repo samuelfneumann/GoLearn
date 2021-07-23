@@ -39,6 +39,11 @@ func newSolver(t Type, c Config) (*Solver, error) {
 	return &solver, nil
 }
 
+// String implements the fmt.Stringer interface
+func (s *Solver) String() string {
+	return fmt.Sprintf("{%v Solver: %v}", s.Type, s.Config)
+}
+
 // UnmarshalJSON implements the json.Unmarshaller interface
 func (s *Solver) UnmarshalJSON(data []byte) error {
 	config, typeName, err := unmarshalConfig(

@@ -4,6 +4,7 @@ package initwfn
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	G "gorgonia.org/gorgonia"
@@ -39,6 +40,11 @@ func newInitWFn(c Config) (*InitWFn, error) {
 // InitWFn returns the wrapped Gorgonia InitWFn
 func (w *InitWFn) InitWFn() G.InitWFn {
 	return w.initWFn
+}
+
+// String implements the fmt.Stringer interface
+func (i *InitWFn) String() string {
+	return fmt.Sprintf("{%v InitWFn: %v}", i.Type, i.Config)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface
