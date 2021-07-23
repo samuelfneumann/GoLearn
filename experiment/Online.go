@@ -1,11 +1,14 @@
 package experiment
 
 import (
+	"time"
+
 	"sfneuman.com/golearn/agent"
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/experiment/tracker"
 	ts "sfneuman.com/golearn/timestep"
+	"sfneuman.com/golearn/utils/progressbar"
 )
 
 // Online is an Experiment that runs an agent online only. No offline
@@ -17,6 +20,7 @@ type Online struct {
 	currentSteps  uint
 	savers        []tracker.Tracker
 	checkpointers []checkpointer.Checkpointer
+	progBar       *progressbar.ProgressBar
 }
 
 // NewOnline creates and returns a new online experiment on a given
@@ -42,7 +46,10 @@ func NewOnline(e env.Environment, a agent.Agent, steps uint,
 		trackers = t
 	}
 
-	return &Online{e, a, steps, 0, trackers, checkpointers}
+	progBar := progressbar.NewProgressBar(50, int(steps), time.Second, true)
+	progBar.Display()
+
+	return &Online{e, a, steps, 0, trackers, checkpointers, progBar}
 }
 
 // Register registers a saver.Saver with an Experiment so that data
@@ -59,6 +66,7 @@ func (o *Online) RunEpisode() bool {
 
 	// Run the next timestep
 	for !step.Last() && o.currentSteps < o.maxSteps {
+		o.progBar.Increment()
 		o.currentSteps++
 
 		// Select action, step in environment
@@ -89,6 +97,8 @@ func (o *Online) Run() {
 		ended = o.RunEpisode()
 		o.Agent.EndEpisode()
 	}
+
+	o.progBar.Close()
 }
 
 // Save saves all the data cached by the Savers to disk

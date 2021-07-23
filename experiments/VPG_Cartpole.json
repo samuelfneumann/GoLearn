@@ -1,6 +1,6 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 1500000,
+	"MaxSteps": 3000000,
 	"EnvConf": {
 		"Environment": "Cartpole",
 		"Task": "Balance",

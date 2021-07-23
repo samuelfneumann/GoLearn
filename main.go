@@ -66,7 +66,7 @@ func main() {
 	fmt.Println("Elapsed:", time.Since(start))
 	exp.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadData(filename)
 	fmt.Println(data)
 }
 

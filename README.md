@@ -215,6 +215,11 @@ tracked.
 	- [ ] TreeMLP
 	- [ ] GaussianTreeMLP
 
+- [ ] Config Structs needed:
+	- [ ] Qlearning
+	- [ ] ESarsa
+	- [ ] Linear-Gaussian Actor-Critic
+
 
 - [ ] Gaussian TreeMLP needs to be redone. StdDev can be clipped using G.Max and Min = G.Max(G.Neg()) or using an offset and G.MAX()
 - [ ] Create agent Configs which hold "lists" of agent Config structs. Each agent package has its own Config and Configs
@@ -224,6 +229,7 @@ tracked.
 - [ ] Pendulum needs documentation
 - [ ] VPG needs eval mode
 - [ ] VPG should have option to finish the current episode before starting the next epoch or to just start the next epoch from the current episode
-- [ ] Experiment configuration should have agent Configs wrapper + Environment name + Number of timesteps for each experiment. There will be a single concrete type for the experiment config.
-- [ ] Experience replay needs to be JSON serializable OR DeepQ should construct its own ER from config fields
-- [ ] DeepQ needs Configs struct
+- [ ] Experiment configuration should have agent.TypedConfigList + Environment name + Number of timesteps for each experiment. There will be a single concrete type for the experiment config.
+
+- [ ] Cartpole SwingUp would be nice to implement
+- [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files. This may prove problematic though with the gym-http-api...
