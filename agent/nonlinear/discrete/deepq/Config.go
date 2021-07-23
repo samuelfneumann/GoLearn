@@ -36,11 +36,14 @@ type Config struct {
 
 	Epsilon float64 // Behaviour policy epsilon
 
-	// Experience replay parameters
-	Remover         expreplay.Selector
-	Sampler         expreplay.Selector
-	MaximumCapacity int
-	MinimumCapacity int
+	// // Experience replay parameters
+	// RemoveMethod      expreplay.SelectorType
+	// SampleMethod      expreplay.SelectorType
+	// RemoveSize        int
+	// SampleSize        int
+	// MaxReplayCapacity int
+	// MinReplayCapacity int
+	ExpReplay expreplay.Config
 
 	// Target net updates
 	Tau                  float64 // Polyak averaging constant
@@ -50,7 +53,7 @@ type Config struct {
 // BatchSize returns the batch size of the agent constructed using this
 // Config
 func (c *Config) BatchSize() int {
-	return c.Sampler.BatchSize()
+	return c.ExpReplay.SampleSize
 }
 
 // Type returns the type of the configuration

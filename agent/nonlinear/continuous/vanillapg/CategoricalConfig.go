@@ -14,6 +14,8 @@ import (
 )
 
 func init() {
+	// Register ConfigList type so that it can be typed using
+	// agent.TypedConfigList to help with serialization/deserialization.
 	agent.Register(agent.CategoricalVanillaPG, CategoricalMLPConfigList{})
 }
 

@@ -9,6 +9,26 @@ import (
 	"sfneuman.com/golearn/utils/intutils"
 )
 
+// Config implements a specific configuration of an ExperienceReplayer
+type Config struct {
+	RemoveMethod      SelectorType
+	SampleMethod      SelectorType
+	RemoveSize        int
+	SampleSize        int
+	MaxReplayCapacity int
+	MinReplayCapacity int
+}
+
+// Create creates and returns the ExperienceReplayer with the specified
+// Config.
+func (c Config) Create(featureSize, actionSize int,
+	seed int64) (ExperienceReplayer, error) {
+
+	return Factory(c.RemoveMethod, c.SampleMethod, c.MinReplayCapacity,
+		c.MaxReplayCapacity, featureSize, actionSize, c.RemoveSize, c.SampleSize,
+		seed)
+}
+
 // ExperienceReplayer implements an experience replay buffer
 type ExperienceReplayer interface {
 	// Add adds a transition to the buffer

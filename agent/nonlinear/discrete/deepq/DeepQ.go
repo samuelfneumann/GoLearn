@@ -186,14 +186,7 @@ func New(env environment.Environment, c agent.Config,
 	// Create the experience replay buffer. The replay buffer stores
 	// actions selected as one-hot vectors
 	numFeatures := env.ObservationSpec().Shape.Len()
-	replay, err := expreplay.New(
-		config.Remover,
-		config.Sampler,
-		config.MinimumCapacity,
-		config.MaximumCapacity,
-		numFeatures,
-		numActions,
-	)
+	replay, err := config.ExpReplay.Create(numFeatures, numActions, seed)
 	if err != nil {
 		msg := "new: could not create experience replay buffer: %v"
 		return &DeepQ{}, fmt.Errorf(msg, err)
