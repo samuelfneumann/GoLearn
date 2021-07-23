@@ -50,7 +50,7 @@ type CategoricalMLPConfigList struct {
 // NewCategoricalMLPConfigList returns a new CategoricalMLPConfigList
 // as an agent.TypedConfigList. Because the returned value is a
 // TypedList, it can safely be JSON serialized and deserialized without
-// remembering what the type of the configuration list is.
+// specifying what the type of the ConfigList is.
 func NewCategoricalMLPConfigList(
 	PolicyLayers [][]int,
 	PolicyBiases [][]bool,
@@ -64,7 +64,8 @@ func NewCategoricalMLPConfigList(
 	ValueGradSteps []int,
 	EpochLength []int,
 	Lambda []float64,
-	Gamma []float64) agent.TypedConfigList {
+	Gamma []float64,
+) agent.TypedConfigList {
 	config := CategoricalMLPConfigList{
 		PolicyLayers:      PolicyLayers,
 		PolicyBiases:      PolicyBiases,
@@ -88,9 +89,9 @@ func NewCategoricalMLPConfigList(
 	return agent.NewTypedConfigList(config)
 }
 
-// Type returns the configuration's type
+// Type returns the type of Config stored in the list
 func (c CategoricalMLPConfigList) Type() agent.Type {
-	return agent.CategoricalVanillaPG
+	return c.Config().Type()
 }
 
 // NumFields gets the total number of settable fields/hyperparameters

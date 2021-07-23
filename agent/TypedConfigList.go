@@ -64,6 +64,7 @@ func unmarshalConfigList(data []byte, typeJsonField, valueJsonField string) (Con
 	return concreteValue, typeName, nil
 }
 
+// At returns the Config at index i in the TypedConfigList
 func (t *TypedConfigList) At(i int) Config {
 	return ConfigAt(i, t.ConfigList)
 }

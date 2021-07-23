@@ -12,6 +12,7 @@ type Type string
 
 const (
 	CategoricalVanillaPG Type = "CategoricalVanillaPG"
+	EGreedyDeepQ         Type = "EGreedyDeepQ"
 )
 
 // Registered types with the package. Once a Type has been registered
