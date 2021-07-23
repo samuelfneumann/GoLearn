@@ -20,7 +20,6 @@ import (
 
 func DeepQ() {
 	var useed uint64 = 192382
-	var seed int64 = 192382
 
 	// Create the environment
 	bounds := r1.Interval{Min: -0.01, Max: 0.01}
@@ -48,12 +47,16 @@ func DeepQ() {
 			network.ReLU(),
 			network.ReLU(),
 		},
-		InitWFn:              initWFn,
-		Epsilon:              0.1,
-		Remover:              expreplay.NewFifoSelector(1),
-		Sampler:              expreplay.NewUniformSelector(1, seed),
-		MaximumCapacity:      1,
-		MinimumCapacity:      1,
+		InitWFn: initWFn,
+		Epsilon: 0.1,
+		ExpReplay: expreplay.Config{
+			RemoveMethod:      expreplay.Fifo,
+			SampleMethod:      expreplay.Uniform,
+			RemoveSize:        1,
+			SampleSize:        1,
+			MaxReplayCapacity: 1,
+			MinReplayCapacity: 1,
+		},
 		Tau:                  1.0,
 		TargetUpdateInterval: 1,
 		Solver:               sol,
