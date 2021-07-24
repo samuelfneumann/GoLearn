@@ -209,7 +209,7 @@ func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 
 	features := e.ObservationSpec().Shape.Len()
 
-	critic, err := network.NewSingleHeadMLP(features, 1, G.NewGraph(),
+	valueFn, err := network.NewSingleHeadMLP(features, 1, G.NewGraph(),
 		c.ValueFnLayers, c.ValueFnBiases, c.InitWFn.InitWFn(), c.ValueFnActivations)
 	if err != nil {
 		return nil, fmt.Errorf("createAgent: could not create critic: %v", err)
@@ -222,10 +222,10 @@ func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 	}
 
 	network.Set(behaviour.Network(), p.Network())
-	network.Set(critic, trainValueFn)
+	network.Set(valueFn, trainValueFn)
 	c.policy = p
 	c.behaviour = behaviour
-	c.vValueFn = critic
+	c.vValueFn = valueFn
 	c.vTrainValueFn = trainValueFn
 
 	return New(e, c, int64(seed))
