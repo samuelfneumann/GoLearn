@@ -7,7 +7,11 @@
 		"ContinuousActions": false,
 		"EpisodeCutoff": 500,
 		"Discount": 0.99,
-		"Gym": false
+		"Gym": false,
+		"TileCoding": {
+			"UseTileCoding": false,
+			"Bins": []
+		}
 	},
 	"AgentConf": {
 		"Type": "CategoricalVanillaPG-MLP",

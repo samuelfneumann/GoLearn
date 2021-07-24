@@ -9,8 +9,8 @@
 		"Discount": 0.99,
 		"Gym": false,
 		"TileCoding": {
-			"UseTileCoding": false,
-			"Bins": []
+			"UseTileCoding": true,
+			"Bins": [[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10]]
 		}
 	},
 	"AgentConf": {
@@ -18,27 +18,21 @@
 		"ConfigList": {
 			"Layers": [
 				[
-					64,
-					64
 				]
 			],
 			"Biases": [
 				[
-					true,
-					true
 				]
 			],
 			"Activations": [
 				[
-					"relu",
-					"relu"
 				]
 			],
 			"Solver": [
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 1e-4,
+						"StepSize": 1e-2,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -62,16 +56,16 @@
 					"RemoveMethod": "Fifo",
 					"SampleMethod": "Uniform",
 					"RemoveSize": 1,
-					"SampleSize": 32,
-					"MaxReplayCapacity": 4000,
-					"MinReplayCapacity": 100
+					"SampleSize": 1,
+					"MaxReplayCapacity": 1,
+					"MinReplayCapacity": 1
 				}
 			],
 			"Tau": [
 				1
 			],
 			"TargetUpdateInterval": [
-				8
+				1
 			]
 		}
 	}
