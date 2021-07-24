@@ -11,6 +11,8 @@ import (
 	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/environment/classiccontrol/pendulum"
+	"sfneuman.com/golearn/environment/gridworld"
+	"sfneuman.com/golearn/environment/wrappers"
 	ts "sfneuman.com/golearn/timestep"
 )
 
@@ -23,6 +25,7 @@ const (
 	MountainCar EnvName = "MountainCar"
 	Pendulum    EnvName = "Pendulum"
 	Cartpole    EnvName = "Cartpole"
+	Gridworld   EnvName = "Gridworld"
 )
 
 // TaskName stores the tasks that can be configured with this package.
@@ -52,6 +55,10 @@ type Config struct {
 	EpisodeCutoff     uint
 	Discount          float64
 	Gym               bool
+
+	// TileCoding indicates if tile coding should be used and if so,
+	// what bins should be used
+	TileCoding tileCodingConfig
 }
 
 // NewConfig returns a new environment Config
@@ -74,22 +81,37 @@ func NewConfig(envName EnvName, taskName TaskName, continuousActions bool,
 // CreateEnv returns the environment described by the Config as well as
 // the first timestep of the environment.
 func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
+
+	var e env.Environment
+	var step ts.TimeStep
 	switch c.Environment {
 	case MountainCar:
-		return CreateMountainCar(c.ContinuousActions, c.Task,
+		e, step = CreateMountainCar(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Cartpole:
-		return CreateCartpole(c.ContinuousActions, c.Task,
+		e, step = CreateCartpole(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Pendulum:
-		return CreatePendulum(c.ContinuousActions, c.Task,
+		e, step = CreatePendulum(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
+
+	case Gridworld:
+		e, step = CreateGridworld(c.ContinuousActions, c.Task,
+			int(c.EpisodeCutoff), seed, c.Discount)
+
+	default:
+		panic(fmt.Sprintf("create: cannot create environment %v, no such "+
+			"environment", c.Environment))
 	}
 
-	panic(fmt.Sprintf("create: cannot create environment %v, no such "+
-		"environment", c.Environment))
+	if c.TileCoding.UseTileCoding {
+		e, step = wrappers.NewTileCoding(e, c.TileCoding.Bins, seed)
+	}
+
+	return e, step
+
 }
 
 // CreateMountainCar is a factory for creating the MountainCar
@@ -170,4 +192,50 @@ func CreatePendulum(continuousActions bool, taskName TaskName,
 		return pendulum.NewContinuous(task, discount)
 	}
 	return pendulum.NewDiscrete(task, discount)
+}
+
+// CreateGridworld is a factory for creating a Gridworld environment
+// with default grid size (5 x 5) and default goal task parameters
+func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
+	seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+
+	r, c := 5, 5
+
+	// Create the start-state distribution
+	starter, err := gridworld.NewSingleStart(0, 0, r, c)
+	if err != nil {
+		panic("createGridworld: Could not create starter")
+	}
+
+	var task env.Task
+	switch taskName {
+	case Goal:
+		// Create the gridworld task of reaching a goal state. The goals
+		// are specified as a []int, representing (x, y) coordinates
+		goalX, goalY := []int{4}, []int{4}
+		timestepReward, goalReward := -0.1, 1.0
+		task, err = gridworld.NewGoal(starter, goalX, goalY, r, c,
+			timestepReward, goalReward, cutoff)
+		if err != nil {
+			panic("createGridworld: ould not create goal")
+		}
+	default:
+		panic(fmt.Sprintf("createGridworld: Gridworld environment has "+
+			"no task %v", taskName))
+	}
+
+	if continuousActions {
+		panic("createGridworld: gridworlds only support discrete actions")
+	}
+
+	// Create the gridworld
+	return gridworld.New(r, c, task, discount)
+}
+
+// tileCodingConfig implements configuration settings for tile coding
+// of environments. A separate struct for the environment config is
+// used to make the JSON file look prettier.
+type tileCodingConfig struct {
+	UseTileCoding bool
+	Bins          [][]int
 }

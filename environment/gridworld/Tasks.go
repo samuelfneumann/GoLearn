@@ -14,9 +14,9 @@ import (
 // Goal represents the task of reaching goal states in a GridWorld
 type Goal struct {
 	environment.Starter
-	goals *mat.Dense // one-hot encoding of goal states
-	// goals          [][]int
-	r, c           int // total rows and columns in environment
+	stepLimiter    environment.Ender
+	goals          *mat.Dense // one-hot encoding of goal states
+	r, c           int        // total rows and columns in environment
 	timeStepReward float64
 	goalReward     float64
 }
@@ -25,7 +25,7 @@ type Goal struct {
 // the gridworld has r rows and c columns. The parameters tr and gr
 // determine the timestep rewards and goal rewards respectively
 func NewGoal(s environment.Starter, x, y []int, r, c int,
-	tr, gr float64) (*Goal, error) {
+	tr, gr float64, stepLimit int) (*Goal, error) {
 	if len(x) != len(y) {
 		return &Goal{}, fmt.Errorf("x length (%d) != y length (%d)",
 			len(x), len(y))
@@ -49,7 +49,9 @@ func NewGoal(s environment.Starter, x, y []int, r, c int,
 		panic("could not parse rewards")
 	}
 
-	return &Goal{s, goalCoords, r, c, tr, gr}, nil
+	ender := environment.NewStepLimit(stepLimit)
+
+	return &Goal{s, ender, goalCoords, r, c, tr, gr}, nil
 }
 
 // GetReward returns the reward for the current state and action
@@ -153,5 +155,6 @@ func (g *Goal) End(t *timestep.TimeStep) bool {
 		t.StepType = timestep.Last
 		return true
 	}
-	return false
+
+	return g.stepLimiter.End(t)
 }
