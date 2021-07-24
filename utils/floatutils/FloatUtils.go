@@ -134,3 +134,26 @@ func Unique(floats ...float64) []float64 {
 
 	return uniq
 }
+
+// Sum returns the sum of a list of floats
+func Sum(floats ...float64) float64 {
+	sum := 0.0
+	for _, float := range floats {
+		sum += float
+	}
+	return sum
+}
+
+// Equal returns whether two slices are equal
+func Equal(s1, s2 []float64) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	for i := range s1 {
+		if s1[i] != s2[i] {
+			return false
+		}
+	}
+	return true
+}
