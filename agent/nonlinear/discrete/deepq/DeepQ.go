@@ -58,9 +58,7 @@ type DeepQ struct {
 	discounts             *G.Node
 
 	// Keep track of previous states and actions to add to replay buffer
-	prevStep   ts.TimeStep
-	prevAction int
-	nextStep   ts.TimeStep
+	prevStep ts.TimeStep
 
 	batchSize int
 	eval      bool // Whether or not in evaluation mode
@@ -110,14 +108,10 @@ func New(env environment.Environment, c agent.Config,
 	targetPolicy := config.targetPolicy
 
 	// Create the target network which provides the update target
-	targetNet, err := targetPolicy.Network().CloneWithBatch(batchSize)
-	if err != nil {
-		msg := "new: could not create target network: %v"
-		return &DeepQ{}, fmt.Errorf(msg, err)
-	}
+	targetNet := config.targetNet
 	if layers := targetNet.OutputLayers(); layers != 1 {
 		msg := "new: target net should return a single target prediction " +
-			"\n\twnat(1)\n\thave(%v)"
+			"\n\twant(1)\n\thave(%v)"
 		return &DeepQ{}, fmt.Errorf(msg, layers)
 	}
 	targetNetVM := G.NewTapeMachine(targetNet.Graph())
@@ -127,12 +121,7 @@ func New(env environment.Environment, c agent.Config,
 	targetUpdateInterval := config.TargetUpdateInterval
 
 	// Create the training network, which is the network whose
-	// parameters the agent learns
-	trainNet, err := behaviourPolicy.Network().CloneWithBatch(batchSize)
-	if err != nil {
-		msg := "new: could not create learning network: %v"
-		return &DeepQ{}, fmt.Errorf(msg, err)
-	}
+	trainNet := config.trainNet
 	gTrain := trainNet.Graph()
 
 	// Create nodes to compute the update target: r + γ * max[Q(s', a')]
@@ -158,24 +147,28 @@ func New(env environment.Environment, c agent.Config,
 		G.WithShape(batchSize, numActions),
 	)
 
-	// ! This is technically wrong, we should sum up the costs then
-	// ! take the gradient on the summed up losses.
+	var cost *G.Node
 	for _, pred := range trainNet.Prediction() {
 		selectedActionsValue := G.Must(G.HadamardProd(pred,
 			selectedActions))
 		selectedActionsValue = G.Must(G.Sum(selectedActionsValue, 1))
 
 		// Compute the Mean Squarred TD error
-		losses := G.Must(G.Sub(updateTarget, selectedActionsValue))
-		losses = G.Must(G.Square(losses))
-		cost := G.Must(G.Mean(losses))
-
-		// Compute the gradient with respect to the Mean Squarred TD error
-		_, err = G.Grad(cost, trainNet.Learnables()...)
-		if err != nil {
-			msg := fmt.Sprintf("new: could not compute gradient: %v", err)
-			panic(msg)
+		loss := G.Must(G.Sub(updateTarget, selectedActionsValue))
+		loss = G.Must(G.Square(loss))
+		loss = G.Must(G.Mean(loss))
+		if cost == nil {
+			cost = loss
+		} else {
+			cost = G.Must(G.Add(cost, loss))
 		}
+	}
+
+	// Compute the gradient with respect to the Mean Squarred TD error
+	_, err = G.Grad(cost, trainNet.Learnables()...)
+	if err != nil {
+		msg := fmt.Sprintf("new: could not compute gradient: %v", err)
+		panic(msg)
 	}
 
 	// Compile the trainNet graph into a VM
@@ -212,8 +205,6 @@ func New(env environment.Environment, c agent.Config,
 		rewards:               rewards,
 		discounts:             discounts,
 		prevStep:              ts.TimeStep{},
-		prevAction:            0,
-		nextStep:              ts.TimeStep{},
 		batchSize:             batchSize,
 		eval:                  false,
 	}, nil
@@ -249,33 +240,31 @@ func (d *DeepQ) ObserveFirst(t ts.TimeStep) {
 		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
 			"called on the first timestep (current timestep = %d)", t.Number)
 	}
-	d.prevStep = ts.TimeStep{}
-	d.nextStep = t
+	d.prevStep = t
 }
 
 // Observe observes and records any timestep other than the first timestep
-func (d *DeepQ) Observe(action mat.Vector, nextStep ts.TimeStep) {
-	if action.Len() != 1 {
+func (d *DeepQ) Observe(a mat.Vector, nextStep ts.TimeStep) {
+	if a.Len() != 1 {
 		fmt.Fprintf(os.Stderr, "Warning: value-based methods should not "+
-			"have multi-dimensional actions (action dim = %d)", action.Len())
+			"have multi-dimensional actions (action dim = %d)", a.Len())
 	}
 
 	// Add to replay buffer
-	if !d.nextStep.First() {
-		prevAction := mat.NewVecDense(d.numActions, nil)
-		prevAction.SetVec(d.prevAction, 1.0)
-
+	if !nextStep.First() {
+		action := mat.NewVecDense(d.numActions, nil)
+		action.SetVec(int(a.AtVec(0)), 1.0)
 		nextAction := mat.NewVecDense(d.numActions, nil)
-		nextAction.SetVec(int(action.AtVec(0)), 1.0)
 
-		transition := ts.NewTransition(d.prevStep, prevAction, d.nextStep, nextAction)
-		d.replay.Add(transition)
+		transition := ts.NewTransition(d.prevStep, action, nextStep, nextAction)
+		err := d.replay.Add(transition)
+		if err != nil {
+			panic(fmt.Sprintf("observe: could not add to replay buffer: %v",
+				err))
+		}
 	}
 
-	// Update internal variables
-	d.prevStep = d.nextStep
-	d.nextStep = nextStep
-	d.prevAction = int(action.AtVec(0))
+	d.prevStep = nextStep
 }
 
 // Step updates the weights of the Agent's Policies.
@@ -291,20 +280,6 @@ func (d *DeepQ) Step() {
 		return
 	}
 
-	// Previous action one-hot vectors
-	prevActions := tensor.New(
-		tensor.WithShape(d.batchSize, d.numActions),
-		tensor.WithBacking(A),
-	)
-	G.Let(d.selectedActions, prevActions)
-
-	// Predict the action values in state S
-	err = d.trainNet.SetInput(S)
-	if err != nil {
-		msg := fmt.Sprintf("step: could not set trainNet input: %v", err)
-		panic(msg)
-	}
-
 	// Predict the action values in the next state NextS
 	err = d.targetNet.SetInput(NextS)
 	if err != nil {
@@ -313,7 +288,10 @@ func (d *DeepQ) Step() {
 	}
 
 	// Compute the next state-action values
-	d.targetNetVM.RunAll()
+	err = d.targetNetVM.RunAll()
+	if err != nil {
+		panic(fmt.Sprintf("step: could not run target vm: %v", err))
+	}
 
 	// Set the action values for the actions in the next state
 	err = G.Let(d.nextStateActionValues, d.targetNet.Output()[0])
@@ -322,8 +300,9 @@ func (d *DeepQ) Step() {
 			err))
 	}
 
+	d.targetNetVM.Reset()
+
 	// Set the reward for the current action
-	// reward := d.nextStep.Reward
 	rewardTensor := tensor.New(tensor.WithBacking(R),
 		tensor.WithShape(d.batchSize))
 	err = G.Let(d.rewards, rewardTensor)
@@ -332,7 +311,6 @@ func (d *DeepQ) Step() {
 	}
 
 	// Set the discount for the next action value
-	// discount := d.nextStep.Discount
 	discountTensor := tensor.New(tensor.WithBacking(discount),
 		tensor.WithShape(d.batchSize))
 	err = G.Let(d.discounts, discountTensor)
@@ -340,11 +318,34 @@ func (d *DeepQ) Step() {
 		panic(fmt.Sprintf("step: could not set discount: %v", err))
 	}
 
-	d.targetNetVM.Reset()
+	// Previous action one-hot vectors
+	prevActions := tensor.New(
+		tensor.WithShape(d.batchSize, d.numActions),
+		tensor.WithBacking(A),
+	)
+	err = G.Let(d.selectedActions, prevActions)
+	if err != nil {
+		panic(fmt.Sprintf("step: could not set previous actions: %v", err))
+	}
+
+	// Predict the action values in state S
+	err = d.trainNet.SetInput(S)
+	if err != nil {
+		msg := fmt.Sprintf("step: could not set trainNet input: %v", err)
+		panic(msg)
+	}
 
 	// Run the learning step
-	d.trainNetVM.RunAll()
-	d.solver.Step(d.trainNet.Model())
+	err = d.trainNetVM.RunAll()
+	if err != nil {
+		panic(fmt.Sprintf("step: could not run train vm: %v", err))
+	}
+
+	err = d.solver.Step(d.trainNet.Model())
+	if err != nil {
+		panic(fmt.Sprintf("step: could not step solver: %v", err))
+	}
+
 	d.trainNetVM.Reset()
 	d.gradientSteps++
 
@@ -352,14 +353,26 @@ func (d *DeepQ) Step() {
 	// weights
 	if d.gradientSteps%d.targetUpdateInterval == 0 {
 		if d.tau == 1.0 {
-			network.Set(d.targetNet, d.trainNet)
+			err = network.Set(d.targetNet, d.trainNet)
+			if err != nil {
+				panic("step: could not update target network")
+			}
 		} else {
-			network.Polyak(d.targetNet, d.trainNet, d.tau)
+			err = network.Polyak(d.targetNet, d.trainNet, d.tau)
+			if err != nil {
+				panic("step: could not update target network")
+			}
 		}
 	}
 
-	network.Set(d.targetPolicy.Network(), d.trainNet)
-	network.Set(d.behaviourPolicy.Network(), d.trainNet)
+	err = network.Set(d.targetPolicy.Network(), d.trainNet)
+	if err != nil {
+		panic("step: could not update target action selection network")
+	}
+	err = network.Set(d.behaviourPolicy.Network(), d.trainNet)
+	if err != nil {
+		panic("step: could not update target network")
+	}
 }
 
 // SelectAction runs the necessary VMs and then returns an action

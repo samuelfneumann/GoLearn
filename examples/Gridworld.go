@@ -26,7 +26,7 @@ func Gridworld() {
 	goalX, goalY := []int{4}, []int{4}
 	timestepReward, goalReward := -0.1, 1.0
 	goal, err := gridworld.NewGoal(starter, goalX, goalY, r, c,
-		timestepReward, goalReward)
+		timestepReward, goalReward, 1000)
 
 	if err != nil {
 		fmt.Println("Could not create goal")

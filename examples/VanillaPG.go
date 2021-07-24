@@ -102,7 +102,7 @@ func VanillaPgGridWorld() {
 	goalX, goalY := []int{r - 1}, []int{c - 1}
 	timestepReward, goalReward := -0.1, 1.0
 	goal, err := gridworld.NewGoal(starter, goalX, goalY, r, c,
-		timestepReward, goalReward)
+		timestepReward, goalReward, 50_000)
 
 	if err != nil {
 		fmt.Println("Could not create goal")

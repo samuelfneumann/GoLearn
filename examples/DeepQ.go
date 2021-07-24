@@ -9,6 +9,7 @@ import (
 	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
+	"sfneuman.com/golearn/environment/envconfig"
 	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
@@ -18,15 +19,13 @@ import (
 	"sfneuman.com/golearn/solver"
 )
 
-func DeepQ() {
+// DeepQCartpole gives an example of Deep Q on Cartpole
+func DeepQCartpole() {
 	var useed uint64 = 192382
 
-	// Create the environment
-	bounds := r1.Interval{Min: -0.01, Max: 0.01}
-
-	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
-	task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
-	m, _ := mountaincar.NewDiscrete(task, 1.0)
+	// Create the environment config with default parameters
+	envConf := envconfig.NewConfig(envconfig.Cartpole, envconfig.Balance,
+		false, 500, 0.99, false)
 
 	// Create the solver
 	sol, err := solver.NewDefaultAdam(0.00001, 1)
@@ -39,37 +38,45 @@ func DeepQ() {
 	}
 
 	// Create the learning algorithm
-	args := deepq.Config{
-		Layers: []int{100, 50, 25},
-		Biases: []bool{true, true, true},
-		Activations: []*network.Activation{
-			network.ReLU(),
-			network.ReLU(),
-			network.ReLU(),
+	agentConf := deepq.NewConfigList(
+		[][]int{{64, 64}},
+		[][]bool{{true, true}},
+		[][]*network.Activation{
+			{
+				network.ReLU(),
+				network.ReLU(),
+			},
 		},
-		InitWFn: initWFn,
-		Epsilon: 0.1,
-		ExpReplay: expreplay.Config{
-			RemoveMethod:      expreplay.Fifo,
-			SampleMethod:      expreplay.Uniform,
-			RemoveSize:        1,
-			SampleSize:        1,
-			MaxReplayCapacity: 1,
-			MinReplayCapacity: 1,
+		[]*solver.Solver{sol},
+		[]*initwfn.InitWFn{initWFn},
+		[]float64{0.1},
+		[]expreplay.Config{
+			{
+				RemoveMethod:      expreplay.Fifo,
+				SampleMethod:      expreplay.Uniform,
+				RemoveSize:        1,
+				SampleSize:        32,
+				MaxReplayCapacity: 100000,
+				MinReplayCapacity: 100,
+			},
 		},
-		Tau:                  1.0,
-		TargetUpdateInterval: 1,
-		Solver:               sol,
-	}
-	q, err := args.CreateAgent(m, useed)
-	if err != nil {
-		panic(err)
+		[]float64{1.0},
+		[]int{1},
+	)
+
+	// Create the experiment configuration
+	exp := experiment.Config{
+		Type:      experiment.OnlineExp,
+		MaxSteps:  25_000,
+		EnvConf:   envConf,
+		AgentConf: agentConf,
 	}
 
 	// Experiment
-	start := time.Now()
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := experiment.NewOnline(m, q, 20_000, []tracker.Tracker{saver}, nil)
+	e := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+
+	start := time.Now()
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
@@ -78,7 +85,143 @@ func DeepQ() {
 	fmt.Println(data)
 }
 
-func QLearning() {
+// DeepQMountainCar gives an example of Deep Q on Mountain Car
+func DeepQMountainCar() {
+	var useed uint64 = 192382
+
+	// Create the environment config with default parameters
+	envConf := envconfig.NewConfig(envconfig.MountainCar, envconfig.Goal,
+		false, 500, 0.99, false)
+
+	// Create the solver
+	sol, err := solver.NewDefaultAdam(0.00001, 1)
+	if err != nil {
+		panic(err)
+	}
+	initWFn, err := initwfn.NewGlorotU(1.0)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create the learning algorithm
+	agentConf := deepq.NewConfigList(
+		[][]int{{64, 64}},
+		[][]bool{{true, true}},
+		[][]*network.Activation{
+			{
+				network.ReLU(),
+				network.ReLU(),
+			},
+		},
+		[]*solver.Solver{sol},
+		[]*initwfn.InitWFn{initWFn},
+		[]float64{0.1},
+		[]expreplay.Config{
+			{
+				RemoveMethod:      expreplay.Fifo,
+				SampleMethod:      expreplay.Uniform,
+				RemoveSize:        1,
+				SampleSize:        32,
+				MaxReplayCapacity: 100000,
+				MinReplayCapacity: 100,
+			},
+		},
+		[]float64{1.0},
+		[]int{1},
+	)
+
+	// Create the experiment configuration
+	exp := experiment.Config{
+		Type:      experiment.OnlineExp,
+		MaxSteps:  25_000,
+		EnvConf:   envConf,
+		AgentConf: agentConf,
+	}
+
+	// Experiment
+	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
+	e := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+
+	start := time.Now()
+	e.Run()
+	fmt.Println("Elapsed:", time.Since(start))
+	e.Save()
+
+	data := tracker.LoadData("./data.bin")
+	fmt.Println(data)
+}
+
+// QLearningMountainCarWithConfigs gives an example of how to use
+// Config structs for agents, environments, and experiments to create
+// a Qlearning experiment on Mountain Car using the Gorgonia library
+// for Qlearning implementation.
+func QLearningMountainCarWithConfigs() {
+	var useed uint64 = 192382
+
+	// Create the environment config with default parameters
+	envConf := envconfig.NewConfig(envconfig.MountainCar, envconfig.Goal,
+		false, 500, 0.99, false)
+
+	// Create the solver
+	sol, err := solver.NewDefaultAdam(0.00001, 1)
+	if err != nil {
+		panic(err)
+	}
+	initWFn, err := initwfn.NewGlorotU(1.0)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create the learning algorithm
+	agentConf := deepq.NewConfigList(
+		[][]int{{}},
+		[][]bool{{}},
+		[][]*network.Activation{{}},
+		[]*solver.Solver{sol},
+		[]*initwfn.InitWFn{initWFn},
+		[]float64{0.1},
+		[]expreplay.Config{
+			{
+				RemoveMethod:      expreplay.Fifo,
+				SampleMethod:      expreplay.Uniform,
+				RemoveSize:        1,
+				SampleSize:        1,
+				MaxReplayCapacity: 1,
+				MinReplayCapacity: 1,
+			},
+		},
+		[]float64{1.0},
+		[]int{1},
+	)
+
+	// Create the experiment configuration
+	exp := experiment.Config{
+		Type:      experiment.OnlineExp,
+		MaxSteps:  25_000,
+		EnvConf:   envConf,
+		AgentConf: agentConf,
+	}
+
+	// Experiment
+	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
+	e := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+
+	start := time.Now()
+	e.Run()
+	fmt.Println("Elapsed:", time.Since(start))
+	e.Save()
+
+	data := tracker.LoadData("./data.bin")
+	fmt.Println(data)
+}
+
+// QLearningMountainCarFromScratch gives an example of how to create
+// an experiment for running the Qlearning algorithm (with
+// a Gorgonia library implementation) on th eMountain Car environment
+// from complete scratch. That is, the environment and agent are
+// create from scratch from their relevant constructors, and not
+// the Config structs.
+func QLearningMountainCarFromScratch() {
 	var useed uint64 = 192382
 	var seed int64 = 192382
 

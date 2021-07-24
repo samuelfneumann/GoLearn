@@ -68,7 +68,7 @@ type MultiHeadEGreedyMLP struct {
 // SetInput() method of the embedded network and a policy loss can
 // be constructed on the output of the network to learn the weights.
 // In this case, it is also required to use an external VM for learning.
-func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
+func NewMultiHeadEGreedyMLP(epsilon float64, batch int, env env.Environment,
 	g *G.ExprGraph, hiddenSizes []int, biases []bool,
 	init G.InitWFn, activations []*network.Activation,
 	seed int64) (agent.EGreedyNNPolicy, error) {
@@ -83,7 +83,7 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	numActions := int(env.ActionSpec().UpperBound.AtVec(0)) + 1
 	features := env.ObservationSpec().Shape.Len()
 
-	net, err := network.NewMultiHeadMLP(features, 1, numActions, g,
+	net, err := network.NewMultiHeadMLP(features, batch, numActions, g,
 		hiddenSizes, biases, init, activations)
 	if err != nil {
 		return &MultiHeadEGreedyMLP{},
@@ -99,7 +99,10 @@ func NewMultiHeadEGreedyMLP(epsilon float64, env env.Environment,
 	source := rand.NewSource(seed)
 	rng := rand.New(source)
 
-	vm := G.NewTapeMachine(net.Graph())
+	var vm G.VM
+	if batch == 1 {
+		vm = G.NewTapeMachine(net.Graph())
+	}
 
 	// Create the policy
 	nn := MultiHeadEGreedyMLP{

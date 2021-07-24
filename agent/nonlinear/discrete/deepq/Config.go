@@ -110,6 +110,8 @@ type Config struct {
 	// highest value for the Q-learning update.
 	behaviourPolicy agent.EGreedyNNPolicy // Action selection
 	targetPolicy    agent.EGreedyNNPolicy // Greedy next-action selection
+	targetNet       network.NeuralNet
+	trainNet        network.NeuralNet
 
 	Epsilon float64 // Behaviour policy epsilon
 
@@ -178,11 +180,11 @@ func (c Config) CreateAgent(e env.Environment, s uint64) (agent.Agent, error) {
 	ε := c.Epsilon
 
 	// Behaviour policy
-	g := G.NewGraph()
 	behaviourPolicy, err := policy.NewMultiHeadEGreedyMLP(
 		ε,
+		1,
 		e,
-		g,
+		G.NewGraph(),
 		hiddenSizes,
 		biases,
 		init,
@@ -194,11 +196,12 @@ func (c Config) CreateAgent(e env.Environment, s uint64) (agent.Agent, error) {
 			"behaviour policy: %v", err)
 	}
 
-	// Create the target policy for action selection
+	// Create the target (greedy) policy
 	targetPolicy, err := policy.NewMultiHeadEGreedyMLP(
 		0.0,
+		1,
 		e,
-		g,
+		G.NewGraph(),
 		hiddenSizes,
 		biases,
 		init,
@@ -209,8 +212,60 @@ func (c Config) CreateAgent(e env.Environment, s uint64) (agent.Agent, error) {
 		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
 	}
 
+	// Create the target network
+	targetNetPolicy, err := policy.NewMultiHeadEGreedyMLP(
+		0.0,
+		c.BatchSize(),
+		e,
+		G.NewGraph(),
+		hiddenSizes,
+		biases,
+		init,
+		activations,
+		seed,
+	)
+	if err != nil {
+		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
+	}
+	c.targetNet = targetNetPolicy.Network()
+
+	// Create the target network
+	trainNetPolicy, err := policy.NewMultiHeadEGreedyMLP(
+		0.0,
+		c.BatchSize(),
+		e,
+		G.NewGraph(),
+		hiddenSizes,
+		biases,
+		init,
+		activations,
+		seed,
+	)
+	if err != nil {
+		return &DeepQ{}, fmt.Errorf("new: could not create target policy")
+	}
+	c.trainNet = trainNetPolicy.Network()
+
 	// Set the policies to have the same weights
+
+	// fmt.Printf("%p", c.targetNet.(*network.MultiHeadMLP).Layers()[0].Weights())
+	// fmt.Printf("\t%p\n", c.trainNet.(*network.MultiHeadMLP).Layers()[0].Weights())
+	// fmt.Printf("\t%p\n", behaviourPolicy.Network().(*network.MultiHeadMLP).Layers()[0].Weights())
+	// fmt.Printf("\t%p\n", targetPolicy.Network().(*network.MultiHeadMLP).Layers()[0].Weights())
+	// fmt.Println(c.targetNet.(*network.MultiHeadMLP).Layers()[0].Weights() == c.trainNet.(*network.MultiHeadMLP).Layers()[0].Weights())
+	// fmt.Println(c.targetNet.(*network.MultiHeadMLP).Layers()[1].Weights() == c.trainNet.(*network.MultiHeadMLP).Layers()[1].Weights())
+	// fmt.Println(c.targetNet.(*network.MultiHeadMLP).Layers()[2].Weights() == c.trainNet.(*network.MultiHeadMLP).Layers()[2].Weights())
+
 	network.Set(behaviourPolicy.Network(), targetPolicy.Network())
+	network.Set(c.targetNet, targetPolicy.Network())
+	network.Set(c.trainNet, targetPolicy.Network())
+
+	// fmt.Println()
+	// fmt.Println(c.targetNet.(*network.MultiHeadMLP).Layers()[0].Weights() == c.trainNet.(*network.MultiHeadMLP).Layers()[0].Weights())
+	// fmt.Println(c.targetNet.(*network.MultiHeadMLP).Layers()[1].Weights() == c.trainNet.(*network.MultiHeadMLP).Layers()[1].Weights())
+	// fmt.Println(c.targetNet.(*network.MultiHeadMLP).Layers()[2].Weights() == c.trainNet.(*network.MultiHeadMLP).Layers()[2].Weights())
+	// log.Fatal()
+
 	c.behaviourPolicy = behaviourPolicy
 	c.targetPolicy = targetPolicy
 

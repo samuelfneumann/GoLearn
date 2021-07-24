@@ -1,6 +1,8 @@
 package network
 
 import (
+	"fmt"
+
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 )
@@ -65,7 +67,7 @@ func Set(dest, source NeuralNet) error {
 		sourceLearnable := sourceNodes[i].Clone()
 		err := G.Let(destLearnable, sourceLearnable.(*G.Node).Value())
 		if err != nil {
-			return err
+			return fmt.Errorf("set: could not set value: %v", err)
 		}
 	}
 	return nil
