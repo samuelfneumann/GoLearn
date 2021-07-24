@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"sfneuman.com/golearn/agent"
+	ag "sfneuman.com/golearn/agent"
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/experiment/tracker"
@@ -14,8 +15,8 @@ import (
 // Online is an Experiment that runs an agent online only. No offline
 // evaluation is performed.
 type Online struct {
-	env.Environment
-	agent.Agent
+	environment   env.Environment
+	agent         ag.Agent
 	maxSteps      uint
 	currentSteps  uint
 	savers        []tracker.Tracker
@@ -61,8 +62,8 @@ func (o *Online) Register(t tracker.Tracker) {
 
 // RunEpisode runs a single episode of the experiment
 func (o *Online) RunEpisode() bool {
-	step := o.Environment.Reset()
-	o.Agent.ObserveFirst(step)
+	step := o.environment.Reset()
+	o.agent.ObserveFirst(step)
 	o.track(step)
 
 	// Run the next timestep
@@ -71,8 +72,10 @@ func (o *Online) RunEpisode() bool {
 		o.currentSteps++
 
 		// Select action, step in environment
-		action := o.Agent.SelectAction(step)
-		step, _ = o.Environment.Step(action)
+		action := o.agent.SelectAction(step)
+		step, _ = o.environment.Step(action)
+
+		// actions[int(action.AtVec(0))]++
 
 		// Cache the environment step in each Saver
 		o.track(step)
@@ -81,8 +84,8 @@ func (o *Online) RunEpisode() bool {
 		o.checkpoint(step)
 
 		// Observe the timestep and step the agent
-		o.Agent.Observe(action, step)
-		o.Agent.Step()
+		o.agent.Observe(action, step)
+		o.agent.Step()
 	}
 
 	// Return whether or not the max timestep limit has been reached
@@ -92,11 +95,11 @@ func (o *Online) RunEpisode() bool {
 // Run runs the entire experiment for all timesteps
 func (o *Online) Run() {
 	ended := false
-	o.Agent.Train()
+	o.agent.Train()
 
 	for !ended {
 		ended = o.RunEpisode()
-		o.Agent.EndEpisode()
+		o.agent.EndEpisode()
 	}
 
 	o.progBar.Close()
@@ -121,4 +124,14 @@ func (o *Online) checkpoint(t ts.TimeStep) {
 	for _, c := range o.checkpointers {
 		c.Checkpoint(t)
 	}
+}
+
+// Environment returns the environment that the experiment is run on
+func (o *Online) Environment() env.Environment {
+	return o.environment
+}
+
+// Agent returns the agent that the experiment is run with
+func (o *Online) Agent() ag.Agent {
+	return o.agent
 }

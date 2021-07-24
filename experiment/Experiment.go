@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"sfneuman.com/golearn/agent"
+	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/envconfig"
 	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/experiment/tracker"
@@ -42,6 +43,10 @@ type Experiment interface {
 
 	// Saves the current state of all agents
 	checkpoint(ts.TimeStep)
+
+	// Getters
+	Environment() environment.Environment
+	Agent() agent.Agent
 }
 
 type Type string
