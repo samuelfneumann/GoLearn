@@ -319,7 +319,7 @@ func (c *cache) Add(t timestep.Transition) error {
 	}
 	if t.Action.Len() != c.actionSize || t.NextAction.Len() != c.actionSize {
 		return fmt.Errorf("add: invalid action size \n\twant(%v)\n\thave(%v)",
-			t.State.Len(), c.featureSize)
+			t.Action.Len(), c.actionSize)
 	}
 
 	// Copy states
