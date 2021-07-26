@@ -185,7 +185,7 @@ func (c *fifoRemove1Cache) Capacity() int {
 	if c.isFull {
 		return c.MaxCapacity()
 	}
-	return c.currentInUsePos + 1
+	return c.currentInUsePos
 }
 
 // MaxCapacity returns the maximum number of elements that are allowed
@@ -203,7 +203,7 @@ func (c *fifoRemove1Cache) MinCapacity() int {
 // Add adds a transition to the fifoRemove1Cache
 func (c *fifoRemove1Cache) Add(t timestep.Transition) error {
 	index := c.currentInUsePos
-	if !c.isFull && c.Capacity() == c.MaxCapacity() {
+	if !c.isFull && index+1 == c.MaxCapacity() {
 		c.isFull = true
 	}
 

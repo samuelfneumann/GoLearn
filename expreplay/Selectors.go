@@ -75,7 +75,7 @@ func (u *uniformSelector) choose(sampler orderedSampler) []int {
 	keys := sampler.sampleFrom()
 
 	for i := 0; i < u.BatchSize(); i++ {
-		index := u.rng.Int() % sampler.Capacity()
+		index := u.rng.Int() % (sampler.Capacity())
 		selected[i] = keys[index]
 	}
 
