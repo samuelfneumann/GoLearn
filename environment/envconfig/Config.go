@@ -199,9 +199,13 @@ func CreatePendulum(continuousActions bool, taskName TaskName,
 func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
 	seed uint64, discount float64) (env.Environment, ts.TimeStep) {
 
+	// Environment parameters
 	r, c := 5, 5
+	goalX, goalY := 4, 4
+	timestepReward := -0.1
+	goalReward := 1.0
 
-	// Create the start-state distribution
+	// Create the start-state distribution - always at (0, 0)
 	starter, err := gridworld.NewSingleStart(0, 0, r, c)
 	if err != nil {
 		panic("createGridworld: Could not create starter")
@@ -212,8 +216,7 @@ func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
 	case Goal:
 		// Create the gridworld task of reaching a goal state. The goals
 		// are specified as a []int, representing (x, y) coordinates
-		goalX, goalY := []int{4}, []int{4}
-		timestepReward, goalReward := -0.1, 1.0
+		goalX, goalY := []int{goalX}, []int{goalY}
 		task, err = gridworld.NewGoal(starter, goalX, goalY, r, c,
 			timestepReward, goalReward, cutoff)
 		if err != nil {
