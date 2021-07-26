@@ -194,6 +194,13 @@ func (c *CategoricalMLP) Logits() G.Value {
 // of selecting actions a in states s. The argument a should be a
 // slice of discrete actions (0, 1, ..., N) and *not* a one-hot encoded
 // version of these actions.
+//
+// The reason this function does not return the log PDF of actions is
+// because this would require running the policy's VM, which does
+// not contain any loss function. The log PDF of actions is generally
+// needed in loss functions, and a separate, external VM will be needed
+// to calculate the loss of the policy using the log PDF and update
+// the weights accordingly.
 func (c *CategoricalMLP) LogPdfOf(s, a []float64) (*G.Node, error) {
 	if err := c.Network().SetInput(s); err != nil {
 		panic(err)

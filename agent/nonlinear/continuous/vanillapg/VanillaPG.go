@@ -8,7 +8,6 @@ import (
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/network"
 	ts "sfneuman.com/golearn/timestep"
@@ -100,9 +99,10 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
 
-	config, ok := c.(CategoricalMLPConfig)
+	config, ok := c.(config)
 	if !ok {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
+
 	}
 
 	// Validate and adjust policy/critics as needed
@@ -114,15 +114,15 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 	// Create the VPG buffer
 	features := env.ObservationSpec().Shape.Len()
 	actionDims := env.ActionSpec().Shape.Len()
-	buffer := newGAEBuffer(features, actionDims, config.BatchSize(),
-		config.Lambda, config.Gamma)
+	buffer := newGAEBuffer(features, actionDims, config.batchSize(),
+		config.lambda(), config.gamma())
 
 	// Create the prediction value function
-	valueFn := config.vValueFn
+	valueFn := config.vValueFn()
 	vVM := G.NewTapeMachine(valueFn.Graph())
 
 	// Create the training value function
-	trainValueFn := config.vTrainValueFn
+	trainValueFn := config.vTrainValueFn()
 
 	trainValueFnTargets := G.NewMatrix(
 		trainValueFn.Graph(),
@@ -142,16 +142,16 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 	trainValueFnVM := G.NewTapeMachine(trainValueFn.Graph(), G.BindDualValues(trainValueFn.Learnables()...))
 
 	// Create the prediction policy
-	behaviour := config.behaviour
+	behaviour := config.behaviourPolicy()
 
 	// Create the training policy
-	trainPolicy := config.policy
-	logProb := trainPolicy.(*policy.CategoricalMLP).LogPdfNode()
+	trainPolicy := config.trainPolicy()
+	logProb := trainPolicy.(agent.LogPdfOfer).LogPdfNode()
 	advantages := G.NewVector(
 		trainPolicy.Network().Graph(),
 		tensor.Float64,
 		G.WithName("Advantages"),
-		G.WithShape(config.EpochLength),
+		G.WithShape(config.epochLength()),
 	)
 
 	policyLoss := G.Must(G.HadamardProd(logProb, advantages))
@@ -168,7 +168,7 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 		behaviour:         behaviour,
 		trainPolicy:       trainPolicy,
 		trainPolicyVM:     trainPolicyVM,
-		trainPolicySolver: config.PolicySolver,
+		trainPolicySolver: config.policySolver(),
 		advantages:        advantages,
 		logProb:           logProb,
 
@@ -178,16 +178,16 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 		vTrainValueFn:        trainValueFn,
 		vTrainValueFnTargets: trainValueFnTargets,
 		vTrainValueFnVM:      trainValueFnVM,
-		vSolver:              config.VSolver,
-		valueGradSteps:       config.ValueGradSteps,
+		vSolver:              config.vSolver(),
+		valueGradSteps:       config.valueGradSteps(),
 
 		buffer:                  buffer,
-		epochLength:             config.EpochLength,
+		epochLength:             config.epochLength(),
 		currentEpochStep:        0,
 		completedEpochs:         0,
 		eval:                    false,
 		finishingEpisode:        false,
-		finishEpisodeOnEpochEnd: config.FinishEpisodeOnEpochEnd,
+		finishEpisodeOnEpochEnd: config.finishEpisodeOnEpochEnd(),
 	}
 
 	return vpg, nil
@@ -310,7 +310,7 @@ func (v *VPG) Step() {
 	if err != nil {
 		panic(err)
 	}
-	v.trainPolicy.(*policy.CategoricalMLP).LogPdfOf(obs, act)
+	v.trainPolicy.LogPdfOf(obs, act)
 	if err := v.trainPolicyVM.RunAll(); err != nil {
 		panic(err)
 	}
@@ -344,6 +344,7 @@ func (v *VPG) Step() {
 	network.Set(v.vValueFn, v.vTrainValueFn)
 	v.completedEpochs++
 	v.currentEpochStep = 0
+
 }
 
 // TdError implements the Agent interface; it always panics.

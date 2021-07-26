@@ -20,7 +20,9 @@ func init() {
 }
 
 // CategoricalMLPConfigList implements functionality for storing a list
-// of CategoricalMLPConfig's in a simple way.
+// of CategoricalMLPConfig's in a simple way. Instead of storing
+// a slice of Configs, the ConfigList stores each field's values and
+// constructs the list by every combination of field values.
 type CategoricalMLPConfigList struct {
 	PolicyLayers      [][]int
 	PolicyBiases      [][]bool
@@ -111,7 +113,7 @@ func (c CategoricalMLPConfigList) Config() agent.Config {
 	return CategoricalMLPConfig{}
 }
 
-// Len returns the number of configurations stored by the list
+// Len returns the number of configurations stored in the list
 func (c CategoricalMLPConfigList) Len() int {
 	return len(c.Lambda) * len(c.Gamma) * len(c.ValueGradSteps) *
 		len(c.EpochLength) * len(c.InitWFn) * len(c.ValueFnActivations) *
@@ -120,8 +122,12 @@ func (c CategoricalMLPConfigList) Len() int {
 		len(c.PolicyLayers)
 }
 
-// CategoricalConfig implements a configuration for a categorical policy
-// vanilla policy gradient agent.
+// CategoricalMLPConfig implements a configuration for a categorical
+// policy vanilla policy gradient agent. The categorical distribution
+// is parameterized by a neural network with N outputs, one for each
+// action in the environment. The network outputs the logit of each
+// action, and action probabilities are comptued through the softmax
+// function.
 type CategoricalMLPConfig struct {
 	// Policy neural net
 	policy            agent.LogPdfOfer // VPG.trainPolicy
@@ -190,35 +196,68 @@ func (c CategoricalMLPConfig) ValidAgent(a agent.Agent) bool {
 	return false
 }
 
-// CreateAgent creates and returns the agent determine by the configuration
+// CreateAgent creates and returns the agent determine by the
+// configuration
 func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 	seed uint64) (agent.Agent, error) {
 
-	behaviour, err := policy.NewCategoricalMLP(e, 1, G.NewGraph(),
-		c.PolicyLayers, c.PolicyBiases, c.PolicyActivations, c.InitWFn.InitWFn(), seed)
+	behaviour, err := policy.NewCategoricalMLP(
+		e,
+		1,
+		G.NewGraph(),
+		c.PolicyLayers,
+		c.PolicyBiases,
+		c.PolicyActivations,
+		c.InitWFn.InitWFn(),
+		seed,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("createAgent: could not create "+
 			"behaviour policy: %v", err)
 	}
 
-	p, err := policy.NewCategoricalMLP(e, c.EpochLength, G.NewGraph(),
-		c.PolicyLayers, c.PolicyBiases, c.PolicyActivations, c.InitWFn.InitWFn(), seed)
+	p, err := policy.NewCategoricalMLP(
+		e,
+		c.EpochLength,
+		G.NewGraph(),
+		c.PolicyLayers,
+		c.PolicyBiases,
+		c.PolicyActivations,
+		c.InitWFn.InitWFn(),
+		seed,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("createAgent: could not create policy: %v", err)
 	}
 
 	features := e.ObservationSpec().Shape.Len()
 
-	valueFn, err := network.NewSingleHeadMLP(features, 1, G.NewGraph(),
-		c.ValueFnLayers, c.ValueFnBiases, c.InitWFn.InitWFn(), c.ValueFnActivations)
+	valueFn, err := network.NewSingleHeadMLP(
+		features,
+		1,
+		G.NewGraph(),
+		c.ValueFnLayers,
+		c.ValueFnBiases,
+		c.InitWFn.InitWFn(),
+		c.ValueFnActivations,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("createAgent: could not create critic: %v", err)
+		return nil, fmt.Errorf("createAgent: could not create value "+
+			"function: %v", err)
 	}
 
-	trainValueFn, err := network.NewSingleHeadMLP(features, c.EpochLength, G.NewGraph(),
-		c.ValueFnLayers, c.ValueFnBiases, c.InitWFn.InitWFn(), c.ValueFnActivations)
+	trainValueFn, err := network.NewSingleHeadMLP(
+		features,
+		c.EpochLength,
+		G.NewGraph(),
+		c.ValueFnLayers,
+		c.ValueFnBiases,
+		c.InitWFn.InitWFn(),
+		c.ValueFnActivations,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("createAgent: could not create train critic: %v", err)
+		return nil, fmt.Errorf("createAgent: could not create "+
+			"train value function: %v", err)
 	}
 
 	network.Set(behaviour.Network(), p.Network())
@@ -229,4 +268,77 @@ func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 	c.vTrainValueFn = trainValueFn
 
 	return New(e, c, int64(seed))
+}
+
+// Below implemented to satisfy the vanillapg.config interface
+// See the Config.go file in the vanillapg package for more details.
+
+// policy returns the constructed policy to train from the config
+func (g CategoricalMLPConfig) trainPolicy() agent.LogPdfOfer {
+	return g.policy
+}
+
+// behaviour returns the constructed behaviour policy from the config
+func (g CategoricalMLPConfig) behaviourPolicy() agent.NNPolicy {
+	return g.behaviour
+}
+
+// valueFn returns the constructed value function from the config
+func (g CategoricalMLPConfig) valueFn() network.NeuralNet {
+	return g.vValueFn
+}
+
+// trainValueFn returns the constructed value function to train from
+// the config
+func (g CategoricalMLPConfig) trainValueFn() network.NeuralNet {
+	return g.vTrainValueFn
+}
+
+// initWFn returns the initWFn from the config
+func (g CategoricalMLPConfig) initWFn() *initwfn.InitWFn {
+	return g.InitWFn
+}
+
+// policySolver returns the constructed policy solver from the config
+func (g CategoricalMLPConfig) policySolver() *solver.Solver {
+	return g.PolicySolver
+}
+
+// vSolver reutrns the constructed value function solver from the
+// config
+func (g CategoricalMLPConfig) vSolver() *solver.Solver {
+	return g.VSolver
+}
+
+// batchSize returns the batch size for the config
+func (g CategoricalMLPConfig) batchSize() int {
+	return g.BatchSize()
+}
+
+// valueGradSteps returns the number of gradient steps per environment
+// step to take for the value function
+func (g CategoricalMLPConfig) valueGradSteps() int {
+	return g.ValueGradSteps
+}
+
+// epochLength returns the epoch length of the config
+func (g CategoricalMLPConfig) epochLength() int {
+	return g.EpochLength
+}
+
+// finishEpisodeOnEpochEnd returns whether or not the current episode
+// should be finished before starting a new epoch, once the current
+// epoch has ended
+func (g CategoricalMLPConfig) finishEpisodeOnEpochEnd() bool {
+	return g.FinishEpisodeOnEpochEnd
+}
+
+// lambda returns the λ from the config for GAE
+func (g CategoricalMLPConfig) lambda() float64 {
+	return g.Lambda
+}
+
+// gamma returns the ℽ from the config for GAE
+func (g CategoricalMLPConfig) gamma() float64 {
+	return g.Gamma
 }
