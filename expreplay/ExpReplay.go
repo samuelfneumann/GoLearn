@@ -9,6 +9,18 @@ import (
 	"sfneuman.com/golearn/utils/intutils"
 )
 
+// orderedSampler implements an experience replay buffer that can return
+// its underlying indices to sample from and insertion order of these
+// indices
+type orderedSampler interface {
+	ExperienceReplayer
+	sampleFrom() []int
+
+	// insertOrder returns the first n indices that were added to the
+	// buffer
+	insertOrder(n int) []int
+}
+
 // Config implements a specific configuration of an ExperienceReplayer
 type Config struct {
 	RemoveMethod      SelectorType
@@ -62,12 +74,11 @@ type cache struct {
 	nextStateCache  []float64
 	nextActionCache []float64
 
-	// Set of indices of experience that have data available for
-	// setting. True indicates that no data exists at the respective
-	// index and that data can be stored in the buffer at that index.
-	// False indicates that legal data exists at that index, and that
-	// the data at that index can be sampled from.
-	emptyIndices map[int]bool
+	// The indices of the cache that are empty and have no data
+	emptyIndices []int
+
+	// The indices of the cache that have data
+	inUseIndices []int
 
 	// orderOfInsert outlines the order the chronological order of
 	// inserts. For i > j, the data at index orderOfInsert[i] was
@@ -125,6 +136,11 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 		return newOnline(), nil
 	}
 
+	if _, ok := remover.(*fifoSelector); ok && remover.BatchSize() == 1 {
+		return newFifoCache(sampler, minCapacity, maxCapacity, featureSize,
+			actionSize), nil
+	}
+
 	stateCache := make([]float64, maxCapacity*featureSize)
 	nextStateCache := make([]float64, maxCapacity*featureSize)
 
@@ -134,18 +150,41 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 	rewardCache := make([]float64, maxCapacity)
 	discountCache := make([]float64, maxCapacity)
 
-	// Create the set of indices at which data can be stored
-	emptyIndices := make(map[int]bool)
-	for i := 0; i < maxCapacity; i++ {
-		emptyIndices[i] = true
-	}
 	orderOfInsert := list.New()
 
 	remover.registerAsRemover()
 
-	return &cache{stateCache, actionCache, rewardCache, discountCache, nextStateCache,
-		nextActionCache, emptyIndices, orderOfInsert, remover, sampler, minCapacity,
-		maxCapacity, featureSize, actionSize}, nil
+	emptyIndices := make([]int, maxCapacity)
+	inUseIndices := make([]int, 0, maxCapacity)
+	for i := 0; i < maxCapacity; i++ {
+		emptyIndices[i] = i
+	}
+
+	return &cache{
+		stateCache:      stateCache,
+		actionCache:     actionCache,
+		rewardCache:     rewardCache,
+		discountCache:   discountCache,
+		nextStateCache:  nextStateCache,
+		nextActionCache: nextActionCache,
+
+		emptyIndices:  emptyIndices,
+		inUseIndices:  inUseIndices,
+		orderOfInsert: orderOfInsert,
+
+		remover: remover,
+		sampler: sampler,
+
+		minCapacity: minCapacity,
+		maxCapacity: maxCapacity,
+		featureSize: featureSize,
+		actionSize:  actionSize,
+	}, nil
+}
+
+// sampleFrom returns the indices to sample from
+func (c *cache) sampleFrom() []int {
+	return c.inUseIndices
 }
 
 // insertOrder returns a slice of at most n indices which describes
@@ -173,8 +212,8 @@ func (c *cache) insertOrder(n int) []int {
 
 // String returns the string representation of the cache
 func (c *cache) String() string {
-	emptyIndices := keysWithValue(c.emptyIndices, true)
-	usedIndices := keysWithValue(c.emptyIndices, false)
+	emptyIndices := c.emptyIndices
+	usedIndices := c.inUseIndices
 
 	baseStr := "Indices Available: %v \nIndices Used: %v \nStates: %v" +
 		" \nActions: %v \nRewards: %v \nDiscounts: %v \nNext States: %v \n" +
@@ -198,7 +237,16 @@ func (c *cache) remove() error {
 
 	indices := c.remover.choose(c)
 	for _, index := range indices {
-		c.emptyIndices[index] = true
+
+		for i := range c.inUseIndices {
+			if c.inUseIndices[i] == index {
+				c.inUseIndices[i] = c.inUseIndices[len(c.inUseIndices)-1]
+				c.inUseIndices = c.inUseIndices[:len(c.inUseIndices)-1]
+				break
+			}
+		}
+
+		c.emptyIndices = append(c.emptyIndices, index)
 	}
 	return nil
 }
@@ -274,13 +322,7 @@ func (c *cache) Sample() ([]float64, []float64, []float64, []float64,
 // Capacity returns the current number of elements in the cache that
 // are available for sampling
 func (c *cache) Capacity() int {
-	total := 0
-	for _, value := range c.emptyIndices {
-		if value {
-			total++
-		}
-	}
-	return c.MaxCapacity() - total
+	return len(c.inUseIndices)
 }
 
 // MaxCapacity returns the maximum number of elements that are allowed
@@ -304,14 +346,11 @@ func (c *cache) Add(t timestep.Transition) error {
 		}
 	}
 
-	var index int
-	for index = range c.emptyIndices {
-		if c.emptyIndices[index] {
-			c.emptyIndices[index] = false
-			c.orderOfInsert.PushBack(index)
-			break
-		}
-	}
+	emptyIndicesLength := len(c.emptyIndices)
+	index := c.emptyIndices[emptyIndicesLength-1]
+	c.emptyIndices = c.emptyIndices[:emptyIndicesLength-1]
+	c.orderOfInsert.PushBack(index)
+	c.inUseIndices = append(c.inUseIndices, index)
 
 	if t.State.Len() != c.featureSize || t.NextState.Len() != c.featureSize {
 		return fmt.Errorf("add: invalid feature size \n\twant(%v)\n\thave(%v)",
@@ -333,23 +372,11 @@ func (c *cache) Add(t timestep.Transition) error {
 	copy(c.actionCache[actionInd:actionInd+c.actionSize],
 		t.Action.RawVector().Data)
 	copy(c.nextActionCache[actionInd:actionInd+c.actionSize],
-		t.Action.RawVector().Data)
+		t.NextAction.RawVector().Data)
 
 	// Copy reward R
 	c.rewardCache[index] = t.Reward
 	c.discountCache[index] = t.Discount
 
 	return nil
-}
-
-// keysWithValue gets all the keys in a set that have the corresponding
-// argument value
-func keysWithValue(set map[int]bool, value bool) []int {
-	keys := make([]int, 0, len(set))
-	for index, currentVal := range set {
-		if currentVal == value {
-			keys = append(keys, index)
-		}
-	}
-	return keys
 }
