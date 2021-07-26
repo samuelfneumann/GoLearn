@@ -37,7 +37,8 @@ type fifoRemove1Cache struct {
 	actionSize  int
 }
 
-func newFifoCache(sampler Selector, minCapacity, maxCapacity, featureSize,
+// newFifoRemove1Cache returns a new fifoRemove1Cache
+func newFifoRemove1Cache(sampler Selector, minCapacity, maxCapacity, featureSize,
 	actionSize int) *fifoRemove1Cache {
 	stateCache := make([]float64, maxCapacity*featureSize)
 	nextStateCache := make([]float64, maxCapacity*featureSize)
@@ -99,12 +100,7 @@ func (c *fifoRemove1Cache) BatchSize() int {
 	return c.sampler.BatchSize()
 }
 
-// remove satisfies the ExperienceReplayer interface
-func (c *fifoRemove1Cache) remove() error {
-	return fmt.Errorf("remove: cannot manually remove from fifoRemove1Cache")
-}
-
-// insertOrder returns the insertion order into the buffer
+// insertOrder returns the insertion order of samples into the buffer
 func (c *fifoRemove1Cache) insertOrder(n int) []int {
 	if !c.isFull {
 		return c.indices[:c.currentInUsePos]
