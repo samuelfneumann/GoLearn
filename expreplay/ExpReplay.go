@@ -246,7 +246,7 @@ func (c *cache) remove() error {
 			}
 		}
 
-		c.emptyIndices = append(c.emptyIndices, index)
+		c.emptyIndices = append(c.emptyIndices, indices...)
 	}
 	return nil
 }

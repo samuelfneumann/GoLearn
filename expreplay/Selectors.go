@@ -18,7 +18,7 @@ const (
 type Selector interface {
 	// choose selects the indices at which data should be sampled from
 	// the experience replay buffer
-	choose(c *cache) []int
+	choose(orderedSampler) []int
 
 	// BatchSize returns the number of elements that will be selected
 	BatchSize() int
@@ -70,12 +70,12 @@ func (u *uniformSelector) BatchSize() int {
 
 // choose selects a number of indices at which to draw data from the
 // buffer
-func (u *uniformSelector) choose(c *cache) []int {
+func (u *uniformSelector) choose(sampler orderedSampler) []int {
 	selected := make([]int, u.BatchSize())
-	keys := keysWithValue(c.emptyIndices, false)
+	keys := sampler.sampleFrom()
 
 	for i := 0; i < u.BatchSize(); i++ {
-		index := u.rng.Int() % c.Capacity()
+		index := u.rng.Int() % sampler.Capacity()
 		selected[i] = keys[index]
 	}
 
@@ -107,17 +107,19 @@ func (f *fifoSelector) BatchSize() int {
 
 // choose selects a number of indices at which to draw data from the
 // buffer
-func (f *fifoSelector) choose(c *cache) []int {
-	selected := make([]int, intutils.Min(f.BatchSize(), c.Capacity()))
-	insertOrder := c.insertOrder(f.BatchSize())
+func (f *fifoSelector) choose(sampler orderedSampler) []int {
+	selected := make([]int, intutils.Min(f.BatchSize(), sampler.Capacity()))
+	insertOrder := sampler.insertOrder(f.BatchSize())
 
-	for i := 0; i < f.BatchSize() && i < c.Capacity(); i++ {
+	for i := 0; i < f.BatchSize() && i < sampler.Capacity(); i++ {
 		selected[i] = insertOrder[i]
 
-		if f.remover {
+		if c, ok := sampler.(*cache); f.remover && ok {
 			// In a Fifo remover, the indices at which data was first
 			// added get freed first, so we can remove these from the
-			// ordering of inserted indices
+			// ordering of inserted indices. This only applies to the
+			// general ER implementation of cache, since other methods
+			// should take care of this automatically.
 			c.removeFront()
 		}
 	}
