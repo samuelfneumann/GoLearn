@@ -157,3 +157,12 @@ func Equal(s1, s2 []float64) bool {
 	}
 	return true
 }
+
+// Ones returns a slice of ones
+func Ones(size int) []float64 {
+	slice := make([]float64, size)
+	for i := range slice {
+		slice[i] = 1.0
+	}
+	return slice
+}
