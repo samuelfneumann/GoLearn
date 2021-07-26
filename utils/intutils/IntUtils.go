@@ -30,3 +30,13 @@ func Prod(ints ...int) int {
 	}
 	return prod
 }
+
+// Contains returns true if slice contains value and false otherwise
+func Contains(slice []int, value int) bool {
+	for i := range slice {
+		if slice[i] == value {
+			return true
+		}
+	}
+	return false
+}
