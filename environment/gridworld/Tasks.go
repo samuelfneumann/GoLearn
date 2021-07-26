@@ -119,7 +119,6 @@ func getCoordinates(v *mat.VecDense, r, c int) (*mat.Dense, error) {
 		return nil, fmt.Errorf("cannot reshape v to shape (%d, %d)", r, c)
 	}
 
-	// var x, y []float64
 	var coords []float64
 
 	for i := 0; i < r*c; i++ {
@@ -127,13 +126,9 @@ func getCoordinates(v *mat.VecDense, r, c int) (*mat.Dense, error) {
 			var row int = i / c
 			var col int = i - (row * c)
 
-			// x = append(x, float64(col))
-			// y = append(y, float64(row))
 			coords = append(coords, float64(col), float64(row))
 		}
 	}
-	// fmt.Println(x, y)
-	// coords := append(x, y...)
 	positions := mat.NewDense(len(coords)/2, 2, coords)
 	return positions, nil
 }

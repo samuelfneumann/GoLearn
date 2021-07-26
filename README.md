@@ -235,7 +235,5 @@ tracked.
 Urgent ToDos:
 - [ ] DeepQ doesn't seem to learn on Cartpole!! This is honestly probably an issue with the policy cloning. That being said, cloning poicies did work with VPG, so it might be something else. The policy cloning may be fine. ALso, aggregate loss is compute incorrectly. (target net and train net seem to always have the same weights.. They do, the targetNet and trainNet have pointers to the same weights!)
 
-- [ ] Experience replay: performance increases with increasing buffer size. This probably has to do with the keysWithValue() method being called in the Selectors. Instead, why don't we just delete from the set when we don't need a number anymore? Or keep a set of used and a set of unused indices.
-
 - [ ] Readme should outline what exactly configs are and what they do for each package. Also, mention that environment Configs only allow environments with default behaviour, physical parameters, and task parameters to be created. To create a custom environemnt, you should use the relevant constructors with the relevant structs.
 - [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.

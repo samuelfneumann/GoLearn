@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/agent"
 	vanillapg "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
 	"sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
@@ -20,7 +21,75 @@ import (
 	"sfneuman.com/golearn/initwfn"
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/solver"
+	"sfneuman.com/golearn/timestep"
 )
+
+func lmain() {
+	r, _ := expreplay.New(expreplay.NewFifoSelector(1), expreplay.NewUniformSelector(1, 10),
+		1, 3, 2, 1)
+
+	fmt.Println(r)
+
+	t := timestep.Transition{
+		State:      mat.NewVecDense(2, []float64{1, 2}),
+		Action:     mat.NewVecDense(1, []float64{1}),
+		Reward:     1.0,
+		Discount:   0.99,
+		NextState:  mat.NewVecDense(2, []float64{3, 4}),
+		NextAction: mat.NewVecDense(1, []float64{2}),
+	}
+	r.Add(t)
+	fmt.Println()
+	fmt.Println(r)
+
+	t = timestep.Transition{
+		State:      mat.NewVecDense(2, []float64{5, 6}),
+		Action:     mat.NewVecDense(1, []float64{3}),
+		Reward:     1.0,
+		Discount:   0.99,
+		NextState:  mat.NewVecDense(2, []float64{7, 8}),
+		NextAction: mat.NewVecDense(1, []float64{4}),
+	}
+	r.Add(t)
+	fmt.Println()
+	fmt.Println(r)
+
+	t = timestep.Transition{
+		State:      mat.NewVecDense(2, []float64{9, 10}),
+		Action:     mat.NewVecDense(1, []float64{5}),
+		Reward:     1.0,
+		Discount:   0.99,
+		NextState:  mat.NewVecDense(2, []float64{11, 12}),
+		NextAction: mat.NewVecDense(1, []float64{6}),
+	}
+	r.Add(t)
+	fmt.Println()
+	fmt.Println(r)
+
+	t = timestep.Transition{
+		State:      mat.NewVecDense(2, []float64{13, 14}),
+		Action:     mat.NewVecDense(1, []float64{7}),
+		Reward:     1.0,
+		Discount:   0.99,
+		NextState:  mat.NewVecDense(2, []float64{15, 16}),
+		NextAction: mat.NewVecDense(1, []float64{8}),
+	}
+	r.Add(t)
+	fmt.Println()
+	fmt.Println(r)
+
+	t = timestep.Transition{
+		State:      mat.NewVecDense(2, []float64{17, 18}),
+		Action:     mat.NewVecDense(1, []float64{9}),
+		Reward:     1.0,
+		Discount:   0.99,
+		NextState:  mat.NewVecDense(2, []float64{19, 20}),
+		NextAction: mat.NewVecDense(1, []float64{10}),
+	}
+	r.Add(t)
+	fmt.Println()
+	fmt.Println(r)
+}
 
 func main() {
 	expFile, err := os.Open(os.Args[1])
@@ -45,6 +114,8 @@ func main() {
 
 	// Print some information about the experiment
 	fmt.Println("=== Experiment Starting")
+	fmt.Printf("\t Experiment Type:\t\t%v \n", expConf.Type)
+	fmt.Printf("\t Experiment Total Steps:\t%v \n", expConf.MaxSteps)
 	fmt.Printf("\t Total Configurations: \t\t%v\n", numSettings)
 	fmt.Printf("\t Run: \t\t\t\t%v\n", run)
 	fmt.Printf("\t Configuration Index: \t\t%v\n", hpIndex%numSettings)
@@ -53,7 +124,8 @@ func main() {
 	fmt.Printf("\t Environment Configuration: \t%v\n", expConf.EnvConf)
 	fmt.Println()
 	fmt.Printf("\t Agent: \t\t\t%v\n", expConf.AgentConf.Type)
-	fmt.Printf("\t Agent Configuration: \t\t%v\n", expConf.AgentConf.At(int(hpIndex)))
+	fmt.Printf("\t Agent Configuration: \t\t%v\n",
+		expConf.AgentConf.At(int(hpIndex)))
 	fmt.Println()
 
 	filename := fmt.Sprintf(

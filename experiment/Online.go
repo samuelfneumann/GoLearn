@@ -75,8 +75,6 @@ func (o *Online) RunEpisode() bool {
 		action := o.agent.SelectAction(step)
 		step, _ = o.environment.Step(action)
 
-		// actions[int(action.AtVec(0))]++
-
 		// Cache the environment step in each Saver
 		o.track(step)
 
