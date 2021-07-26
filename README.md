@@ -237,3 +237,5 @@ Urgent ToDos:
 
 - [ ] Readme should outline what exactly configs are and what they do for each package. Also, mention that environment Configs only allow environments with default behaviour, physical parameters, and task parameters to be created. To create a custom environemnt, you should use the relevant constructors with the relevant structs.
 - [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
+
+- [ ] Might be usefu to benchmark VanillaPG and see how we can make it faster (without exploiting the simulator).

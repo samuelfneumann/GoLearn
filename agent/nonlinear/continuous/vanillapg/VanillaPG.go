@@ -118,11 +118,11 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 		config.lambda(), config.gamma())
 
 	// Create the prediction value function
-	valueFn := config.vValueFn()
+	valueFn := config.valueFn()
 	vVM := G.NewTapeMachine(valueFn.Graph())
 
 	// Create the training value function
-	trainValueFn := config.vTrainValueFn()
+	trainValueFn := config.trainValueFn()
 
 	trainValueFnTargets := G.NewMatrix(
 		trainValueFn.Graph(),

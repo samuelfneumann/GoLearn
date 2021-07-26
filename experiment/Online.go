@@ -3,7 +3,6 @@ package experiment
 import (
 	"time"
 
-	"sfneuman.com/golearn/agent"
 	ag "sfneuman.com/golearn/agent"
 	env "sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/experiment/checkpointer"
@@ -28,7 +27,7 @@ type Online struct {
 // environment with a given agent. The steps parameter determines how
 // many timesteps the experiment is run for, and the s parameter
 // is a slice of savers.Saver which determine what data is saved.
-func NewOnline(e env.Environment, a agent.Agent, steps uint,
+func NewOnline(e env.Environment, a ag.Agent, steps uint,
 	t []tracker.Tracker, c []checkpointer.Checkpointer) *Online {
 
 	// Deal with null c inputs

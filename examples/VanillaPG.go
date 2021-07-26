@@ -9,6 +9,7 @@ import (
 	"sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
+	"sfneuman.com/golearn/environment/envconfig"
 	"sfneuman.com/golearn/environment/gridworld"
 	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/experiment/tracker"
@@ -154,6 +155,74 @@ func VanillaPgGridWorld() {
 	start := time.Now()
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
 	e := experiment.NewOnline(env, agent, 50000*1000, []tracker.Tracker{saver}, nil)
+	e.Run()
+	fmt.Println("Elapsed:", time.Since(start))
+	e.Save()
+
+	data := tracker.LoadData("./data.bin")
+	fmt.Println(data)
+}
+
+// COntinuousVanilaPGCartpole shows how to use the VanillaPG algorithm
+// for continuous environment, in particular, Cartpole.
+func ContinuousVanillaPGCartpole() {
+	var useed uint64 = 1923812121431427
+
+	envConf := envconfig.NewConfig(envconfig.Cartpole, envconfig.Balance,
+		true, 500, 0.99, false)
+	env, _ := envConf.CreateEnv(useed)
+
+	policySolver, _ := solver.NewDefaultAdam(5e-4, 1)
+	valueSolver, _ := solver.NewDefaultAdam(5e-3, 1)
+	Wfn, _ := initwfn.NewGlorotN(math.Sqrt(2))
+	nonlinearity := network.ReLU()
+	args := vanillapg.GaussianTreeMLPConfig{
+		RootLayers: []int{64, 64},
+		RootBiases: []bool{true, true},
+		RootActivations: []*network.Activation{
+			nonlinearity,
+			nonlinearity,
+		},
+
+		LeafLayers: [][]int{{64, 64}, {64, 64}},
+		LeafBiases: [][]bool{{true, true}, {true, true}},
+		LeafActivations: [][]*network.Activation{
+			{
+				nonlinearity,
+				nonlinearity,
+			},
+			{
+				nonlinearity,
+				nonlinearity,
+			},
+		},
+
+		ValueFnLayers: []int{100, 50, 25},
+		ValueFnBiases: []bool{true, true, true},
+		ValueFnActivations: []*network.Activation{
+			nonlinearity,
+			nonlinearity,
+			nonlinearity,
+		},
+
+		InitWFn:      Wfn,
+		PolicySolver: policySolver,
+		VSolver:      valueSolver,
+
+		ValueGradSteps:          25,
+		EpochLength:             500,
+		FinishEpisodeOnEpochEnd: true,
+		Lambda:                  1.0,
+		Gamma:                   0.99,
+	}
+	agent, err := args.CreateAgent(env, useed)
+	if err != nil {
+		panic(err)
+	}
+
+	start := time.Now()
+	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
+	e := experiment.NewOnline(env, agent, 50000*100, []tracker.Tracker{saver}, nil)
 	e.Run()
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()

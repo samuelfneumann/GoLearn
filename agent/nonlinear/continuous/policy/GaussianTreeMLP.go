@@ -243,8 +243,6 @@ func logPdf(mean, std, actions *G.Node) *G.Node {
 // to calculate the loss of the policy using the log PDF and update
 // the weights accordingly.
 func (g *GaussianTreeMLP) LogPdfOf(s, a []float64) (*G.Node, error) {
-	fmt.Println(s[len(s)-10:])
-	fmt.Println(a[len(a)-10:])
 	if err := g.Network().SetInput(s); err != nil {
 		panic(err)
 	}

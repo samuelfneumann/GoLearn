@@ -17,8 +17,8 @@ type config interface {
 	trainPolicy() agent.LogPdfOfer
 	behaviourPolicy() agent.NNPolicy
 
-	vValueFn() network.NeuralNet
-	vTrainValueFn() network.NeuralNet
+	valueFn() network.NeuralNet
+	trainValueFn() network.NeuralNet
 
 	initWFn() *initwfn.InitWFn
 

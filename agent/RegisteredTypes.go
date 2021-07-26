@@ -1,6 +1,9 @@
 package agent
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 // Type represents a specific type of an agent Config.
 // Config's with this type can create Agents of the corresponding type.
@@ -37,5 +40,6 @@ func init() {
 // with an agentType separately. This package3 registers no agentTypes
 // with any Config's. This is to avoid circular imports.
 func Register(agentType Type, configs ConfigList) {
+	fmt.Println("Registering:", agentType)
 	registeredTypes[agentType] = reflect.TypeOf(configs)
 }
