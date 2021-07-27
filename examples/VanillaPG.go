@@ -77,7 +77,7 @@ func VanillaPG() {
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data)
 }
 
@@ -159,7 +159,7 @@ func VanillaPgGridWorld() {
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data)
 }
 
@@ -227,6 +227,6 @@ func ContinuousVanillaPGCartpole() {
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data)
 }

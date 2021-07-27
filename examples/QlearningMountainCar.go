@@ -84,6 +84,6 @@ func QlearningMountainCar() {
 	e.Save()
 
 	// Load the data from the experiment and pring it
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data)
 }

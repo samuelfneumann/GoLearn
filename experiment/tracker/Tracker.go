@@ -17,8 +17,8 @@ type Tracker interface {
 	Save()
 }
 
-// LoadData loads and returns the data saved by a Tracker
-func LoadData(filename string) []float64 {
+// LoadFDataloads and returns the data saved by a Tracker as a []float64
+func LoadFData(filename string) []float64 {
 	// Open file
 	file, err := os.Open(filename)
 	if err != nil {
@@ -29,6 +29,28 @@ func LoadData(filename string) []float64 {
 	// Create the decoder and the variable to store the data in
 	dec := gob.NewDecoder(file)
 	var data []float64
+
+	// Decode the data
+	err = dec.Decode(&data)
+	if err != nil {
+		log.Fatalf("could not decode data: %v", err)
+	}
+
+	return data
+}
+
+// LoadIDataloads and returns the data saved by a Tracker as a []int
+func LoadIData(filename string) []int {
+	// Open file
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("could not open data file: %v", err)
+	}
+	defer file.Close()
+
+	// Create the decoder and the variable to store the data in
+	dec := gob.NewDecoder(file)
+	var data []int
 
 	// Decode the data
 	err = dec.Decode(&data)

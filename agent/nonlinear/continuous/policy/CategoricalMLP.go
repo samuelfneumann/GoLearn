@@ -14,6 +14,7 @@ import (
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
+	"sfneuman.com/golearn/utils/op"
 )
 
 // CategoricalMLP implements a categorical policy using an MLP to
@@ -123,7 +124,7 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 	)
 	logitsInputActions := G.Must(G.HadamardProd(actionIndices, logits))
 	logitsInputActions = G.Must(G.Sum(logitsInputActions, 1))
-	inputsLogSumExp := LogSumExp(logits, 1)
+	inputsLogSumExp := op.LogSumExp(logits, 1)
 	logProbInputActions := G.Must(G.Sub(logitsInputActions, inputsLogSumExp))
 
 	// Create the rng for breaking action ties
@@ -166,20 +167,6 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 	}
 
 	return pol, nil
-}
-
-// LogSumExp calculates the log of the summation of exponentials of
-// logits along the given axis.
-func LogSumExp(logits *G.Node, along int) *G.Node {
-	max := G.Must(G.Max(logits, along))
-
-	exponent := G.Must(G.BroadcastSub(logits, max, nil, []byte{1}))
-	exponent = G.Must(G.Exp(exponent))
-
-	sum := G.Must(G.Sum(exponent, along))
-	log := G.Must(G.Log(sum))
-
-	return G.Must(G.Add(max, log))
 }
 
 // Logits returns the logits predicted by the last run of the policy's
@@ -287,7 +274,7 @@ func (c *CategoricalMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
 	)
 	logitsInputActions := G.Must(G.HadamardProd(actionIndices, logits))
 	logitsInputActions = G.Must(G.Sum(logitsInputActions, 1))
-	inputsLogSumExp := LogSumExp(logits, 1)
+	inputsLogSumExp := op.LogSumExp(logits, 1)
 	logProbInputActions := G.Must(G.Sub(logitsInputActions, inputsLogSumExp))
 
 	// Create the rng for breaking action ties

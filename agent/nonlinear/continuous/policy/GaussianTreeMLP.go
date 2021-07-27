@@ -2,8 +2,6 @@ package policy
 
 import (
 	"fmt"
-	"math"
-	"os"
 
 	"golang.org/x/exp/rand"
 	"gonum.org/v1/gonum/mat"
@@ -16,7 +14,7 @@ import (
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
-	"sfneuman.com/golearn/utils/tensorutils"
+	"sfneuman.com/golearn/utils/op"
 )
 
 // For stability, the standard deviation of the Gaussian distribution
@@ -127,7 +125,7 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 		G.WithShape(batchForLogProb, actionDims),
 		G.WithInit(G.Zeroes()),
 	)
-	logPdfNode := logPdf(mean, std, actions)
+	logPdfNode := op.GaussianLogPdf(mean, std, actions)
 
 	// Create standard normal for action selection
 	means := make([]float64, actionDims)
@@ -162,72 +160,6 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 	}
 
 	return pol, nil
-}
-
-// logPdf adds nodes to the computaitonal graph of mean/std/actions for
-// computing the log probability of actions given nodes mean and std
-// which hold the mean and standard deviation of the policy
-// respectively.
-func logPdf(mean, std, actions *G.Node) *G.Node {
-	graph := mean.Graph()
-	if graph != std.Graph() || graph != actions.Graph() {
-		panic("logPdf: all nodes must share the same graph")
-	}
-
-	negativeHalf := G.NewConstant(-0.5)
-
-	if std.Shape()[1] != 1 {
-		fmt.Fprintf(os.Stderr, "logProb: warning - not tested for "+
-			"multi-dimensional actions")
-		// Multi-dimensional actions
-		// Calculate det(σ). Since σ is a diagonal matrix stored as a vector,
-		// the determinant == prod(diagonal of σ) = prod(σ)
-		dims := float64(mean.Shape()[1])
-		multiplier := G.NewConstant(math.Pow(math.Pi*2, -dims/2), G.WithName("multiplier"))
-		det := G.Must(G.Slice(std, nil, tensorutils.NewSlice(0, 1, 1)))
-		for i := 1; i < std.Shape()[1]; i++ {
-			s := G.Must(G.Slice(std, nil, tensorutils.NewSlice(i, i+1, 1)))
-			det = G.Must(G.HadamardProd(det, s))
-		}
-		invDet := G.Must(G.Inverse(det))
-
-		// Calculate (2*π)^(-k/2) * det(σ)
-		det = G.Must(G.Pow(det, negativeHalf))
-		multiplier = G.Must(G.Mul(multiplier, det))
-
-		// Calculate (-1/2) * (A - μ)^T σ^(-1) (A - μ)
-		// Since everything is stored as a vector, this boils down to a
-		// bunch of Hadamard products, sums, and differences.
-		diff := G.Must(G.Sub(actions, mean))
-		exponent := G.Must(G.HadamardProd(diff, invDet))
-		exponent = G.Must(G.HadamardProd(exponent, diff))
-		exponent = G.Must(G.Sum(exponent, 1))
-		exponent = G.Must(G.Mul(exponent, negativeHalf))
-
-		// Calculate the probability
-		prob := G.Must(G.Exp(exponent))
-		prob = G.Must(G.HadamardProd(multiplier, prob))
-
-		logProb := G.Must(G.Log(prob))
-
-		return logProb
-	} else {
-		two := G.NewConstant(2.0)
-		exponent := G.Must(G.Sub(actions, mean))
-		exponent = G.Must(G.HadamardDiv(exponent, std))
-		exponent = G.Must(G.Pow(exponent, two))
-		exponent = G.Must(G.HadamardProd(negativeHalf, exponent))
-
-		term2 := G.Must(G.Log(std))
-		// term2 := G.Must(G.HadamardProd(two, logStd))
-		term3 := G.NewConstant(math.Log(math.Pow(2*math.Pi, 0.5)))
-
-		terms := G.Must(G.Add(term2, term3))
-		logProb := G.Must(G.Sub(exponent, terms))
-		logProb = G.Must(G.Ravel(logProb))
-
-		return logProb
-	}
 }
 
 // LogPdfOf sets the state and action inputs of the policy's

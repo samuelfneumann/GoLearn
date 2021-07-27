@@ -81,7 +81,7 @@ func DeepQCartpole() {
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data)
 }
 
@@ -147,7 +147,7 @@ func DeepQMountainCar() {
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data)
 }
 
@@ -211,7 +211,7 @@ func QLearningMountainCarWithConfigs() {
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data)
 }
 
@@ -265,6 +265,6 @@ func QLearningMountainCarFromScratch() {
 	fmt.Println("Elapsed:", time.Since(start))
 	e.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data[len(data)-10:])
 }

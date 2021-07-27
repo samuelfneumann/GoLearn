@@ -61,6 +61,6 @@ func LinearGaussianActorCritic() {
 	e.Run()
 	e.Save()
 
-	data := tracker.LoadData("./data.bin")
+	data := tracker.LoadFData("./data.bin")
 	fmt.Println(data[len(data)-10:])
 }
