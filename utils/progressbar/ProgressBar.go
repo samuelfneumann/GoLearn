@@ -5,6 +5,7 @@ package progressbar
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,12 +23,14 @@ type ProgressBar struct {
 
 	// currentProgress measures the current progess, equivalently it
 	// measures the number of times Increment() was called
-	currentProgress float64
+	currentProgress            float64
+	currentProgressIncrementer chan struct{}
 
 	// incrementEvent is an event channel. When an even appears on this
 	// channel, currentProgress is incremented.
 	incrementEvent chan float64
 
+	wait       sync.WaitGroup
 	closeEvent chan struct{}
 	closed     bool
 
@@ -39,26 +42,38 @@ type ProgressBar struct {
 // wide and reaches 100% capacity after max Increment() calls.
 func NewProgressBar(width, max int, updateEvery time.Duration,
 	updateAtIncrement bool) *ProgressBar {
-	return &ProgressBar{
-		width:             float64(width),
-		maxProgress:       float64(max),
-		currentProgress:   0,
-		incrementEvent:    make(chan float64),
-		closeEvent:        make(chan struct{}),
-		closed:            false,
-		updateEvery:       updateEvery,
-		updateAtIncrement: updateAtIncrement,
+	pbar := &ProgressBar{
+		width:                      float64(width),
+		maxProgress:                float64(max),
+		currentProgress:            0,
+		currentProgressIncrementer: make(chan struct{}),
+		incrementEvent:             make(chan float64),
+		closeEvent:                 make(chan struct{}),
+		closed:                     false,
+		updateEvery:                updateEvery,
+		updateAtIncrement:          updateAtIncrement,
 	}
+
+	// Listen for increment events
+	go func() {
+		for range pbar.currentProgressIncrementer {
+			pbar.currentProgress++
+		}
+	}()
+
+	return pbar
 }
 
 // Increment increments the interal progress counter. Each time an
 // iteration is performed, Increment should be called.
 func (p *ProgressBar) Increment() {
+	p.wait.Add(1)
 	go func() {
 		if p.currentProgress < p.maxProgress && !p.closed {
 			p.incrementEvent <- p.currentProgress
-			p.currentProgress++
+			p.currentProgressIncrementer <- struct{}{}
 		}
+		p.wait.Done()
 	}()
 }
 
@@ -66,6 +81,12 @@ func (p *ProgressBar) Increment() {
 // the screen. This function also cleans up any resources the progress
 // bar is using.
 func (pbar *ProgressBar) Close() {
+	pbar.wait.Wait()
+
+	// Set bar to 100% (sometimes it will stop at 99.99% due to rounding
+	// errors)
+	pbar.incrementEvent <- pbar.maxProgress
+
 	if pbar.closed {
 		panic("close: close on closed progress bar")
 	}
