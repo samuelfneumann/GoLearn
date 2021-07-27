@@ -13,13 +13,6 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
-// Config represents a configuration for the ESarsa agent
-type Config struct {
-	BehaviourE   float64 // epislon for behaviour policy
-	TargetE      float64 // epsilon for target policy
-	LearningRate float64
-}
-
 // ESarsa implements the online Expected Sarsa algorithm. Actions selected by
 // this algorithm will always be enumerated as (0, 1, 2, ... N) where
 // N is the maximum possible action.
@@ -34,18 +27,30 @@ type ESarsa struct {
 // New creates a new ESarsa struct. The agent spec agent should be a
 // spec.ESarsa or spec.QLearning. If the agent spec is neither
 // spec.ESarsa or spec.QLearing, New will panic.
-func New(env environment.Environment, config Config,
-	init weights.Initializer, seed uint64) (*ESarsa, error) {
+func New(env environment.Environment, c agent.Config,
+	init weights.Initializer, seed uint64) (agent.Agent, error) {
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
-		return &ESarsa{}, fmt.Errorf("esarsa: cannot use non-discrete actions")
+		return nil, fmt.Errorf("esarsa: cannot use non-discrete actions")
 	}
 	if env.ActionSpec().LowerBound.Len() > 1 {
-		return &ESarsa{}, fmt.Errorf("esarsa: actions must be 1-dimensional")
+		return nil, fmt.Errorf("esarsa: actions must be 1-dimensional")
 	}
 	if env.ActionSpec().LowerBound.AtVec(0) != 0.0 {
-		return &ESarsa{}, fmt.Errorf("esarsa: actions must be enumerated " +
+		return nil, fmt.Errorf("esarsa: actions must be enumerated " +
 			"starting from 0")
+	}
+	if !c.ValidAgent(&ESarsa{}) {
+		return nil, fmt.Errorf("esarsa: invalid agent for configuration "+
+			"type %T", c)
+	}
+	config, ok := c.(Config)
+	if !ok {
+		return nil, fmt.Errorf("esarsa: invalid config for agent ESarsa")
+	}
+	err := config.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("esarsa: %v", err)
 	}
 
 	// Get the behaviour policy

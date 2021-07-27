@@ -14,6 +14,12 @@ import (
 type Type string
 
 const (
+	// Linear methods
+	EGreedyQLearningLinear    Type = "EGreedyQLarning-Linear"
+	EGreedyESarsaLinear       Type = "EGreedyESarsa-Linear"
+	GaussianActorCriticLinear Type = "GaussianActorCritic-Linear"
+
+	// Deep methods
 	CategoricalVanillaPGMLP  Type = "CategoricalVanillaPG-MLP"
 	GaussianVanillaPGTreeMLP Type = "GaussianVanillaPG-TreeMLP"
 

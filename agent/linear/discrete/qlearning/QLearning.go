@@ -18,12 +18,6 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
-// Config represents a configuration for the QLearning agent
-type Config struct {
-	Epsilon      float64 // epislon for behaviour policy
-	LearningRate float64
-}
-
 // QLearning implements the online Q-Learning algorithm. Actions selected by
 // this algorithm will always be enumerated as (0, 1, 2, ... N) where
 // N is the maximum possible action.
@@ -38,24 +32,37 @@ type QLearning struct {
 // New creates a new QLearning struct. The agent spec agent should be
 // a spec.QLearning. If the agent spec is not a spec.QLearning, New
 // will panic.
-func New(env environment.Environment, config Config,
-	init weights.Initializer, seed uint64) (*QLearning, error) {
+func New(env environment.Environment, config agent.Config,
+	init weights.Initializer, seed uint64) (agent.Agent, error) {
 	// Ensure environment has discrete actions
 	if env.ActionSpec().Cardinality != spec.Discrete {
-		return &QLearning{}, fmt.Errorf("qlearning: cannot use non-discrete " +
+		return nil, fmt.Errorf("qlearning: cannot use non-discrete " +
 			"actions")
 	}
 	if env.ActionSpec().LowerBound.Len() > 1 {
-		return &QLearning{}, fmt.Errorf("qlearning: actions must be " +
+		return nil, fmt.Errorf("qlearning: actions must be " +
 			"1-dimensional")
 	}
 	if env.ActionSpec().LowerBound.AtVec(0) != 0.0 {
-		return &QLearning{}, fmt.Errorf("qlearning: actions must be " +
+		return nil, fmt.Errorf("qlearning: actions must be " +
 			"enumerated starting from 0")
+	}
+	if !config.ValidAgent(&QLearning{}) {
+		return nil, fmt.Errorf("qlearning: invalid agent for configuration "+
+			"type %T", config)
+	}
+
+	c := config.(Config)
+	if !c.ValidAgent(&QLearning{}) {
+		return nil, fmt.Errorf("qlearning: invalid config for agent QLearning")
+	}
+	err := c.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("qlearning: %v", err)
 	}
 
 	// Get the behaviour policy
-	e := config.Epsilon
+	e := c.Epsilon
 	behaviour, err := policy.NewEGreedy(e, seed, env)
 	if err != nil {
 		return &QLearning{}, fmt.Errorf("qlearning: invalid behaviour "+
@@ -70,7 +77,7 @@ func New(env environment.Environment, config Config,
 	}
 
 	// Get the learning rate
-	learningRate := config.LearningRate
+	learningRate := c.LearningRate
 
 	// Ensure both policies and learner reference the same weights
 	weights := behaviour.Weights()
