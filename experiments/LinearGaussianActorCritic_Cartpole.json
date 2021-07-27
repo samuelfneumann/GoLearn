@@ -1,0 +1,38 @@
+{
+	"Type": "OnlineExperiment",
+	"MaxSteps": 100000,
+	"EnvConf": {
+		"Environment": "Cartpole",
+		"Task": "Balance",
+		"ContinuousActions": true,
+		"EpisodeCutoff": 500,
+		"Discount": 0.99,
+		"Gym": false,
+		"TileCoding": {
+			"UseTileCoding": false,
+			"Bins": null
+		}
+	},
+	"AgentConf": {
+		"Type": "GaussianActorCritic-Linear",
+		"ConfigList": {
+			"ActorLearningRate": [
+				0.1,
+				0.01
+			],
+			"CriticLearningRate": [
+				0.1,
+				0.01
+			],
+			"Decay": [
+				0.1,
+				0.25,
+				0.5,
+				0.75,
+				0.9,
+				0.96,
+				0.99
+			]
+		}
+	}
+}

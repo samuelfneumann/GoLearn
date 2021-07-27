@@ -1,0 +1,35 @@
+{
+	"Type": "OnlineExperiment",
+	"MaxSteps": 100000,
+	"EnvConf": {
+		"Environment": "Cartpole",
+		"Task": "Balance",
+		"ContinuousActions": true,
+		"EpisodeCutoff": 500,
+		"Discount": 0.99,
+		"Gym": false,
+		"TileCoding": {
+			"UseTileCoding": false,
+			"Bins": null
+		}
+	},
+	"AgentConf": {
+		"Type": "EGreedyESarsa-Linear",
+		"ConfigList": {
+			"BehaviourE": [
+				0.05,
+				0.1,
+				0.25
+			],
+			"TargetE": [
+				0.05,
+				0.1,
+				0.25
+			],
+			"LearningRate": [
+				0.1,
+				0.01
+			]
+		}
+	}
+}

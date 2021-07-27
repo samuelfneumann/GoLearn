@@ -101,6 +101,8 @@ func (g *GaussianLearner) Step() {
 	if stdVec.Len() != 1 || meanVec.Len() != 1 {
 		panic("Step: actions should be 1-dimensional")
 	}
+
+	// ! This is why we don't yet support multi-dim actions
 	std := stdVec.AtVec(0)
 	mean := meanVec.AtVec(0)
 

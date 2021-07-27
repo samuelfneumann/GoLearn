@@ -20,6 +20,8 @@ import (
 // This algorithm is an actor critic algorithm which uses linear
 // function approximation and eligibility traces. The critic learns the
 // state value function to approximate the actor gradient.
+//
+// So far LinearGaussian works only with single-dimensional actions.
 type LinearGaussian struct {
 	*policy.Gaussian
 	*GaussianLearner
@@ -37,6 +39,10 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 	actionSpec := env.ActionSpec()
 	if actionSpec.Cardinality != spec.Continuous {
 		return nil, fmt.Errorf("newLinearGaussian: actions must be continuous")
+	}
+	if actionSpec.Shape.Len() != 1 {
+		return nil, fmt.Errorf("newLinearGaussian: LinearGaussian does not " +
+			"yet support multi-dimensional actions")
 	}
 	if !c.ValidAgent(&LinearGaussian{}) {
 		return nil, fmt.Errorf("newLinearGaussian: invalid agent for "+

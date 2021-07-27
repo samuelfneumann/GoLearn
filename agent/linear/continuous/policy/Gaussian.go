@@ -75,6 +75,7 @@ func (g *Gaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	mean := mat.NewVecDense(g.actionDims, nil)
 	mean.MulVec(g.meanWeights, obs)
 
+	//! This can be made more efficient -> stddev can be intitialized to diag dense instead of vec
 	// Get the predicted variance of the policy
 	stdVec := mat.NewVecDense(g.actionDims, nil)
 	stdVec.MulVec(g.stdWeights, obs)
