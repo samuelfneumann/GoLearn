@@ -48,7 +48,7 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 		return nil, fmt.Errorf("newLinearGaussian: invalid agent for "+
 			"configuration type %T", c)
 	}
-	config, ok := c.(Config)
+	config, ok := c.(LinearGaussianConfig)
 	if !ok {
 		return nil, fmt.Errorf("newLinearGaussian: invalid config for agent " +
 			"LinearGaussian")

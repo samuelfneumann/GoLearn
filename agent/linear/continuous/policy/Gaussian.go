@@ -9,11 +9,12 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/distmv"
-	"gonum.org/v1/gonum/stat/samplemv"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils"
 )
+
+const StdOffset float64 = 1e-3
 
 const (
 	// Keys for weights map: map[string]*mat.Dense
@@ -55,7 +56,7 @@ func (g *Gaussian) Std(obs mat.Vector) *mat.VecDense {
 	stdVec.MulVec(g.stdWeights, obs)
 	for i := 0; i < stdVec.Len(); i++ {
 		std := math.Exp(stdVec.AtVec(i))
-		stdVec.SetVec(i, std)
+		stdVec.SetVec(i, std+StdOffset)
 	}
 	return stdVec
 }
@@ -71,18 +72,8 @@ func (g *Gaussian) Mean(obs mat.Vector) *mat.VecDense {
 func (g *Gaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	obs := t.Observation
 
-	// Get the predicted mean the policy
-	mean := mat.NewVecDense(g.actionDims, nil)
-	mean.MulVec(g.meanWeights, obs)
-
-	//! This can be made more efficient -> stddev can be intitialized to diag dense instead of vec
-	// Get the predicted variance of the policy
-	stdVec := mat.NewVecDense(g.actionDims, nil)
-	stdVec.MulVec(g.stdWeights, obs)
-	for i := 0; i < stdVec.Len(); i++ {
-		std := math.Exp(stdVec.AtVec(i))
-		stdVec.SetVec(i, std)
-	}
+	mean := g.Mean(obs)
+	stdVec := g.Std(obs)
 
 	// Generate the Gaussian policy and sampler
 	std := mat.NewDiagDense(stdVec.Len(), stdVec.RawVector().Data)
@@ -92,11 +83,9 @@ func (g *Gaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
 			matutils.Format(std))
 		panic(msg)
 	}
-	sampler := samplemv.IID{Dist: dist}
 
 	// Sample an action
-	action := mat.NewDense(1, g.actionDims, nil)
-	sampler.Sample(action)
+	action := mat.NewDense(1, g.actionDims, dist.Rand(nil))
 
 	// Ensure only a single action was sampled
 	underlyingMatrix := action.RawMatrix()
@@ -105,7 +94,8 @@ func (g *Gaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	}
 
 	// Convert the action to a mat.Vector and return
-	return mat.NewVecDense(g.actionDims, underlyingMatrix.Data)
+	a := mat.NewVecDense(g.actionDims, underlyingMatrix.Data)
+	return a
 }
 
 // Weights gets and returns the weights of the learner

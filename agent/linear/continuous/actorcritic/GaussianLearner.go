@@ -79,6 +79,10 @@ func (g *GaussianLearner) TdError(t timestep.Transition) float64 {
 
 // Step takes one learning step
 func (g *GaussianLearner) Step() {
+	// fmt.Println("MEAN:", g.meanWeights)
+	// fmt.Println("STD:", g.stdWeights)
+	// fmt.Println("CRITIC:", g.criticWeights)
+
 	// Get variables needed to compute state values
 	discount := g.nextStep.Discount
 	state := g.step.Observation
@@ -101,8 +105,6 @@ func (g *GaussianLearner) Step() {
 	if stdVec.Len() != 1 || meanVec.Len() != 1 {
 		panic("Step: actions should be 1-dimensional")
 	}
-
-	// ! This is why we don't yet support multi-dim actions
 	std := stdVec.AtVec(0)
 	mean := meanVec.AtVec(0)
 
@@ -111,25 +113,25 @@ func (g *GaussianLearner) Step() {
 		panic("Step: actions must be 1-dimensional for GaussianLearner")
 	}
 	action := g.action.AtVec(0)
-	meanGradScale := (1 / (std * std)) * (action - mean)
-	meanGradScale *= tdError
-	stdGradScale := math.Pow(((action-mean)/std), 2) - 1.0
-	stdGradScale *= tdError
 
 	// Compute actor gradients
-	meanGrad := mat.NewVecDense(state.Len(), state.RawVector().Data)
-	meanGrad.ScaleVec(meanGradScale, meanGrad)
-	stdGrad := mat.NewVecDense(state.Len(), state.RawVector().Data)
-	stdGrad.ScaleVec(stdGradScale, stdGrad)
+	meanGradScale := (action - mean) / math.Pow(std, 2)
+	meanGrad := mat.NewVecDense(state.Len(), nil)
+	meanGrad.ScaleVec(meanGradScale, state)
+
+	stdGradScale := math.Pow(((action-mean)/std), 2) - 1.0
+	stdGrad := mat.NewVecDense(state.Len(), nil)
+	stdGrad.ScaleVec(stdGradScale, state)
 
 	// Update actor traces
-	g.meanTrace.AddScaledVec(g.meanTrace, discount*g.decay, meanGrad)
-	g.stdTrace.AddScaledVec(g.stdTrace, discount*g.decay, stdGrad)
+	g.meanTrace.AddScaledVec(meanGrad, discount*g.decay, g.meanTrace)
+	g.stdTrace.AddScaledVec(stdGrad, discount*g.decay, g.stdTrace)
 
-	// Update actor
-	g.meanWeights.AddScaledVec(g.meanWeights, g.actorLearningRate, g.meanTrace)
+	// Update actor weights
+	g.meanWeights.AddScaledVec(g.meanWeights, g.actorLearningRate*tdError,
+		g.meanTrace)
 	g.stdWeights.AddScaledVec(g.stdWeights,
-		g.actorLearningRate/math.Pow(std, 2), g.stdTrace)
+		tdError*(g.actorLearningRate/math.Pow(std, 2)), g.stdTrace)
 }
 
 // ObserveFirst observes and records the first episodic timestep

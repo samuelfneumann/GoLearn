@@ -7,8 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	// Blank import needed for registering agents with agent package
+	// Blank imports needed for registering agents with agent package
 	// to enable TypedConfigList's
+
+	_ "sfneuman.com/golearn/agent/linear/continuous/actorcritic"
+	_ "sfneuman.com/golearn/agent/linear/discrete/esarsa"
+	_ "sfneuman.com/golearn/agent/linear/discrete/qlearning"
 	_ "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
 	_ "sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
 
@@ -54,6 +58,7 @@ func main() {
 		expConf.AgentConf.At(int(hpIndex)))
 	fmt.Println()
 
+	// Filenames of data to save
 	returnFilename := fmt.Sprintf(
 		"return_%v_%v_run%v.bin",
 		expConf.AgentConf.Type,
@@ -66,10 +71,14 @@ func main() {
 		expConf.EnvConf.Environment,
 		run,
 	)
+
+	// Create trackers to track and save data from experiment
 	trackers := []tracker.Tracker{
 		tracker.NewReturn(returnFilename),
 		tracker.NewEpisodeLength(epLengthFilename),
 	}
+
+	// Don't checkpoint agents
 	var checkpointers []checkpointer.Checkpointer = nil
 
 	exp := expConf.CreateExp(int(hpIndex), run, trackers, checkpointers)
@@ -79,7 +88,7 @@ func main() {
 	exp.Save()
 
 	// LoadData -> should be int or float specified...
-	data := tracker.LoadData(returnFilename)
+	data := tracker.LoadFData(returnFilename)
 	fmt.Println(data)
 }
 
@@ -87,42 +96,47 @@ func main() {
 // 	var useed uint64 = 1923812121431427
 
 // 	envConf := envconfig.NewConfig(envconfig.Cartpole, envconfig.Balance,
-// 		true, 500, 0.99, false)
+// 		false, 500, 0.99, false)
 // 	env, _ := envConf.CreateEnv(useed)
 
-// 	policySolver, _ := solver.NewDefaultAdam(5e-4, 1)
-// 	valueSolver, _ := solver.NewDefaultAdam(5e-3, 1)
-// 	Wfn, _ := initwfn.NewGlorotN(math.Sqrt(2))
-// 	nonlinearity := network.ReLU()
-// 	args := vanillapg.NewGaussianTreeMLPConfigList(
-// 		[][]int{{64, 64}},
-// 		[][]bool{{true, true}},
-// 		[][]*network.Activation{{nonlinearity, nonlinearity}},
+// 	// policySolver, _ := solver.NewDefaultAdam(5e-4, 1)
+// 	// valueSolver, _ := solver.NewDefaultAdam(5e-3, 1)
+// 	// Wfn, _ := initwfn.NewGlorotN(math.Sqrt(2))
+// 	// nonlinearity := network.ReLU()
+// 	// args := vanillapg.NewGaussianTreeMLPConfigList(
+// 	// 	[][]int{{64, 64}},
+// 	// 	[][]bool{{true, true}},
+// 	// 	[][]*network.Activation{{nonlinearity, nonlinearity}},
 
-// 		[][][]int{{{64, 64}, {64, 64}}},
-// 		[][][]bool{{{true, true}, {true, true}}},
-// 		[][][]*network.Activation{{{nonlinearity, nonlinearity}, {nonlinearity, nonlinearity}}},
+// 	// 	[][][]int{{{64, 64}, {64, 64}}},
+// 	// 	[][][]bool{{{true, true}, {true, true}}},
+// 	// 	[][][]*network.Activation{{{nonlinearity, nonlinearity}, {nonlinearity, nonlinearity}}},
 
-// 		[][]int{{100, 50, 25}},
-// 		[][]bool{{true, true, true}},
-// 		[][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
+// 	// 	[][]int{{100, 50, 25}},
+// 	// 	[][]bool{{true, true, true}},
+// 	// 	[][]*network.Activation{{nonlinearity, nonlinearity, nonlinearity}},
 
-// 		[]*initwfn.InitWFn{Wfn},
-// 		[]*solver.Solver{policySolver},
-// 		[]*solver.Solver{valueSolver},
+// 	// 	[]*initwfn.InitWFn{Wfn},
+// 	// 	[]*solver.Solver{policySolver},
+// 	// 	[]*solver.Solver{valueSolver},
 
-// 		[]int{25},
-// 		[]int{500},
-// 		[]bool{true},
-// 		[]float64{1.0},
-// 		[]float64{0.99},
+// 	// 	[]int{25},
+// 	// 	[]int{500},
+// 	// 	[]bool{true},
+// 	// 	[]float64{1.0},
+// 	// 	[]float64{0.99},
+// 	// )
+
+// 	args := qlearning.NewConfigList(
+// 		[]float64{0.05, 0.1, 0.25},
+// 		[]float64{0.1, 0.01},
 // 	)
 
 // 	exp := experiment.Config{
-// 		experiment.OnlineExp,
-// 		500_000,
-// 		envConf,
-// 		args,
+// 		Type:      experiment.OnlineExp,
+// 		MaxSteps:  100_000,
+// 		EnvConf:   envConf,
+// 		AgentConf: args,
 // 	}
 
 // 	f, _ := os.Create("Gaussian.json")
