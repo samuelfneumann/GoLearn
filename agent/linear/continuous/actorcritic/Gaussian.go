@@ -18,6 +18,16 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
+// LinearGaussian implements the Linear-Gaussian Actor-Critic algorithm:
+//
+// https://hal.inria.fr/hal-00764281/PDF/DegrisACC2012.pdf
+//
+// This algorithm uses linear function approximation to learn both
+// a linear state value function critic and a Gaussian policy actor.
+// The policy itself may select n-dimensional actions. The algorithm
+// uses  eligibility traces for both actor and critc grdients.
+//
+// See the paper above for more details.
 type LinearGaussian struct {
 	*policy.Gaussian
 
@@ -29,10 +39,12 @@ type LinearGaussian struct {
 	stdNormal *distmv.Normal
 	eval      bool
 
+	// Weights for linear function approximation
 	meanWeights   *mat.Dense
 	stdWeights    *mat.Dense
 	criticWeights *mat.VecDense
 
+	// Eligibility traces
 	meanTrace   *mat.Dense
 	stdTrace    *mat.Dense
 	criticTrace *mat.VecDense
@@ -45,6 +57,7 @@ type LinearGaussian struct {
 	actionDims   int
 }
 
+// NewLinearGaussian returns a new LinearGaussian
 func NewLinearGaussian(env environment.Environment, c agent.Config,
 	init weights.Initializer, seed uint64) (agent.Agent, error) {
 	// Error checking
@@ -110,7 +123,6 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 	}
 
 	rows, cols := meanWeights.Dims()
-
 	agent := LinearGaussian{
 		Gaussian:  pol,
 		seed:      seed,
@@ -136,6 +148,7 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 	return &agent, nil
 }
 
+// TdError computes the TD error of the algorithm at a given transition
 func (l *LinearGaussian) TdError(t ts.Transition) float64 {
 	state := t.State
 	nextState := t.NextState
@@ -148,8 +161,8 @@ func (l *LinearGaussian) TdError(t ts.Transition) float64 {
 	return r + ℽ*nextStateValue - stateValue
 }
 
+// Step updates the algorithm's weights
 func (l *LinearGaussian) Step() {
-
 	state := l.step.Observation
 	nextState := l.nextStep.Observation
 
@@ -159,6 +172,8 @@ func (l *LinearGaussian) Step() {
 	stateValue := mat.Dot(l.criticWeights, state)
 	nextStateValue := mat.Dot(l.criticWeights, nextState)
 	δ := r + ℽ*nextStateValue - stateValue
+
+	// Update the critic trace
 	l.criticTrace.AddScaledVec(state, ℽ*l.decay, l.criticTrace)
 
 	// Update critic weights
@@ -214,12 +229,15 @@ func (l *LinearGaussian) Step() {
 	l.stdWeights.Add(l.stdWeights, addStd)
 }
 
+// Observe records the previously selected action and the timestep
+// that it led to
 func (l *LinearGaussian) Observe(a mat.Vector, nextStep ts.TimeStep) {
 	l.step = l.nextStep
 	l.action = a.(*mat.VecDense)
 	l.nextStep = nextStep
 }
 
+// ObserveFirst observes the first timestep in an episode
 func (l *LinearGaussian) ObserveFirst(t ts.TimeStep) {
 	if !t.First() {
 		fmt.Fprintf(os.Stderr, "warning: ObserveFirst() called on %v "+
@@ -229,14 +247,7 @@ func (l *LinearGaussian) ObserveFirst(t ts.TimeStep) {
 	l.nextStep = t
 }
 
-func (l *LinearGaussian) Train() {
-	l.eval = false
-}
-
-func (l *LinearGaussian) Eval() {
-	l.eval = true
-}
-
+// EndEpisode adjusts variables after an episode has completed
 func (l *LinearGaussian) EndEpisode() {
 	l.criticTrace.Zero()
 	l.stdTrace.Zero()

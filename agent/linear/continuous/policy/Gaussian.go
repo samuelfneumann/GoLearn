@@ -14,6 +14,7 @@ import (
 	"sfneuman.com/golearn/utils/floatutils"
 )
 
+// StdOffset is added to the standard deviation for numerical stability
 const StdOffset float64 = 1e-3
 
 const (
@@ -79,7 +80,17 @@ func (g *Gaussian) Mean(obs mat.Vector) *mat.VecDense {
 	return mean
 }
 
-// SelectAction selects an action from the policy for a given timestep
+// Eval sets the policy to evaluation mode
+func (g *Gaussian) Eval() {
+	g.eval = true
+}
+
+// Train sets the policy to training mode
+func (g *Gaussian) Train() {
+	g.eval = false
+}
+
+// SelectAction selects an action from the policy at a given timestep
 func (g *Gaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	obs := t.Observation
 

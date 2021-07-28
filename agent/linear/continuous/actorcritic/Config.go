@@ -68,7 +68,7 @@ func (c LinearGaussianConfigList) Len() int {
 type LinearGaussianConfig struct {
 	ActorLearningRate  float64
 	CriticLearningRate float64
-	Decay              float64
+	Decay              float64 // Decay rate for eligibility traces
 
 	// Whether to scale the actor learning rate by the predicted
 	// variance as in
