@@ -85,7 +85,8 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 
 	// Create the Gaussian policy
 	pol := policy.NewGaussian(seed, env)
-	weights := pol.Weights()
+	gaussianPolicy := pol.(*policy.Gaussian)
+	weights := gaussianPolicy.Weights()
 	if r, _ := weights[policy.MeanWeightsKey].Dims(); r != 1 {
 		return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
 			"actions not yet supported")
@@ -100,8 +101,8 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 	actionDims := env.ActionSpec().Shape.Len()
 
 	// Initialize the weights for the agent
-	meanWeights := pol.Weights()[policy.MeanWeightsKey]
-	stdWeights := pol.Weights()[policy.StdWeightsKey]
+	meanWeights := gaussianPolicy.Weights()[policy.MeanWeightsKey]
+	stdWeights := gaussianPolicy.Weights()[policy.StdWeightsKey]
 	criticWeightsMat := mat.NewDense(1, features, nil)
 	init.Initialize(meanWeights)
 	init.Initialize(stdWeights)
@@ -124,7 +125,7 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 
 	rows, cols := meanWeights.Dims()
 	agent := LinearGaussian{
-		Gaussian:  pol,
+		Gaussian:  gaussianPolicy,
 		seed:      seed,
 		stdNormal: stdNormal,
 		eval:      false,
@@ -163,6 +164,11 @@ func (l *LinearGaussian) TdError(t ts.Transition) float64 {
 
 // Step updates the algorithm's weights
 func (l *LinearGaussian) Step() {
+	// If in evaluation mode, do not step
+	if l.IsEval() {
+		return
+	}
+
 	state := l.step.Observation
 	nextState := l.nextStep.Observation
 

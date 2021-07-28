@@ -53,6 +53,8 @@ type GaussianTreeMLP struct {
 
 	meanVal   G.Value
 	stddevVal G.Value
+
+	eval bool
 }
 
 // NewGaussianTreeMLP returns a new GaussianTreeMLP policy. The
@@ -146,6 +148,7 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 		normal:          normal,
 		actionDims:      actionDims,
 		batchForLogProb: batchForLogProb,
+		eval:            false,
 	}
 
 	// Record values of Gorgonia nodes
@@ -193,25 +196,31 @@ func (g *GaussianTreeMLP) LogPdfOf(s, a []float64) (*G.Node, error) {
 
 // SelectAction selects and returns an action at the argument timestep
 // t.
-func (c *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
-	if size := c.Network().BatchSize(); size != 1 {
+func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
+	if size := g.Network().BatchSize(); size != 1 {
 		panic(fmt.Sprintf("selectAction: action selection can only be done "+
 			"with a policy with batch size 1 \n\twant(1) \n\thave(%v)", size))
 	}
 
 	obs := t.Observation.RawVector().Data
-	if err := c.Network().SetInput(obs); err != nil {
+	if err := g.Network().SetInput(obs); err != nil {
 		panic(fmt.Sprintf("selectAction: cannot set input: %v", err))
 	}
 
-	if err := c.vm.RunAll(); err != nil {
+	if err := g.vm.RunAll(); err != nil {
 		panic(fmt.Sprintf("selectAction: could not run policy VM: %v", err))
 	}
-	defer c.vm.Reset()
+	defer g.vm.Reset()
 
-	mean := mat.NewVecDense(c.actionDims, c.meanVal.Data().([]float64))
-	stddev := mat.NewVecDense(c.actionDims, c.stddevVal.Data().([]float64))
-	eps := mat.NewVecDense(c.actionDims, c.normal.Rand(nil))
+	mean := mat.NewVecDense(g.actionDims, g.meanVal.Data().([]float64))
+
+	// If in evaluation mode, return the mean action only
+	if g.IsEval() {
+		return mean
+	}
+
+	stddev := mat.NewVecDense(g.actionDims, g.stddevVal.Data().([]float64))
+	eps := mat.NewVecDense(g.actionDims, g.normal.Rand(nil))
 
 	stddev.MulElemVec(stddev, eps)
 	mean.AddVec(mean, stddev)
@@ -232,15 +241,30 @@ func (c *GaussianTreeMLP) LogPdfVal() G.Value {
 
 // Clone clones a GaussianTreeMLP
 func (c *GaussianTreeMLP) Clone() (agent.NNPolicy, error) {
-	panic("not implemented")
+	panic("clone: not implemented")
 }
 
 // CloneWithBatch clones a GaussianTreeMLP with a new batch size
 func (c *GaussianTreeMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
-	panic("not implemented")
+	panic("cloneWithBatch: not implemented")
 }
 
 // Network returns the network of the GaussianTreeMLP
 func (g *GaussianTreeMLP) Network() network.NeuralNet {
 	return g.net
+}
+
+// Train sets the policy to training mode
+func (g *GaussianTreeMLP) Train() {
+	g.eval = false
+}
+
+// Eval sets the policy to evaluation mode
+func (g *GaussianTreeMLP) Eval() {
+	g.eval = true
+}
+
+// IsEval returns whether or not the policy is in evaluation mode
+func (g *GaussianTreeMLP) IsEval() bool {
+	return g.eval
 }

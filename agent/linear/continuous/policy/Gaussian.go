@@ -9,6 +9,7 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/distmv"
+	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
@@ -38,7 +39,7 @@ type Gaussian struct {
 }
 
 // NewGaussian creates a new Gaussian policy
-func NewGaussian(seed uint64, env environment.Environment) *Gaussian {
+func NewGaussian(seed uint64, env environment.Environment) agent.Policy {
 	// Calculate the dimension of actions
 	actionDims := env.ActionSpec().Shape.Len()
 
@@ -90,12 +91,19 @@ func (g *Gaussian) Train() {
 	g.eval = false
 }
 
+// IsEval returns whether or not the policy is in evaluation mode
+func (g *Gaussian) IsEval() bool {
+	return g.eval
+}
+
 // SelectAction selects an action from the policy at a given timestep
 func (g *Gaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	obs := t.Observation
 
 	mean := g.Mean(obs)
-	if g.eval {
+
+	// If in evaluation mode, return the mean action only
+	if g.IsEval() {
 		return mean
 	}
 

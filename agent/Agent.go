@@ -16,8 +16,6 @@ import (
 type Agent interface {
 	Learner
 	Policy
-	Eval()  // Set agent to evaluation mode
-	Train() // Set agent to training mode
 }
 
 // Learner implements a learning algorithm that defines how weights are
@@ -38,6 +36,9 @@ type Learner interface {
 // makes to the weights are reflected in the actions the Policy chooses
 type Policy interface {
 	SelectAction(t timestep.TimeStep) *mat.VecDense
+	Eval()        // Set agent to evaluation mode
+	Train()       // Set agent to training mode
+	IsEval() bool // Indicates if in evaluation mode
 }
 
 // NNPolicy represents a policy that uses neural network function

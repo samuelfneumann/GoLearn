@@ -8,10 +8,11 @@ import (
 	"golang.org/x/exp/rand"
 
 	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/stat/distuv"
+	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
+	"sfneuman.com/golearn/utils/floatutils"
 	"sfneuman.com/golearn/utils/matutils"
 )
 
@@ -25,7 +26,8 @@ const (
 type EGreedy struct {
 	weights *mat.Dense
 	epsilon float64
-	seed    rand.Source // Seed for random number generation
+	rng     *rand.Rand // Seed for random number generation
+	eval    bool
 }
 
 // NewEGreedy constructs a new EGreedy policy, where e=epislon is the
@@ -33,8 +35,9 @@ type EGreedy struct {
 // number of features in a given feature vector for the environment;
 // actions are the number of actions in the environment
 func NewEGreedy(e float64, seed uint64,
-	env environment.Environment) (*EGreedy, error) {
+	env environment.Environment) (agent.Policy, error) {
 	source := rand.NewSource(seed)
+	rng := rand.New(source)
 
 	// Ensure actions are 1-dimensional
 	if env.ActionSpec().Shape.Len() != 1 {
@@ -57,7 +60,7 @@ func NewEGreedy(e float64, seed uint64,
 	// Create the weight matrix: rows = actions, cols = features
 	weights := mat.NewDense(actions, features, nil)
 
-	return &EGreedy{weights, e, source}, nil
+	return &EGreedy{weights, e, rng, false}, nil
 
 }
 
@@ -84,7 +87,7 @@ func (p *EGreedy) SetWeights(weights map[string]*mat.Dense) error {
 }
 
 // actionValues calculates the values of each action in a state
-func (e *EGreedy) actionValues(obs mat.Vector) mat.Vector {
+func (e *EGreedy) actionValues(obs mat.Vector) *mat.VecDense {
 	// Calculate all action values
 	numActions, _ := e.weights.Dims()
 	actionValues := mat.NewVecDense(numActions, nil)
@@ -93,34 +96,40 @@ func (e *EGreedy) actionValues(obs mat.Vector) mat.Vector {
 	return actionValues
 }
 
+// Eval sets the policy to evaluation mode
+func (p *EGreedy) Eval() { p.eval = true }
+
+// IsEval returns whether the policy is in evaulation mode or not
+func (p *EGreedy) IsEval() bool { return p.eval }
+
+// Train sets the policy to training mode
+func (p *EGreedy) Train() { p.eval = false }
+
 // SelectAction selects an action from an ε-greedy policy
 func (p *EGreedy) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	obs := t.Observation
 
 	// Calculate all action values
-	actionValues := p.actionValues(obs)
-	numActions := actionValues.Len()
+	actionValues := p.actionValues(obs).RawVector().Data
+	numActions := len(actionValues)
 
-	// Find the greedy action
-	greedyAction := matutils.MaxVec(actionValues)
+	var maxIndices []int
+	if p.IsEval() {
+		maxIndices = floatutils.ArgMax(actionValues...)
+	} else {
+		// With probability epsilon return a random action
+		if probability := rand.Float64(); probability < p.epsilon {
+			action := rand.Int() % numActions
+			return mat.NewVecDense(1, []float64{float64(action)})
+		}
 
-	// Calculate the ε probability of choosing any action at random
-	prob := (p.epsilon) / float64(numActions)
-	actionProbabilites := make([]float64, numActions)
-	for i := 0; i < numActions; i++ {
-		actionProbabilites[i] = prob
+		// Get the actions of maximum value
+		_, maxIndices = floatutils.MaxSlice(actionValues)
 	}
 
-	// Adjust the probability of choosing the greedy action
-	actionProbabilites[greedyAction] += (1.0 - p.epsilon)
-
-	// Construct a categorical distribution over actions using action
-	// probabilities
-	dist := distuv.NewCategorical(actionProbabilites, p.seed)
-
-	// Sample an action given the action probabilites and return
-	action := mat.NewVecDense(1, []float64{dist.Rand()})
-	return action
+	// If multiple actions have max value, return a random max-valued action
+	action := maxIndices[p.rng.Int()%len(maxIndices)]
+	return mat.NewVecDense(1, []float64{float64(action)})
 }
 
 // ActionProbabilites returns the probability of taking each action in

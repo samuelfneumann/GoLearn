@@ -1,6 +1,6 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 250000,
+	"MaxSteps": 500000,
 	"EnvConf": {
 		"Environment": "MountainCar",
 		"Task": "Goal",
@@ -17,13 +17,16 @@
 		"Type": "GaussianActorCritic-Linear",
 		"ConfigList": {
 			"ActorLearningRate": [
-				3e-2
+				3e-4
 			],
 			"CriticLearningRate": [
-				3e-2
+				3e-3
 			],
 			"Decay": [
-				0.5
+				0.25
+			],
+			"ScaleActorLR": [
+				false
 			]
 		}
 	}

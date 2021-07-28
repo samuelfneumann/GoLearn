@@ -55,18 +55,20 @@ func New(env environment.Environment, c agent.Config,
 
 	// Get the behaviour policy
 	behaviourE := config.BehaviourE
-	behaviour, err := policy.NewEGreedy(behaviourE, seed, env)
+	behaviourPol, err := policy.NewEGreedy(behaviourE, seed, env)
 	if err != nil {
 		return &ESarsa{}, fmt.Errorf("esarsa: invalid behaviour policy: %v",
 			err)
 	}
+	behaviour := behaviourPol.(*policy.EGreedy)
 
 	// Get the target policy
 	targetE := config.TargetE
-	target, err := policy.NewEGreedy(targetE, seed, env)
+	targetPol, err := policy.NewEGreedy(targetE, seed, env)
 	if err != nil {
 		return &ESarsa{}, fmt.Errorf("esarsa: invalid target policy: %v", err)
 	}
+	target := targetPol.(*policy.EGreedy)
 
 	// Get the learning rate
 	learningRate := config.LearningRate
@@ -99,12 +101,11 @@ func (e *ESarsa) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	return e.Target.SelectAction(t)
 }
 
-// Eval sets the agent into evaluation mode
-func (e *ESarsa) Eval() {
-	e.eval = true
-}
-
-// Train sets the agent into training mode
-func (e *ESarsa) Train() {
-	e.eval = false
+// Step wraps the stepping operations of the ESarsaLearner so that
+// stepping is not permitted when in evaluation mode.
+func (e *ESarsa) Step() {
+	if e.IsEval() {
+		return
+	}
+	e.Learner.Step()
 }

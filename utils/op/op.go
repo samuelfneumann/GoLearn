@@ -1,4 +1,4 @@
-// PackaG. op provides extended GorG.nia G.aph operations.
+// Package op provides extended Gorgonia graph operations.
 //
 // Adapted from aunum/G.ld on GitHub
 package op

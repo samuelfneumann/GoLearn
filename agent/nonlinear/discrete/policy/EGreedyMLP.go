@@ -39,6 +39,8 @@ type MultiHeadEGreedyMLP struct {
 	seed int64
 
 	vm G.VM // VM for action selection
+
+	eval bool
 }
 
 // NewMultiHeadEGreedyMLP creates and returns a new MultiHeadEGreedyMLP
@@ -111,9 +113,25 @@ func NewMultiHeadEGreedyMLP(epsilon float64, batch int, env env.Environment,
 		seed:      seed,
 		NeuralNet: net,
 		vm:        vm,
+		eval:      false,
 	}
 
 	return &nn, nil
+}
+
+// Train sets the policy to training mode
+func (e *MultiHeadEGreedyMLP) Train() {
+	e.eval = false
+}
+
+// Eval sets the policy to evaluation mode
+func (e *MultiHeadEGreedyMLP) Eval() {
+	e.eval = true
+}
+
+// IsEval returns whether or not the policy is in evaluation mode
+func (e *MultiHeadEGreedyMLP) IsEval() bool {
+	return e.eval
 }
 
 // Network returns the neural network function approximator that the
@@ -155,6 +173,7 @@ func (e *MultiHeadEGreedyMLP) CloneWithBatch(
 		seed:      e.seed,
 		NeuralNet: net,
 		vm:        vm,
+		eval:      e.eval,
 	}
 
 	return &nn, nil
@@ -185,18 +204,22 @@ func (e *MultiHeadEGreedyMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	actionValues := e.Output()[0].Data().([]float64)
 	e.vm.Reset()
 
-	// With probability epsilon return a random action
-	if probability := rand.Float64(); probability < e.epsilon {
-		action := rand.Int() % e.numActions()
-		return mat.NewVecDense(1, []float64{float64(action)})
-	}
+	var maxIndices []int
+	if e.IsEval() {
+		maxIndices = floatutils.ArgMax(actionValues...)
+	} else {
+		// With probability epsilon return a random action
+		if probability := rand.Float64(); probability < e.epsilon {
+			action := rand.Int() % e.numActions()
+			return mat.NewVecDense(1, []float64{float64(action)})
+		}
 
-	// Get the actions of maximum value
-	_, maxIndices := floatutils.MaxSlice(actionValues)
+		// Get the actions of maximum value
+		_, maxIndices = floatutils.MaxSlice(actionValues)
+	}
 
 	// If multiple actions have max value, return a random max-valued action
 	action := maxIndices[e.rng.Int()%len(maxIndices)]
-
 	return mat.NewVecDense(1, []float64{float64(action)})
 }
 

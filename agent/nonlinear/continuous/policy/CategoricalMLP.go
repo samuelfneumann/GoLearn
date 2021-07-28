@@ -14,6 +14,7 @@ import (
 	"sfneuman.com/golearn/network"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
+	"sfneuman.com/golearn/utils/floatutils"
 	"sfneuman.com/golearn/utils/op"
 )
 
@@ -66,12 +67,14 @@ type CategoricalMLP struct {
 	numActions      int         // Number of avalable actions in each state
 	source          rand.Source // Source for action selection RNG
 	seed            uint64      // Seed for source
+	rng             *rand.Rand  // RNG for breaking action ties in eval mode
 
 	// Fields needed for cloning
 	hiddenSizes []int
 	biases      []bool
 	activations []*network.Activation
 	features    int
+	eval        bool
 }
 
 // NewCategoricalMLP creates a new CategoricalMLP. The CategoricalMLP
@@ -129,6 +132,7 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 
 	// Create the rng for breaking action ties
 	source := rand.NewSource(seed)
+	rng := rand.New(source)
 
 	pol := &CategoricalMLP{
 		net:    net,
@@ -143,12 +147,14 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 		numActions:      numActions,
 
 		source: source,
+		rng:    rng,
 		seed:   seed,
 
 		hiddenSizes: hiddenSizes,
 		biases:      biases,
 		activations: activations,
 		features:    features,
+		eval:        false,
 	}
 
 	// Keep track of some node's values
@@ -227,6 +233,16 @@ func (c *CategoricalMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	logProbActions := c.probsVal.Data().([]float64)
 	c.vm.Reset()
 
+	// If in evalutaion mode, select the highest probability action
+	if c.IsEval() {
+		maxActions := floatutils.ArgMax(logProbActions...)
+
+		// If multiple actions have the highest probability, choose
+		// from them uniformly randomly
+		action := maxActions[c.rng.Int()%len(maxActions)]
+		return mat.NewVecDense(1, []float64{float64(action)})
+	}
+
 	dist := distuv.NewCategorical(logProbActions, c.source)
 	action := mat.NewVecDense(1, []float64{dist.Rand()})
 
@@ -279,6 +295,7 @@ func (c *CategoricalMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
 
 	// Create the rng for breaking action ties
 	source := rand.NewSource(c.seed)
+	rng := rand.New(source)
 
 	pol := &CategoricalMLP{
 		net:    net,
@@ -293,12 +310,14 @@ func (c *CategoricalMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
 		numActions:      c.numActions,
 
 		source: source,
+		rng:    rng,
 		seed:   c.seed,
 
 		hiddenSizes: c.hiddenSizes,
 		biases:      c.biases,
 		activations: c.activations,
 		features:    c.features,
+		eval:        c.eval,
 	}
 
 	// Keep track of some node's values
@@ -324,4 +343,19 @@ func (c *CategoricalMLP) CloneWithBatch(batch int) (agent.NNPolicy, error) {
 // Network returns the network of the CategoricalMLP
 func (c *CategoricalMLP) Network() network.NeuralNet {
 	return c.net
+}
+
+// Train sets the policy to training mode
+func (c *CategoricalMLP) Train() {
+	c.eval = false
+}
+
+// Eval sets the policy to evaluation mode
+func (c *CategoricalMLP) Eval() {
+	c.eval = true
+}
+
+// IsEval returns whether or not the policy is in evaluation mode
+func (c *CategoricalMLP) IsEval() bool {
+	return c.eval
 }

@@ -63,18 +63,20 @@ func New(env environment.Environment, config agent.Config,
 
 	// Get the behaviour policy
 	e := c.Epsilon
-	behaviour, err := policy.NewEGreedy(e, seed, env)
+	behaviourPol, err := policy.NewEGreedy(e, seed, env)
 	if err != nil {
 		return &QLearning{}, fmt.Errorf("qlearning: invalid behaviour "+
 			"policy: %v", err)
 	}
+	behaviour := behaviourPol.(*policy.EGreedy)
 
 	// Get the target policy
-	target, err := policy.NewGreedy(seed, env)
+	targetPol, err := policy.NewGreedy(seed, env)
 	if err != nil {
 		return &QLearning{}, fmt.Errorf("qlearning: invalid target "+
 			"policy: %v", err)
 	}
+	target := targetPol.(*policy.EGreedy)
 
 	// Get the learning rate
 	learningRate := c.LearningRate
@@ -107,12 +109,11 @@ func (q *QLearning) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	return q.Target.SelectAction(t)
 }
 
-// Eval sets the agent into evaluation mode
-func (q *QLearning) Eval() {
-	q.eval = true
-}
-
-// Train sets the agent into training mode
-func (q *QLearning) Train() {
-	q.eval = false
+// Step wraps the stepping operations of the QLearner so that stepping
+// is not permitted when in evaluation mode.
+func (q *QLearning) Step() {
+	if q.IsEval() {
+		return
+	}
+	q.Learner.Step()
 }

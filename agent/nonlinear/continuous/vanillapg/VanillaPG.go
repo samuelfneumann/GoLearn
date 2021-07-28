@@ -61,7 +61,6 @@ type VPG struct {
 	epochLength      int
 	currentEpochStep int
 	completedEpochs  int
-	eval             bool
 
 	// finishEpoch becomes true when the number of steps recorded
 	// is equal to the total number of steps allowed in the epoch.
@@ -185,7 +184,6 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 		epochLength:             config.epochLength(),
 		currentEpochStep:        0,
 		completedEpochs:         0,
-		eval:                    false,
 		finishingEpisode:        false,
 		finishEpisodeOnEpochEnd: config.finishEpisodeOnEpochEnd(),
 	}
@@ -195,15 +193,7 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 
 // SelectAction returns an action at the given timestep.
 func (v *VPG) SelectAction(t ts.TimeStep) *mat.VecDense {
-	if t != v.prevStep {
-		panic("selectAction: timestep is different from that previously " +
-			"recorded")
-	}
-	if !v.eval {
-		return v.behaviour.SelectAction(t)
-	} else {
-		panic("selectAction: offline action selection not implemented")
-	}
+	return v.behaviour.SelectAction(t)
 }
 
 // EndEpisode performs cleanup at the end of an episode.
@@ -216,10 +206,12 @@ func (v *VPG) EndEpisode() {
 }
 
 // Eval sets the algorithm into evaluation mode
-func (v *VPG) Eval() { v.eval = true }
+func (v *VPG) Eval() { v.behaviour.Eval() }
 
 // Train sets the algorithm into training mode
-func (v *VPG) Train() { v.eval = false }
+func (v *VPG) Train() { v.behaviour.Train() }
+
+func (v *VPG) IsEval() bool { return v.behaviour.IsEval() }
 
 // ObserveFirst observes and records information about the first
 // timestep in an episode.
@@ -291,7 +283,7 @@ func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
 // Step updates the agent. If the agent is in evaluation mode, then
 // this function simply returns.
 func (v *VPG) Step() {
-	if v.currentEpochStep < v.epochLength || v.eval {
+	if v.currentEpochStep < v.epochLength || v.IsEval() {
 		return
 	}
 
