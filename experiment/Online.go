@@ -1,6 +1,7 @@
 package experiment
 
 import (
+	"fmt"
 	"time"
 
 	ag "sfneuman.com/golearn/agent"
@@ -84,6 +85,8 @@ func (o *Online) RunEpisode() bool {
 		o.agent.Observe(action, step)
 		o.agent.Step()
 	}
+
+	o.progBar.AddMessage(fmt.Sprintf("Episode Length: %v", step.Number))
 
 	// Return whether or not the max timestep limit has been reached
 	return o.currentSteps >= o.maxSteps
