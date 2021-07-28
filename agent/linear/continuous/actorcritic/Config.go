@@ -22,6 +22,11 @@ type LinearGaussianConfigList struct {
 	ActorLearningRate  []float64
 	CriticLearningRate []float64
 	Decay              []float64
+
+	// Whether to scale the actor learning rate by the predicted
+	// variance as in
+	// https://hal.inria.fr/hal-00764281/PDF/DegrisACC2012.pdf
+	ScaleActorLR []bool
 }
 
 // NewConfigList returns a new ConfigList as an agent.TypedConfigList
@@ -64,6 +69,11 @@ type LinearGaussianConfig struct {
 	ActorLearningRate  float64
 	CriticLearningRate float64
 	Decay              float64
+
+	// Whether to scale the actor learning rate by the predicted
+	// variance as in
+	// https://hal.inria.fr/hal-00764281/PDF/DegrisACC2012.pdf
+	ScaleActorLR bool
 }
 
 // CreateAgent creates the agent from the Config. Agent weights are
