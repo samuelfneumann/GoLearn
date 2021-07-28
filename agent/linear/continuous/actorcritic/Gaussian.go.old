@@ -10,7 +10,6 @@ import (
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/distmv"
 	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/agent/linear/continuous/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
 	ts "sfneuman.com/golearn/timestep"
@@ -18,8 +17,10 @@ import (
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
+var stdOffset float64 = 1e-3
+
 type LinearGaussian struct {
-	*policy.Gaussian
+	// *policy.Gaussian
 
 	step     ts.TimeStep
 	action   *mat.VecDense
@@ -29,25 +30,23 @@ type LinearGaussian struct {
 	stdNormal *distmv.Normal
 	eval      bool
 
-	meanWeights   *mat.Dense
-	stdWeights    *mat.Dense
+	meanWeights   *mat.VecDense
+	stdWeights    *mat.VecDense
 	criticWeights *mat.VecDense
 
-	meanTrace   *mat.Dense
-	stdTrace    *mat.Dense
+	meanTrace   *mat.VecDense
+	stdTrace    *mat.VecDense
 	criticTrace *mat.VecDense
 
 	actorLR      float64
 	criticLR     float64
 	decay        float64
 	scaleActorLR bool
-	features     int
-	actionDims   int
 }
 
 func NewLinearGaussian(env environment.Environment, c agent.Config,
 	init weights.Initializer, seed uint64) (agent.Agent, error) {
-	// Error checking
+	// Ensure continuous action environment is used
 	actionSpec := env.ActionSpec()
 	if actionSpec.Cardinality != spec.Continuous {
 		return nil, fmt.Errorf("newLinearGaussian: actions must be continuous")
@@ -70,30 +69,36 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 		return nil, fmt.Errorf("newLinearGaussian: %v", err)
 	}
 
-	// Create the Gaussian policy
-	pol := policy.NewGaussian(seed, env)
-	weights := pol.Weights()
-	if r, _ := weights[policy.MeanWeightsKey].Dims(); r != 1 {
-		return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
-			"actions not yet supported")
-	}
-	if r, _ := weights[policy.StdWeightsKey].Dims(); r != 1 {
-		return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
-			"actions not yet supported")
-	}
+	// pol := policy.NewGaussian(seed, env)
+	// weights := pol.Weights()
+	// if r, _ := weights[policy.MeanWeightsKey].Dims(); r != 1 {
+	// 	return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
+	// 		"actions not yet supported")
+	// }
+	// if r, _ := weights[policy.StdWeightsKey].Dims(); r != 1 {
+	// 	return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
+	// 		"actions not yet supported")
+	// }
 
-	// Store features and actions dimensions
+	// Initialize the weights for the agent. Each should share the
+	// same backing data as the policy.
 	features := env.ObservationSpec().Shape.Len()
 	actionDims := env.ActionSpec().Shape.Len()
-
-	// Initialize the weights for the agent
-	meanWeights := pol.Weights()[policy.MeanWeightsKey]
-	stdWeights := pol.Weights()[policy.StdWeightsKey]
+	meanWeightsMat := mat.NewDense(1, features, nil)
+	stdWeightsMat := mat.NewDense(1, features, nil)
 	criticWeightsMat := mat.NewDense(1, features, nil)
-	init.Initialize(meanWeights)
-	init.Initialize(stdWeights)
+	init.Initialize(meanWeightsMat)
+	init.Initialize(stdWeightsMat)
 	init.Initialize(criticWeightsMat)
 
+	meanWeights := mat.NewVecDense(
+		features,
+		meanWeightsMat.RawMatrix().Data,
+	)
+	stdWeights := mat.NewVecDense(
+		features,
+		stdWeightsMat.RawMatrix().Data,
+	)
 	criticWeights := mat.NewVecDense(
 		features,
 		criticWeightsMat.RawMatrix().Data,
@@ -109,10 +114,8 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 			"standard normal for action selection")
 	}
 
-	rows, cols := meanWeights.Dims()
-
 	agent := LinearGaussian{
-		Gaussian:  pol,
+		// Gaussian:  pol,
 		seed:      seed,
 		stdNormal: stdNormal,
 		eval:      false,
@@ -121,31 +124,31 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 		stdWeights:    stdWeights,
 		criticWeights: criticWeights,
 
-		meanTrace:   mat.NewDense(rows, cols, nil),
-		stdTrace:    mat.NewDense(rows, cols, nil),
+		meanTrace:   mat.NewVecDense(features, nil),
+		stdTrace:    mat.NewVecDense(features, nil),
 		criticTrace: mat.NewVecDense(features, nil),
 
 		actorLR:      config.ActorLearningRate,
 		criticLR:     config.CriticLearningRate,
 		decay:        config.Decay,
 		scaleActorLR: config.ScaleActorLR,
-		features:     features,
-		actionDims:   actionDims,
 	}
 
 	return &agent, nil
 }
 
+func (l *LinearGaussian) SelectAction(t ts.TimeStep) *mat.VecDense {
+	if l.eval {
+		panic("not implemented")
+	}
+	mean := mat.Dot(l.meanWeights, t.Observation)
+	std := math.Exp(mat.Dot(l.stdWeights, t.Observation)) + stdOffset
+	eps := l.stdNormal.Rand(nil)[0]
+	return mat.NewVecDense(1, []float64{mean + std*eps})
+}
+
 func (l *LinearGaussian) TdError(t ts.Transition) float64 {
-	state := t.State
-	nextState := t.NextState
-
-	r := l.nextStep.Reward
-	ℽ := l.nextStep.Discount
-	stateValue := mat.Dot(l.criticWeights, state)
-	nextStateValue := mat.Dot(l.criticWeights, nextState)
-
-	return r + ℽ*nextStateValue - stateValue
+	panic("tdError: not implemented")
 }
 
 func (l *LinearGaussian) Step() {
@@ -164,54 +167,33 @@ func (l *LinearGaussian) Step() {
 	// Update critic weights
 	l.criticWeights.AddScaledVec(l.criticWeights, l.criticLR*δ, l.criticTrace)
 
-	// Variables needed for gradient computation
-	mean := l.Gaussian.Mean(state)
-	std := l.Gaussian.Std(state)
-	action := l.action
-	row, col := l.meanWeights.Dims()
+	// Calculate mean and std gradients
+	mean := mat.Dot(l.meanWeights, l.step.Observation)
+	std := math.Exp(mat.Dot(l.stdWeights, l.step.Observation)) + stdOffset
 
-	// Compute the gradient of the mean
-	meanGradScale := mat.NewVecDense(l.actionDims, nil)
-	meanGradScale.SubVec(action, mean)
-	meanGradDiv := mat.NewVecDense(l.actionDims, nil)
-	meanGradDiv.MulElemVec(std, std)
-	meanGradScale.DivElemVec(meanGradScale, meanGradDiv)
-	meanGrad := mat.NewDense(row, col, nil)
-	meanGrad.Outer(1.0, meanGradScale, state)
+	action := l.action.AtVec(0)
+	if std <= 0 {
+		panic(fmt.Sprintf("step: standard deviation %v <= 0", std))
+	}
+	meanGradScale := (action - mean) / math.Pow(std, 2)
+	meanGrad := mat.NewVecDense(state.Len(), nil)
+	meanGrad.ScaleVec(meanGradScale, state)
 
-	// Compute the gradient of the standard deviation
-	stdGradScale := mat.NewVecDense(l.actionDims, nil)
-	stdGradScale.SubVec(action, mean)
-	stdGradScale.MulElemVec(stdGradScale, stdGradScale)
-	stdGradDiv := mat.NewVecDense(l.actionDims, nil)
-	stdGradDiv.MulElemVec(std, std)
-	stdGradScale.DivElemVec(stdGradScale, stdGradDiv)
-	ones := mat.NewVecDense(l.actionDims, floatutils.Ones(l.actionDims))
-	stdGradScale.SubVec(stdGradScale, ones)
-	stdGrad := mat.NewDense(row, col, nil)
-	stdGrad.Outer(1.0, stdGradScale, state)
+	stdGradScale := math.Pow((action-mean)/std, 2) - 1.0
+	stdGrad := mat.NewVecDense(state.Len(), nil)
+	stdGrad.ScaleVec(stdGradScale, state)
 
-	// Calculate and update the actor traces
-	addMeanTrace := mat.NewDense(row, col, nil)
-	addMeanTrace.Scale(ℽ*l.decay, l.meanTrace)
-	l.meanTrace.Add(meanGrad, addMeanTrace)
-
-	addStdTrace := mat.NewDense(row, col, nil)
-	addStdTrace.Scale(ℽ*l.decay, l.stdTrace)
-	l.stdTrace.Add(stdGrad, addStdTrace)
+	// Calculate actor traces
+	l.meanTrace.AddScaledVec(meanGrad, ℽ*l.decay, l.meanTrace)
+	l.stdTrace.AddScaledVec(stdGrad, ℽ*l.decay, l.stdTrace)
 
 	// Update actor weights
 	actorLR := l.actorLR
-	if l.scaleActorLR && std.Len() == 1 {
-		actorLR *= math.Pow(std.AtVec(0), 2)
+	if l.scaleActorLR {
+		actorLR *= math.Pow(std, 2)
 	}
-	addMean := mat.NewDense(row, col, nil)
-	addMean.Scale(actorLR*δ, l.meanTrace)
-	l.meanWeights.Add(l.meanWeights, addMean)
-
-	addStd := mat.NewDense(row, col, nil)
-	addStd.Scale(actorLR*δ, l.stdTrace)
-	l.stdWeights.Add(l.stdWeights, addStd)
+	l.meanWeights.AddScaledVec(l.meanWeights, actorLR*δ, l.meanTrace)
+	l.stdWeights.AddScaledVec(l.stdWeights, actorLR*δ, l.stdTrace)
 }
 
 func (l *LinearGaussian) Observe(a mat.Vector, nextStep ts.TimeStep) {

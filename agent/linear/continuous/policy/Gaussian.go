@@ -11,7 +11,7 @@ import (
 	"gonum.org/v1/gonum/stat/distmv"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/matutils"
+	"sfneuman.com/golearn/utils/floatutils"
 )
 
 const StdOffset float64 = 1e-3
@@ -30,7 +30,10 @@ type Gaussian struct {
 	meanWeights *mat.Dense
 	stdWeights  *mat.Dense
 	actionDims  int
-	source      rand.Source
+
+	eval bool
+
+	stdNormal *distmv.Normal
 }
 
 // NewGaussian creates a new Gaussian policy
@@ -44,9 +47,17 @@ func NewGaussian(seed uint64, env environment.Environment) *Gaussian {
 	meanWeights := mat.NewDense(actionDims, features, nil)
 	stdWeights := mat.NewDense(actionDims, features, nil)
 
-	source := rand.NewSource(seed)
+	// Create the standard normal for action selection
+	means := make([]float64, actionDims)
+	std := mat.NewDiagDense(actionDims, floatutils.Ones(actionDims))
+	src := rand.NewSource(seed)
+	stdNormal, ok := distmv.NewNormal(means, std, src)
+	if !ok {
+		panic("newLinearGaussian: could not construct standard normal " +
+			"for action selection")
+	}
 
-	return &Gaussian{meanWeights, stdWeights, actionDims, source}
+	return &Gaussian{meanWeights, stdWeights, actionDims, false, stdNormal}
 }
 
 // Std gets the standard deviation of the policy given some state
@@ -73,29 +84,16 @@ func (g *Gaussian) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	obs := t.Observation
 
 	mean := g.Mean(obs)
+	if g.eval {
+		return mean
+	}
+
 	stdVec := g.Std(obs)
+	eps := mat.NewVecDense(mean.Len(), g.stdNormal.Rand(nil))
 
-	// Generate the Gaussian policy and sampler
-	std := mat.NewDiagDense(stdVec.Len(), stdVec.RawVector().Data)
-	dist, ok := distmv.NewNormal(mean.RawVector().Data, std, g.source)
-	if !ok {
-		msg := fmt.Sprintf("*Normal has non-positive-definite covariance %v",
-			matutils.Format(std))
-		panic(msg)
-	}
-
-	// Sample an action
-	action := mat.NewDense(1, g.actionDims, dist.Rand(nil))
-
-	// Ensure only a single action was sampled
-	underlyingMatrix := action.RawMatrix()
-	if underlyingMatrix.Rows != 1 {
-		panic("SelectAction: more than one action generated")
-	}
-
-	// Convert the action to a mat.Vector and return
-	a := mat.NewVecDense(g.actionDims, underlyingMatrix.Data)
-	return a
+	stdVec.MulElemVec(stdVec, eps)
+	mean.AddVec(mean, stdVec)
+	return mean
 }
 
 // Weights gets and returns the weights of the learner
