@@ -103,11 +103,6 @@ func (p *ProgressBar) Increment() {
 func (pbar *ProgressBar) Close() {
 	pbar.wait.Wait()
 
-	// Before closing, ensure that the current progress is up-to-date.
-	// This ensures that everything has been read from the current
-	// progress even channel and the display updated
-	// pbar.currentProgressToDisplay <- pbar.currentProgress
-
 	if pbar.closed {
 		panic("close: close on closed progress bar")
 	}
