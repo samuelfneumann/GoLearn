@@ -41,7 +41,7 @@ func LinearGaussianActorCritic() {
 	init := weights.NewLinearUV(rand)
 
 	// Create the learning algorithm
-	args := actorcritic.Config{
+	args := actorcritic.LinearGaussianConfig{
 		ActorLearningRate:  0.001,
 		CriticLearningRate: 0.01,
 		Decay:              0.5,

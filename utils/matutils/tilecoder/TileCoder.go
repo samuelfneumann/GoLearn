@@ -12,6 +12,7 @@ import (
 	"gonum.org/v1/gonum/stat/distmv"
 	"gonum.org/v1/gonum/stat/samplemv"
 
+	"sfneuman.com/golearn/utils/floatutils"
 	"sfneuman.com/golearn/utils/matutils"
 )
 
@@ -247,8 +248,7 @@ func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 			tile := math.Floor((data - t.minDims.AtVec(i)) / t.binLengths[j][i])
 
 			// Clip tile to within tiling bounds
-			tile = math.Min(tile, float64(t.bins[j][i]-1))
-			tile = math.Max(tile, 0)
+			tile = floatutils.Clip(tile, 0.0, float64(t.bins[j][i]-1))
 
 			// Calculate the index into the tile-coded representation
 			// that should be 1.0 for this tiling
