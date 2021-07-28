@@ -5,10 +5,7 @@ import (
 	"math"
 	"os"
 
-	"golang.org/x/exp/rand"
-
 	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/stat/distmv"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/continuous/policy"
 	"sfneuman.com/golearn/environment"
@@ -35,9 +32,8 @@ type LinearGaussian struct {
 	action   *mat.VecDense
 	nextStep ts.TimeStep
 
-	seed      uint64
-	stdNormal *distmv.Normal
-	eval      bool
+	seed uint64
+	eval bool
 
 	// Weights for linear function approximation
 	meanWeights   *mat.Dense
@@ -113,22 +109,11 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 		criticWeightsMat.RawMatrix().Data,
 	)
 
-	// Create the standard normal for action selection
-	means := make([]float64, actionDims)
-	std := mat.NewDiagDense(actionDims, floatutils.Ones(actionDims))
-	src := rand.NewSource(seed)
-	stdNormal, ok := distmv.NewNormal(means, std, src)
-	if !ok {
-		return nil, fmt.Errorf("newLinearGaussian: could not construct " +
-			"standard normal for action selection")
-	}
-
 	rows, cols := meanWeights.Dims()
 	agent := LinearGaussian{
-		Gaussian:  gaussianPolicy,
-		seed:      seed,
-		stdNormal: stdNormal,
-		eval:      false,
+		Gaussian: gaussianPolicy,
+		seed:     seed,
+		eval:     false,
 
 		meanWeights:   meanWeights,
 		stdWeights:    stdWeights,
