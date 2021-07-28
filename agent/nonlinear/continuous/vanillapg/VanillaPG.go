@@ -339,7 +339,35 @@ func (v *VPG) Step() {
 
 }
 
-// TdError implements the Agent interface; it always panics.
-func (v *VPG) TdError(ts.Transition) float64 {
-	panic("tderror: not implemented")
+// TdError returns the TD error of the agent's value function for a
+// given transition.
+func (v *VPG) TdError(t ts.Transition) float64 {
+	state := t.State
+	nextState := t.NextState
+	r := t.Reward
+	ℽ := t.Discount
+
+	// Get state value
+	if err := v.vValueFn.SetInput(state.RawVector().Data); err != nil {
+		panic(fmt.Sprintf("tdError: could not set network input: %v", err))
+	}
+	v.vVM.RunAll()
+	stateValue := v.vValueFn.Output()[0].Data().([]float64)
+	v.vVM.Reset()
+	if len(stateValue) != 1 {
+		panic("tdError: more than one state value predicted")
+	}
+
+	// Get next state value
+	if err := v.vValueFn.SetInput(nextState.RawVector().Data); err != nil {
+		panic(fmt.Sprintf("tdError: could not set network input: %v", err))
+	}
+	v.vVM.RunAll()
+	nextStateValue := v.vValueFn.Output()[0].Data().([]float64)
+	v.vVM.Reset()
+	if len(nextStateValue) != 1 {
+		panic("tdError: more than one next state value predicted")
+	}
+
+	return r + ℽ*nextStateValue[0] - stateValue[0]
 }
