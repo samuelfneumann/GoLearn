@@ -10,7 +10,6 @@ import (
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/distmv"
 	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/agent/linear/continuous/policy"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
 	ts "sfneuman.com/golearn/timestep"
@@ -20,7 +19,7 @@ import (
 
 // ! This will be first written for 1d actions
 type LinearGaussian struct {
-	*policy.Gaussian
+	// *policy.Gaussian
 
 	step     ts.TimeStep
 	action   *mat.VecDense
@@ -68,33 +67,36 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 		return nil, fmt.Errorf("newLinearGaussian: %v", err)
 	}
 
-	pol := policy.NewGaussian(seed, env)
-	weights := pol.Weights()
-	if r, _ := weights[policy.MeanWeightsKey].Dims(); r != 1 {
-		return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
-			"actions not yet supported")
-	}
-	if r, _ := weights[policy.StdWeightsKey].Dims(); r != 1 {
-		return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
-			"actions not yet supported")
-	}
-	init.Initialize(weights[policy.MeanWeightsKey])
-	init.Initialize(weights[policy.StdWeightsKey])
+	// pol := policy.NewGaussian(seed, env)
+	// weights := pol.Weights()
+	// if r, _ := weights[policy.MeanWeightsKey].Dims(); r != 1 {
+	// 	return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
+	// 		"actions not yet supported")
+	// }
+	// if r, _ := weights[policy.StdWeightsKey].Dims(); r != 1 {
+	// 	return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
+	// 		"actions not yet supported")
+	// }
 
 	// Initialize the weights for the agent. Each should share the
 	// same backing data as the policy.
 	features := env.ObservationSpec().Shape.Len()
 	actionDims := env.ActionSpec().Shape.Len()
+	meanWeightsMat := mat.NewDense(1, features, nil)
+	stdWeightsMat := mat.NewDense(1, features, nil)
+	criticWeightsMat := mat.NewDense(1, features, nil)
+	init.Initialize(meanWeightsMat)
+	init.Initialize(stdWeightsMat)
+	init.Initialize(criticWeightsMat)
+
 	meanWeights := mat.NewVecDense(
 		features,
-		weights[policy.MeanWeightsKey].RawMatrix().Data,
+		meanWeightsMat.RawMatrix().Data,
 	)
 	stdWeights := mat.NewVecDense(
 		features,
-		weights[policy.StdWeightsKey].RawMatrix().Data,
+		stdWeightsMat.RawMatrix().Data,
 	)
-	criticWeightsMat := mat.NewDense(1, features, nil)
-	init.Initialize(criticWeightsMat)
 	criticWeights := mat.NewVecDense(
 		features,
 		criticWeightsMat.RawMatrix().Data,
@@ -111,7 +113,7 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 	}
 
 	agent := LinearGaussian{
-		Gaussian:  pol,
+		// Gaussian:  pol,
 		seed:      seed,
 		stdNormal: stdNormal,
 		eval:      false,
@@ -134,10 +136,12 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 
 func (l *LinearGaussian) SelectAction(t ts.TimeStep) *mat.VecDense {
 	if l.eval {
-		return l.Gaussian.Mean(t.Observation)
+		panic("not implemented")
 	}
-	action := l.Gaussian.SelectAction(t)
-	return action
+	mean := mat.Dot(l.meanWeights, t.Observation)
+	std := math.Exp(mat.Dot(l.stdWeights, t.Observation))
+	eps := l.stdNormal.Rand(nil)[0]
+	return mat.NewVecDense(1, []float64{mean + std*eps})
 }
 
 func (l *LinearGaussian) TdError(t ts.Transition) float64 {
@@ -161,13 +165,12 @@ func (l *LinearGaussian) Step() {
 	l.criticWeights.AddScaledVec(l.criticWeights, l.criticLR*δ, l.criticTrace)
 
 	// Calculate mean and std gradients
-	mean := l.Gaussian.Mean(state).AtVec(0)
-	std := l.Gaussian.Std(state).AtVec(0)
-	// fmt.Println("MEAN", mean)
-	// fmt.Println("STD", std)
+	mean := mat.Dot(l.meanWeights, l.step.Observation)
+	std := math.Exp(mat.Dot(l.stdWeights, l.step.Observation))
+
 	action := l.action.AtVec(0)
 	if std <= 0 {
-		panic("step: standard deviation <= 0")
+		panic(fmt.Sprintf("step: standard deviation %v <= 0", std))
 	}
 	meanGradScale := (action - mean) / math.Pow(std, 2)
 	meanGrad := mat.NewVecDense(state.Len(), nil)
@@ -183,7 +186,7 @@ func (l *LinearGaussian) Step() {
 
 	// Update actor weights
 	l.meanWeights.AddScaledVec(l.meanWeights, l.actorLR*δ, l.meanTrace)
-	l.stdWeights.AddScaledVec(l.stdWeights, (l.actorLR*δ)/math.Pow(std, 2), l.stdTrace)
+	l.stdWeights.AddScaledVec(l.stdWeights, l.actorLR*δ, l.stdTrace)
 }
 
 func (l *LinearGaussian) Observe(a mat.Vector, nextStep ts.TimeStep) {
