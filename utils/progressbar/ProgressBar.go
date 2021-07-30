@@ -22,27 +22,23 @@ type ProgressBar struct {
 	maxProgress float64
 
 	// currentProgress measures the current progess, equivalently it
-	// measures the number of times Increment() was called
-	currentProgress float64
-
+	// measures the number of times Increment() was called.
 	// currentProgressIncrementer is an event channel. When an event
-	// appears on this channel, currentProgress is incremented.
+	// appears on this channel, the current progress should be
+	// incremented
+	currentProgress            float64
 	currentProgressIncrementer chan struct{}
 
-	// currentProgressToDisplay is a channel which notifies display()
-	// how much current progress to display. The progress bar is then
-	// set to <-currentProgressToDisplay/maxProgress percentage of its
-	// full width.
-	wait                     sync.WaitGroup
-	currentProgressToDisplay chan float64
+	// progressToDisplay is a channel along which the progress of the
+	// progress bar is sent to be displayed.
+	wait              sync.WaitGroup
+	progressToDisplay chan float64
 
 	closeEvent chan struct{}
 	closed     bool
 
 	updateEvery       time.Duration
 	updateAtIncrement bool
-
-	message chan string
 }
 
 // NewProgressBar returns a new progress bar that is width characters
@@ -52,57 +48,50 @@ func NewProgressBar(width, max int, updateEvery time.Duration,
 	pbar := &ProgressBar{
 		width:                      float64(width),
 		maxProgress:                float64(max),
-		currentProgress:            0.0,
+		currentProgress:            0,
 		currentProgressIncrementer: make(chan struct{}),
-		currentProgressToDisplay:   make(chan float64),
+		progressToDisplay:          make(chan float64),
 		closeEvent:                 make(chan struct{}),
 		closed:                     false,
 		updateEvery:                updateEvery,
 		updateAtIncrement:          updateAtIncrement,
-		message:                    make(chan string),
 	}
 
 	// Listen for increment events
 	go func() {
 		for range pbar.currentProgressIncrementer {
-			// Send the currentProgress which should be displayed in
-			// the progress bar
-			pbar.wait.Add(1)
 			pbar.currentProgress++
-			pbar.currentProgressToDisplay <- pbar.currentProgress
 		}
 	}()
 
 	return pbar
 }
 
-// AddMessage adds a message after the ProgressBar. If closed is
-// called, the progress bar immediately closes, even if there are
-// still messages in the queue.
-func (p *ProgressBar) AddMessage(message string) {
-	go func() {
-		p.message <- message
-	}()
-}
-
 // Increment increments the interal progress counter. Each time an
 // iteration is performed, Increment should be called.
 func (p *ProgressBar) Increment() {
+	p.wait.Add(1)
 	go func() {
 		if p.currentProgress < p.maxProgress && !p.closed {
-			// Send an event signaling that the current progress should
-			// be incremented
+			// Hang at incrementing, ensuring the progress bar has been
+			// incremented, before updating the display.
 			p.currentProgressIncrementer <- struct{}{}
+			p.progressToDisplay <- p.currentProgress
 		}
+		p.wait.Done()
 	}()
 }
 
-// CLose closes the progress bar so that it will no longer display to
+// Close closes the progress bar so that it will no longer display to
 // the screen. This function also cleans up any resources the progress
 // bar is using.
 func (pbar *ProgressBar) Close() {
 	pbar.wait.Wait()
 
+	// Do a final refresh of the display
+	pbar.progressToDisplay <- pbar.currentProgress
+
+	// Close the progress bar
 	if pbar.closed {
 		panic("close: close on closed progress bar")
 	}
@@ -122,10 +111,7 @@ func (pbar *ProgressBar) Display() {
 		tick := time.NewTicker(updateEvery)
 		updateAtIncrement := pbar.updateAtIncrement
 
-		message := ""
-
 		var elapsedTime time.Duration = 0 * time.Second
-		done := false
 
 		var bar strings.Builder
 
@@ -135,8 +121,7 @@ func (pbar *ProgressBar) Display() {
 			select {
 			// This case ensures that we are updating whenever Increment()
 			// is called if required
-			case currentProgress = <-pbar.currentProgressToDisplay:
-				pbar.wait.Done()
+			case currentProgress = <-pbar.progressToDisplay:
 				if !updateAtIncrement {
 					continue
 				}
@@ -145,15 +130,13 @@ func (pbar *ProgressBar) Display() {
 			case <-tick.C:
 				elapsedTime += updateEvery
 
-			case message = <-pbar.message:
-
 			// Close if a close event is sent
 			case <-pbar.closeEvent:
+				close(pbar.progressToDisplay)
 				close(pbar.currentProgressIncrementer)
-				close(pbar.currentProgressToDisplay)
 				tick.Stop()
-				message = ""
-				done = true
+				fmt.Println() // Jump to next line
+				return
 
 			default:
 				continue
@@ -169,18 +152,11 @@ func (pbar *ProgressBar) Display() {
 			for i := currentProg; i < width; i++ {
 				bar.Write([]byte(" "))
 			}
-			bar.Write([]byte(fmt.Sprintf("| [%.2f%v | elapsed: %v] ",
+			bar.Write([]byte(fmt.Sprintf("| [%.2f%v | elapsed: %v]",
 				currentProgress/maxProgress*100, "%",
 				elapsedTime)))
 
-			bar.Write([]byte(message))
-
 			fmt.Printf("\n\033[1A\033[K%v", bar.String())
-
-			if done {
-				fmt.Println() // Jump to next line when done
-				return
-			}
 		}
 	}()
 }
