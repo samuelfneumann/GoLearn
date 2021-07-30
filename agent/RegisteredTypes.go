@@ -15,7 +15,7 @@ type Type string
 
 const (
 	// Linear methods
-	EGreedyQLearningLinear    Type = "EGreedyQLarning-Linear"
+	EGreedyQLearningLinear    Type = "EGreedyQLearning-Linear"
 	EGreedyESarsaLinear       Type = "EGreedyESarsa-Linear"
 	GaussianActorCriticLinear Type = "GaussianActorCritic-Linear"
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"time"
 
 	// Blank imports needed for registering agents with agent package
 	// to enable TypedConfigList's
@@ -20,6 +19,23 @@ import (
 	"sfneuman.com/golearn/experiment/checkpointer"
 	"sfneuman.com/golearn/experiment/tracker"
 )
+
+// func main() {
+// 	fmt.Println()
+
+// 	bounds := r1.Interval{Min: -0.1, Max: 0.1}
+// 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds, bounds, bounds}, 11231)
+// 	task := acrobot.NewSwingUp(s, 500, acrobot.GoalHeight)
+
+// 	a, t := acrobot.NewContinuous(task, 1.0)
+// 	fmt.Println(a)
+// 	fmt.Println()
+// 	fmt.Println(t)
+
+// 	t, _ = a.Step(mat.NewVecDense(1, []float64{1.0}))
+// 	fmt.Println(t)
+// 	fmt.Println(a)
+// }
 
 func main() {
 	expFile, err := os.Open(os.Args[1])
@@ -82,9 +98,7 @@ func main() {
 	var checkpointers []checkpointer.Checkpointer = nil
 
 	exp := expConf.CreateExp(int(hpIndex), run, trackers, checkpointers)
-	start := time.Now()
 	exp.Run()
-	fmt.Println("Elapsed:", time.Since(start))
 	exp.Save()
 
 	// LoadData -> should be int or float specified...

@@ -209,34 +209,16 @@ tracked.
 
 # ToDo
 
-- [ ] To implement Serializable:
-	- [ ] DeepQ
-	- [ ] EGreedyMLP
-	- [ ] TreeMLP
-	- [ ] GaussianTreeMLP
-
-- [ ] Config Structs needed:
-	- [ ] Qlearning
-	- [ ] ESarsa
-	- [ ] Linear-Gaussian Actor-Critic
-
-
-- [ ] Gaussian TreeMLP needs to be redone. StdDev can be clipped using G.Max and Min = G.Max(G.Neg()) or using an offset and G.MAX()
-- [ ] VPG needs TdError method
-- [ ] Pendulum needs documentation
-- [ ] VPG needs eval mode
-- [ ] Policies should have Eval() and Train() methods that set them to evaluation or training mode
 
 - [ ] Cartpole SwingUp would be nice to implement
 - [ ] Would be nice to have the acitons in discrete pendulum determined by min and max discrete actions. E.g. Action i -> (action i / minDiscreteAction) * MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction - MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
 - [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files. This may prove problematic though with the gym-http-api...
 - [ ] Eventually, it may be nice to have a Config and ConfigList for neural networks so that JSON config files can also determine the type of neural network to use with any agent. This is very low on the priority list.
 
-Urgent ToDos:
-- [ ] DeepQ doesn't seem to learn on Cartpole!! This is honestly probably an issue with the policy cloning. That being said, cloning poicies did work with VPG, so it might be something else. The policy cloning may be fine. ALso, aggregate loss is compute incorrectly. (target net and train net seem to always have the same weights.. They do, the targetNet and trainNet have pointers to the same weights!)
-
 - [ ] Readme should outline what exactly configs are and what they do for each package. Also, mention that environment Configs only allow environments with default behaviour, physical parameters, and task parameters to be created. To create a custom environemnt, you should use the relevant constructors with the relevant structs.
 - [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
 
 - [ ] Might be useful to benchmark VanillaPG and see how we can make it faster (without exploiting the simulator).
-- [ ] Linear Gaussian Actor-Critic needs to be debugged -> it's very buggy and doesn't work. Stddev isn't exponentiated in learner??
+- [ ] Would be cool if eventually the network package looked more like something like github.com/aunum/goro.
+- [ ] Gridworld wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
+- [ ] Task AtGoal() -> argument should be Vector or *VecDense
