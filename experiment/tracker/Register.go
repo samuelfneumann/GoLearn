@@ -44,6 +44,6 @@ func Register(t Tracker, env environment.Environment) Tracker {
 // and is only there to ensure Register follows the Tracker interface
 // to track and save data during an experiment.
 func (r *registeredTracker) Track(timestep.TimeStep) {
-	step := r.env.LastTimeStep()
+	step := r.env.CurrentTimeStep()
 	r.Tracker.Track(step)
 }
