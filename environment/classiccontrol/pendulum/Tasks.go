@@ -22,7 +22,7 @@ import (
 // Episodes end after a step limit.
 type SwingUp struct {
 	environment.Starter
-	*environment.StepLimit
+	environment.Ender // Ends when step limit reached
 }
 
 // NewSwingUp creates and returns a new SwingUp task

@@ -27,8 +27,8 @@ const (
 // some angle threshold θ.
 type Balance struct {
 	env.Starter
-	stepLimiter  *env.StepLimit
-	angleLimiter *env.IntervalLimit
+	stepLimiter  env.Ender // Ends when step limit reached
+	angleLimiter env.Ender // Ends when pole angle falls below threshold
 	failAngle    float64
 }
 

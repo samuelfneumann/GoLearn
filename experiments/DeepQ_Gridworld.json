@@ -1,6 +1,6 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 50000,
+	"MaxSteps": 5000,
 	"EnvConf": {
 		"Environment": "Gridworld",
 		"Task": "Goal",

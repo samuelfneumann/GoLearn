@@ -9,7 +9,7 @@ type StepLimit struct {
 }
 
 // NewStepLimit creates and returns a new step limit
-func NewStepLimit(episodeSteps int) *StepLimit {
+func NewStepLimit(episodeSteps int) Ender {
 	return &StepLimit{episodeSteps}
 }
 

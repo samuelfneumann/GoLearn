@@ -1,0 +1,33 @@
+{
+	"Type": "OnlineExperiment",
+	"MaxSteps": 500000,
+	"EnvConf": {
+		"Environment": "Acrobot",
+		"Task": "SwingUp",
+		"ContinuousActions": true,
+		"EpisodeCutoff": 250,
+		"Discount": 0.99,
+		"Gym": false,
+		"TileCoding": {
+			"UseTileCoding": true,
+			"Bins": [[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10]]
+		}
+	},
+	"AgentConf": {
+		"Type": "GaussianActorCritic-Linear",
+		"ConfigList": {
+			"ActorLearningRate": [
+				3e-4
+			],
+			"CriticLearningRate": [
+				3e-3
+			],
+			"Decay": [
+				0.25
+			],
+			"ScaleActorLR": [
+				false
+			]
+		}
+	}
+}

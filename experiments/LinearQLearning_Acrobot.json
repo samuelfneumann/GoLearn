@@ -1,16 +1,16 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 500000,
+	"MaxSteps": 200000,
 	"EnvConf": {
-		"Environment": "MountainCar",
-		"Task": "Goal",
+		"Environment": "Acrobot",
+		"Task": "SwingUp",
 		"ContinuousActions": false,
 		"EpisodeCutoff": 500,
 		"Discount": 0.99,
 		"Gym": false,
 		"TileCoding": {
 			"UseTileCoding": true,
-			"Bins": [[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10]]
+			"Bins": [[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10],[10,10,10,10]]
 		}
 	},
 	"AgentConf": {

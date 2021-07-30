@@ -28,9 +28,9 @@ const (
 // state.
 type Goal struct {
 	environment.Starter
-	goalEnder *environment.IntervalLimit
-	stepEnder *environment.StepLimit
-	goalX     float64 // x position of goal
+	goalEnder environment.Ender // Ends when goal passed
+	stepEnder environment.Ender // Ends when step limit reached
+	goalX     float64           // x position of goal
 }
 
 // NewGoal creates and returns a new Goal struct given a Starter, which
@@ -55,7 +55,7 @@ func (g *Goal) AtGoal(state mat.Matrix) bool {
 // GetReward returns the reward for a given state and action, resulting
 // in a given next state. Since this is a cost-to-goal Task, rewards are
 // -1.0 for all actions, except for an action which leads to the goal
-// state, which results in a reward of 0.0
+// state, which results in a reward of 0.0.
 func (g *Goal) GetReward(state mat.Vector, _ mat.Vector,
 	nextState mat.Vector) float64 {
 	xPosition := nextState.AtVec(0)
@@ -83,8 +83,9 @@ func (g *Goal) RewardSpec() spec.Environment {
 }
 
 // End determines if a timestep is the last timestep in the episode.
-// If so, it changes the TimeStep's StepType to timestep.Last. This
-// function returns true if the argument timestep is the last timestep
+// If so, it changes the TimeStep's StepType to timestep.Last and
+// adjusts the TimeStep's EndType to the appropriate ending type. This
+// function returns true if the argument TimeStep is the last timestep
 // in the episode and false otherwise.
 //
 // This function is needed to ensure that the Goal struct implements the

@@ -13,16 +13,16 @@ import (
 	"sfneuman.com/golearn/utils/floatutils"
 )
 
-// ! could use a library for rk4
-
-type dynamicsType string
+// dynamicsType determines whether the dynamics of the environment
+// follows those defined in the NeurIPS paper or the RL book.
+type dynamicsType bool
 
 const (
 	// Dynamics of environment is consistent with RL book
-	book dynamicsType = "Book"
+	book dynamicsType = true
 
 	// Dynamics of environment is consistent with NeurIPS paper
-	nips dynamicsType = "Nips"
+	nips dynamicsType = false
 )
 
 const (
@@ -47,13 +47,16 @@ const (
 	MinTorque float64 = -1.0
 	MaxTorque float64 = 1.0
 
-	ObservationDims int = 6
+	ObservationDims     int     = 4
+	ActionDims          int     = 1
+	MinContinuousAction float64 = MinTorque
+	MaxContinuousAction float64 = MaxTorque
+	MinDiscreteAction   int     = 0
+	MaxDiscreteAction   int     = 2
 
 	BookOrNips dynamicsType = book
 )
 
-// State space:
-// theta1, theta2, theta1 dot, theta2 dot
 type Acrobot struct {
 	env.Task
 	lastStep        ts.TimeStep
@@ -71,7 +74,7 @@ func validateState(state *mat.VecDense) error {
 	return nil
 }
 
-func New(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
+func newBase(t env.Task, discount float64) (*Acrobot, ts.TimeStep) {
 	state := t.Start()
 	err := validateState(state)
 	if err != nil {
@@ -93,11 +96,11 @@ func New(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
 
 }
 
-func (a *Acrobot) Step(action *mat.VecDense) (ts.TimeStep, bool) {
+func (a *Acrobot) nextState(torque float64) *mat.VecDense {
 	s := a.LastTimeStep().Observation
 
 	// Continuous action between [MinTorque, MaxTorque]
-	torque := floatutils.Clip(action.AtVec(0), MinTorque, MaxTorque)
+	torque = floatutils.Clip(torque, MinTorque, MaxTorque)
 
 	sAugmented := mat.NewVecDense(s.Len()+1, nil)
 	num := sAugmented.CopyVec(s)
@@ -119,8 +122,11 @@ func (a *Acrobot) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 	ns.SetVec(2, floatutils.ClipInterval(ns.AtVec(2), a.velocity1Bounds))
 	ns.SetVec(3, floatutils.ClipInterval(ns.AtVec(3), a.velocity2Bounds))
 
-	newState := ns
+	return ns
+}
 
+func (a *Acrobot) update(action, newState *mat.VecDense) (ts.TimeStep, bool) {
+	// Create the new timestep
 	reward := a.GetReward(a.LastTimeStep().Observation, action, newState)
 	nextStep := ts.New(ts.Mid, reward, a.discount, newState,
 		a.LastTimeStep().Number+1)
@@ -131,6 +137,54 @@ func (a *Acrobot) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 
 	a.lastStep = nextStep
 	return nextStep, nextStep.Last()
+}
+
+func (a *Acrobot) LastTimeStep() ts.TimeStep {
+	return a.lastStep
+}
+
+func (a *Acrobot) Reset() ts.TimeStep {
+	state := a.Start()
+	err := validateState(state)
+	if err != nil {
+		panic(fmt.Sprintf("reset: %v", err))
+	}
+
+	startStep := ts.New(ts.First, 0, a.discount, state, 0)
+	a.lastStep = startStep
+
+	return startStep
+}
+
+// ObservationSpec returns the observation specification of the
+// environment
+func (a *Acrobot) ObservationSpec() spec.Environment {
+	shape := mat.NewVecDense(ObservationDims, nil)
+	lowerBound := mat.NewVecDense(ObservationDims, []float64{MinAngle,
+		MinAngle, -MaxVel1, -MaxVel2})
+	upperBound := mat.NewVecDense(ObservationDims, []float64{MaxAngle,
+		MaxAngle, MaxVel1, MaxVel2})
+
+	return spec.NewEnvironment(shape, spec.Observation, lowerBound,
+		upperBound, spec.Continuous)
+}
+
+// DiscountSpec returns the discounting specification of the environment
+func (a *Acrobot) DiscountSpec() spec.Environment {
+	shape := mat.NewVecDense(1, nil)
+	lowerBound := mat.NewVecDense(1, []float64{a.discount})
+	upperBound := mat.NewVecDense(1, []float64{a.discount})
+
+	return spec.NewEnvironment(shape, spec.Discount, lowerBound,
+		upperBound, spec.Continuous)
+}
+
+// String implements the fmt.Stringer interface
+func (a *Acrobot) String() string {
+	state := a.LastTimeStep().Observation
+
+	return fmt.Sprintf("Acrobot  |  θ1: %v  |  θ2: %v  |  θ̇1: %v  |  θ̇2: %v",
+		state.AtVec(0), state.AtVec(1), state.AtVec(2), state.AtVec(3))
 }
 
 func dsDt(sAugmented *mat.VecDense, t float64) []float64 {
@@ -225,51 +279,3 @@ func rk4(derivs func(*mat.VecDense, float64) []float64, y0 *mat.VecDense, t []fl
 	}
 	return yout
 }
-
-func (a *Acrobot) ActionSpec() spec.Environment {
-	return spec.Environment{}
-}
-
-func (a *Acrobot) LastTimeStep() ts.TimeStep {
-	return a.lastStep
-}
-
-func (a *Acrobot) Reset() ts.TimeStep {
-	state := a.Start()
-	err := validateState(state)
-	if err != nil {
-		panic(fmt.Sprintf("reset: %v", err))
-	}
-
-	startStep := ts.New(ts.First, 0, a.discount, state, 0)
-	a.lastStep = startStep
-
-	return startStep
-}
-
-// ObservationSpec returns the observation specification of the
-// environment
-func (a *Acrobot) ObservationSpec() spec.Environment {
-	shape := mat.NewVecDense(ObservationDims, nil)
-	lowerBound := mat.NewVecDense(ObservationDims, []float64{-1.0, -1.0, -1.0,
-		-1.0, -MaxVel1, -MaxVel2})
-	upperBound := mat.NewVecDense(ObservationDims, []float64{1.0, 1.0, 1.0,
-		1.0, MaxVel1, MaxVel2})
-
-	return spec.NewEnvironment(shape, spec.Observation, lowerBound,
-		upperBound, spec.Continuous)
-}
-
-// DiscountSpec returns the discounting specification of the environment
-func (a *Acrobot) DiscountSpec() spec.Environment {
-	shape := mat.NewVecDense(1, nil)
-	lowerBound := mat.NewVecDense(1, []float64{a.discount})
-	upperBound := mat.NewVecDense(1, []float64{a.discount})
-
-	return spec.NewEnvironment(shape, spec.Discount, lowerBound,
-		upperBound, spec.Continuous)
-}
-
-// func (a *Acrobot) getObs(t ts.TimeStep) *mat.VecDense {
-// 	state := t.Observation
-// }

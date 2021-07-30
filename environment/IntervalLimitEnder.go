@@ -16,7 +16,7 @@ type IntervalLimit struct {
 // NewIntervalLimit creates and returns a new inteval limit. The endType
 // argument determines what the episode end should be considered as.
 func NewIntervalLimit(limits []r1.Interval, obsIndices []int,
-	endType timestep.EndType) *IntervalLimit {
+	endType timestep.EndType) Ender {
 	if len(limits) != len(obsIndices) {
 		panic("limits should have same length as observation indices")
 	}
@@ -27,7 +27,8 @@ func NewIntervalLimit(limits []r1.Interval, obsIndices []int,
 // End determines whether or not the current episode should be ended,
 // returning a boolean to indicate episode temrination. If the episode
 // should be ended End() will modify the timestep so that its StepType
-// field is timestep.Last
+// field is timestep.Last and its EndType is the appropriate ending
+// type.
 func (i *IntervalLimit) End(t *timestep.TimeStep) bool {
 	for index := range i.indices {
 

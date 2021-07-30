@@ -8,6 +8,7 @@ import (
 
 	"gonum.org/v1/gonum/spatial/r1"
 	env "sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/classiccontrol/acrobot"
 	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
 	"sfneuman.com/golearn/environment/classiccontrol/pendulum"
@@ -25,6 +26,7 @@ const (
 	MountainCar EnvName = "MountainCar"
 	Pendulum    EnvName = "Pendulum"
 	Cartpole    EnvName = "Cartpole"
+	Acrobot     EnvName = "Acrobot"
 	Gridworld   EnvName = "Gridworld"
 )
 
@@ -37,6 +39,8 @@ const (
 //	Cartpole			Balance
 //						SwingUp (soon to come)
 //	Pendulum			SwingUp
+// 	Acrobot				SwingUp
+//						Balance (soon to come)
 type TaskName string
 
 // Tasks available for configuration
@@ -95,6 +99,10 @@ func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
 
 	case Pendulum:
 		e, step = CreatePendulum(c.ContinuousActions, c.Task,
+			int(c.EpisodeCutoff), seed, c.Discount)
+
+	case Acrobot:
+		e, step = CreateAcrobot(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Gridworld:
@@ -192,6 +200,31 @@ func CreatePendulum(continuousActions bool, taskName TaskName,
 		return pendulum.NewContinuous(task, discount)
 	}
 	return pendulum.NewDiscrete(task, discount)
+}
+
+// CreateAcrobot is a factory for creating the Acrobot environment
+// with default physical parameters and default task parameters.
+func CreateAcrobot(continuousActions bool, taskName TaskName,
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	angle := r1.Interval{Min: -0.1, Max: 0.1}
+	speed := r1.Interval{Min: -0.1, Max: 0.1}
+
+	s := env.NewUniformStarter([]r1.Interval{angle, angle, speed, speed}, seed)
+
+	var task env.Task
+	switch taskName {
+	case SwingUp:
+		task = acrobot.NewSwingUp(s, cutoff, acrobot.GoalHeight)
+
+	default:
+		panic(fmt.Sprintf("createAcrobot: Acrobot environment has "+
+			"no task %v", taskName))
+	}
+
+	if continuousActions {
+		return acrobot.NewContinuous(task, discount)
+	}
+	return acrobot.NewDiscrete(task, discount)
 }
 
 // CreateGridworld is a factory for creating a Gridworld environment

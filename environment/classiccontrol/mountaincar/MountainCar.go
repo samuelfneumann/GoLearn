@@ -169,7 +169,6 @@ func (m *base) update(action, newState *mat.VecDense) (ts.TimeStep, bool) {
 
 	m.lastStep = nextStep
 	return nextStep, nextStep.Last()
-
 }
 
 // Render renders a text-based version of the environment
