@@ -100,9 +100,9 @@ func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 	return &cartpole, firstStep
 }
 
-// LastTimeStep returns the last TimeStep that occurred in the
+// CurrentTimeStep returns the last TimeStep that occurred in the
 // environment
-func (b *base) LastTimeStep() ts.TimeStep {
+func (b *base) CurrentTimeStep() ts.TimeStep {
 	return b.lastStep
 }
 
@@ -205,8 +205,7 @@ func (c *base) nextState(force float64) *mat.VecDense {
 // versions of Cartpole can be deal with uniformly. Each calculates
 // the force to apply and calls this struct's nextState() function.
 // The result of that function is then passed to this function as
-// well as the action taken, which is needed to calculate the reward
-// for the action.
+// well as the action taken, which is needed to calculate the reward.
 func (c *base) update(a, newState *mat.VecDense) (ts.TimeStep, bool) {
 	reward := c.GetReward(c.lastStep.Observation, a, newState)
 	nextStep := ts.New(ts.Mid, reward, c.discount, newState,

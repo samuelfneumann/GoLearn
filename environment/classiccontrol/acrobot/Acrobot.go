@@ -1,4 +1,4 @@
-// Package acrobot implements the classic control problem Acrobot
+// Package acrobot implements the classic control problem base
 package acrobot
 
 import (
@@ -41,23 +41,53 @@ const (
 	MaxVel2     float64 = 9 * math.Pi
 	MinVel2     float64 = -MaxVel2
 	Gravity     float64 = 9.8
+	MaxAngle    float64 = math.Pi
+	MinAngle    float64 = -MaxAngle
+	MinTorque   float64 = -1.0
+	MaxTorque   float64 = 1.0
 
-	MaxAngle  float64 = math.Pi
-	MinAngle  float64 = -MaxAngle
-	MinTorque float64 = -1.0
-	MaxTorque float64 = 1.0
-
+	// Environment constants
 	ObservationDims     int     = 4
 	ActionDims          int     = 1
 	MinContinuousAction float64 = MinTorque
 	MaxContinuousAction float64 = MaxTorque
-	MinDiscreteAction   int     = 0
-	MaxDiscreteAction   int     = 2
+	MinDiscreteAction   int     = 0 // Applies MinTorque
+	MaxDiscreteAction   int     = 2 // Applies MaxTorque
 
 	BookOrNips dynamicsType = book
 )
 
-type Acrobot struct {
+// base implements the classic control environment Acrobot. In this
+// environment, a double hindged and double linked pendulum is attached
+// to a single actuated fixed base. Torque can be applied to the base
+// to swing the double pendulum (acrobot) around.
+//
+// State feature vectors are 4-dimensional and consist of the angle
+// of the first pendulum link measured from the negative y-axis,
+// the angle of the second pendulum link measured from the negative
+// y-axis, the angular velocity of the first link, and the angular
+// velocity of the second link. That is, a feature vector has the
+// form:
+//
+//		v ⃗	= [θ1, θ2, θ̇1, θ̇2], where:
+//		θ1 = angle of the first link measured from the negative y-axis
+//		θ2 = angle of the second link measured from the negative y-axis
+//		θ̇1 = angular velocity of the first link
+//		θ̇2 = angular velocity of the second link
+//
+//
+// State features are bounded. Angles are bounded to be between [-π, π]
+// and angular velocity is bounded between [MinVel1, MaxVel1] for the
+// first pendulum link and [MinVel2, MaxVel2] for the second pendulum
+// link. Angles outside of [-π, π] are wrapped around to stay within
+// this range, and angular velocity is clipped to stay within the
+// legal range.
+//
+// base does not implement the environment.Environment interface, but
+// is embedded in Discrete and Continuous which do implement this
+// interface. This struct is used to share code between discrete action
+// and continuous action versions of the acrobot environment.
+type base struct {
 	env.Task
 	lastStep        ts.TimeStep
 	discount        float64
@@ -66,24 +96,35 @@ type Acrobot struct {
 	velocity2Bounds r1.Interval
 }
 
-func validateState(state *mat.VecDense) error {
+// validateState checks if the state is valid and returns an error
+// denoting whether the state is a valid state or not.
+func validateState(state *mat.VecDense, angleBounds, vel1Bounds,
+	vel2Bounds r1.Interval) error {
 	if l := state.Len(); l != 4 {
 		return fmt.Errorf("illegal state length \n\twant(4) \n\thave(%v)", l)
 	}
-
+	if angleBounds.Min < state.AtVec(0) || angleBounds.Max > state.AtVec(0) {
+		return fmt.Errorf("angle 1 out of bounds")
+	}
+	if angleBounds.Min < state.AtVec(1) || angleBounds.Max > state.AtVec(1) {
+		return fmt.Errorf("angle 2 out of bounds")
+	}
+	if vel1Bounds.Min < state.AtVec(2) || vel1Bounds.Max > state.AtVec(2) {
+		return fmt.Errorf("angular velocity 1 out of bounds")
+	}
+	if vel2Bounds.Min < state.AtVec(3) || vel2Bounds.Max > state.AtVec(3) {
+		return fmt.Errorf("angular velocity 2 out of bounds")
+	}
 	return nil
 }
 
-func newBase(t env.Task, discount float64) (*Acrobot, ts.TimeStep) {
+// newBase returns a new base acrobot environment
+func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 	state := t.Start()
-	err := validateState(state)
-	if err != nil {
-		panic(fmt.Sprintf("new: %v", err))
-	}
 
 	firstStep := ts.New(ts.First, 0.0, discount, state, 0)
 
-	acrobot := Acrobot{
+	acrobot := base{
 		Task:            t,
 		lastStep:        firstStep,
 		discount:        discount,
@@ -92,12 +133,21 @@ func newBase(t env.Task, discount float64) (*Acrobot, ts.TimeStep) {
 		velocity2Bounds: r1.Interval{Min: MinVel2, Max: MaxVel2},
 	}
 
+	// Ensure start state is valid
+	err := validateState(state, acrobot.angleBounds, acrobot.velocity1Bounds,
+		acrobot.velocity2Bounds)
+	if err != nil {
+		panic(fmt.Sprintf("new: %v", err))
+	}
+
 	return &acrobot, firstStep
 
 }
 
-func (a *Acrobot) nextState(torque float64) *mat.VecDense {
-	s := a.LastTimeStep().Observation
+// nextState returns the next state of the environment given the
+// torque to apply to the fixed base of the acrobot.
+func (a *base) nextState(torque float64) *mat.VecDense {
+	s := a.CurrentTimeStep().Observation
 
 	// Continuous action between [MinTorque, MaxTorque]
 	torque = floatutils.Clip(torque, MinTorque, MaxTorque)
@@ -114,7 +164,8 @@ func (a *Acrobot) nextState(torque float64) *mat.VecDense {
 	if c != 5 {
 		panic("step: integration returned more than 5 components")
 	}
-	ns := integrated.RowView(r-1).(*mat.VecDense).SliceVec(0, c-1).(*mat.VecDense)
+	ns := integrated.RowView(r-1).(*mat.VecDense).SliceVec(0,
+		c-1).(*mat.VecDense)
 
 	// Ensure state stays in an acceptable range
 	ns.SetVec(0, floatutils.WrapInterval(ns.AtVec(0), a.angleBounds))
@@ -125,11 +176,20 @@ func (a *Acrobot) nextState(torque float64) *mat.VecDense {
 	return ns
 }
 
-func (a *Acrobot) update(action, newState *mat.VecDense) (ts.TimeStep, bool) {
+// update updates the base environment by constructing a new current
+// TimeStep for the environment from the argument action and next
+// state newState.
+//
+// This funciton is used so that the discrete and continuous action
+// versions of Acrobot can be deal with uniformly. Each calculates
+// the force to apply and calls this struct's nextState() function.
+// The result of that function is then passed to this function as
+// well as the action taken, which is needed to calculate the reward.
+func (a *base) update(action, newState *mat.VecDense) (ts.TimeStep, bool) {
 	// Create the new timestep
-	reward := a.GetReward(a.LastTimeStep().Observation, action, newState)
+	reward := a.GetReward(a.CurrentTimeStep().Observation, action, newState)
 	nextStep := ts.New(ts.Mid, reward, a.discount, newState,
-		a.LastTimeStep().Number+1)
+		a.CurrentTimeStep().Number+1)
 
 	// Check if the step is the last in the episode and adjust step type
 	// if necessary
@@ -139,13 +199,17 @@ func (a *Acrobot) update(action, newState *mat.VecDense) (ts.TimeStep, bool) {
 	return nextStep, nextStep.Last()
 }
 
-func (a *Acrobot) LastTimeStep() ts.TimeStep {
+// CurrentTimeStep returns the current timestep of the environment
+func (a *base) CurrentTimeStep() ts.TimeStep {
 	return a.lastStep
 }
 
-func (a *Acrobot) Reset() ts.TimeStep {
+// Reset resets the environment, begins a new episode, and returns
+// the first timestep of the new episode
+func (a *base) Reset() ts.TimeStep {
 	state := a.Start()
-	err := validateState(state)
+	err := validateState(state, a.angleBounds, a.velocity1Bounds,
+		a.velocity2Bounds)
 	if err != nil {
 		panic(fmt.Sprintf("reset: %v", err))
 	}
@@ -158,7 +222,7 @@ func (a *Acrobot) Reset() ts.TimeStep {
 
 // ObservationSpec returns the observation specification of the
 // environment
-func (a *Acrobot) ObservationSpec() spec.Environment {
+func (a *base) ObservationSpec() spec.Environment {
 	shape := mat.NewVecDense(ObservationDims, nil)
 	lowerBound := mat.NewVecDense(ObservationDims, []float64{MinAngle,
 		MinAngle, -MaxVel1, -MaxVel2})
@@ -170,7 +234,7 @@ func (a *Acrobot) ObservationSpec() spec.Environment {
 }
 
 // DiscountSpec returns the discounting specification of the environment
-func (a *Acrobot) DiscountSpec() spec.Environment {
+func (a *base) DiscountSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{a.discount})
 	upperBound := mat.NewVecDense(1, []float64{a.discount})
@@ -180,13 +244,15 @@ func (a *Acrobot) DiscountSpec() spec.Environment {
 }
 
 // String implements the fmt.Stringer interface
-func (a *Acrobot) String() string {
-	state := a.LastTimeStep().Observation
+func (a *base) String() string {
+	state := a.CurrentTimeStep().Observation
 
-	return fmt.Sprintf("Acrobot  |  θ1: %v  |  θ2: %v  |  θ̇1: %v  |  θ̇2: %v",
+	return fmt.Sprintf("base  |  θ1: %v  |  θ2: %v  |  θ̇1: %v  |  θ̇2: %v",
 		state.AtVec(0), state.AtVec(1), state.AtVec(2), state.AtVec(3))
 }
 
+// dsDt calculate ds/dt for the environment, where s = the current
+// environment state
 func dsDt(sAugmented *mat.VecDense, t float64) []float64 {
 	m1 := LinkMass1
 	m2 := LinkMass2
@@ -232,6 +298,12 @@ func dsDt(sAugmented *mat.VecDense, t float64) []float64 {
 	return []float64{dtheta1, dtheta2, ddtheta1, ddtheta2, 0.0}
 }
 
+// rk4 integrates an n-dimensional system of ODEs using 4-th order
+// RUnge-Kutta.
+//
+// Adapted from OpenAI Gym Acrobot:
+// https://github.com/openai/gym/blob/7c9ae6d14087fe50714d59bc36b1797560
+// 961710/gym/envs/classic_control/acrobot.py
 func rk4(derivs func(*mat.VecDense, float64) []float64, y0 *mat.VecDense, t []float64) *mat.Dense {
 	Ny := y0.Len()
 
@@ -244,7 +316,6 @@ func rk4(derivs func(*mat.VecDense, float64) []float64, y0 *mat.VecDense, t []fl
 
 	yout.SetRow(0, y0.RawVector().Data)
 
-	// * This can be more efficient if you only init vectors once outside of loop
 	for i := 0; i < len(t)-1; i++ {
 		thist := t[i]
 		dt := t[i+1] - thist // shadowing package constant

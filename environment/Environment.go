@@ -46,7 +46,7 @@ type Environment interface {
 	DiscountSpec() spec.Environment
 	ObservationSpec() spec.Environment
 	ActionSpec() spec.Environment
-	LastTimeStep() timestep.TimeStep
+	CurrentTimeStep() timestep.TimeStep
 }
 
 // PixelEnvironment describes an environment that can represent its

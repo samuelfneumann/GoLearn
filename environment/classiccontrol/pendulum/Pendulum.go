@@ -81,9 +81,9 @@ func newBase(t environment.Task, d float64) (*base, timestep.TimeStep) {
 	return &pendulum, firstStep
 }
 
-// LastTimeStep returns the last TimeStep that occurred in the
+// CurrentTimeStep returns the last TimeStep that occurred in the
 // environment
-func (p *base) LastTimeStep() timestep.TimeStep {
+func (p *base) CurrentTimeStep() timestep.TimeStep {
 	return p.lastStep
 }
 
@@ -127,9 +127,9 @@ func (p *base) nextState(t timestep.TimeStep, torque float64) *mat.VecDense {
 func (p *base) update(action, newState *mat.VecDense) (timestep.TimeStep,
 	bool) {
 	// Create the new timestep
-	reward := p.GetReward(p.LastTimeStep().Observation, action, newState)
+	reward := p.GetReward(p.CurrentTimeStep().Observation, action, newState)
 	nextStep := timestep.New(timestep.Mid, reward, p.discount, newState,
-		p.LastTimeStep().Number+1)
+		p.CurrentTimeStep().Number+1)
 
 	// Check if the step is the last in the episode and adjust step type
 	// if necessary

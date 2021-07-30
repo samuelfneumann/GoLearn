@@ -56,9 +56,9 @@ func New(r, c int, t environment.Task, d float64) (*GridWorld,
 	return g, g.Reset()
 }
 
-// LastTimeStep returns the last TimeStep that occurred in the
+// CurrentTimeStep returns the last TimeStep that occurred in the
 // environment
-func (g *GridWorld) LastTimeStep() timestep.TimeStep {
+func (g *GridWorld) CurrentTimeStep() timestep.TimeStep {
 	return g.currentStep
 }
 

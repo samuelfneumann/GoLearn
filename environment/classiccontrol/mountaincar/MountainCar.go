@@ -81,9 +81,9 @@ func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 
 }
 
-// LastTimeStep returns the last TimeStep that occurred in the
+// CurrentTimeStep returns the last TimeStep that occurred in the
 // environment
-func (b *base) LastTimeStep() ts.TimeStep {
+func (b *base) CurrentTimeStep() ts.TimeStep {
 	return b.lastStep
 }
 
