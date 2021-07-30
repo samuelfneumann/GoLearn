@@ -166,3 +166,28 @@ func Ones(size int) []float64 {
 	}
 	return slice
 }
+
+// Wrap wraps x so that lower <= x <= upper. Unlike clip which clips
+// x to a specific range, Wrap wraps x around the coordinate system
+// defined by [lower, upper]. For example, lower = -180, upper = 180,
+// x = 360 -> Wrap(x, loer, upper) = 0.
+//
+// Adapted from OpenAI Gym's Acrobot implementation:
+// https://github.com/openai/gym/blob/7c9ae6d14087fe50714d59bc36b179756
+// 0961710/gym/envs/classic_control/acrobot.py#L271
+func Wrap(x, lower, upper float64) float64 {
+	diff := upper - lower
+	for x > upper {
+		x -= diff
+	}
+	for x < lower {
+		x += diff
+	}
+	return x
+}
+
+// WrapInterval returns the same quantity as Wrap, but takes in an
+// r1.Interval argument instead of lower and upper bound float64's.
+func WrapInterval(x float64, interval r1.Interval) float64 {
+	return Wrap(x, interval.Min, interval.Max)
+}
