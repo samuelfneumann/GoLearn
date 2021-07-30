@@ -39,6 +39,8 @@ type ProgressBar struct {
 
 	updateEvery       time.Duration
 	updateAtIncrement bool
+
+	message chan string
 }
 
 // NewProgressBar returns a new progress bar that is width characters
@@ -55,6 +57,7 @@ func NewProgressBar(width, max int, updateEvery time.Duration,
 		closed:                     false,
 		updateEvery:                updateEvery,
 		updateAtIncrement:          updateAtIncrement,
+		message:                    make(chan string),
 	}
 
 	// Listen for increment events
@@ -82,6 +85,15 @@ func (p *ProgressBar) Increment() {
 	}()
 }
 
+// AddMessage adds a message after the ProgressBar. If closed is
+// called, the progress bar immediately closes, even if there are
+// still messages in the queue.
+func (p *ProgressBar) AddMessage(message string) {
+	go func() {
+		p.message <- message
+	}()
+}
+
 // Close closes the progress bar so that it will no longer display to
 // the screen. This function also cleans up any resources the progress
 // bar is using.
@@ -90,6 +102,7 @@ func (pbar *ProgressBar) Close() {
 
 	// Do a final refresh of the display
 	pbar.progressToDisplay <- pbar.currentProgress
+	pbar.message <- ""
 
 	// Close the progress bar
 	if pbar.closed {
@@ -112,6 +125,7 @@ func (pbar *ProgressBar) Display() {
 		updateAtIncrement := pbar.updateAtIncrement
 
 		var elapsedTime time.Duration = 0 * time.Second
+		var message string
 
 		var bar strings.Builder
 
@@ -129,6 +143,8 @@ func (pbar *ProgressBar) Display() {
 			// Otherwise update every second
 			case <-tick.C:
 				elapsedTime += updateEvery
+
+			case message = <-pbar.message:
 
 			// Close if a close event is sent
 			case <-pbar.closeEvent:
@@ -152,9 +168,11 @@ func (pbar *ProgressBar) Display() {
 			for i := currentProg; i < width; i++ {
 				bar.Write([]byte(" "))
 			}
-			bar.Write([]byte(fmt.Sprintf("| [%.2f%v | elapsed: %v]",
+			bar.Write([]byte(fmt.Sprintf("| [%.2f%v | elapsed: %v] ",
 				currentProgress/maxProgress*100, "%",
 				elapsedTime)))
+
+			bar.Write([]byte(message))
 
 			fmt.Printf("\n\033[1A\033[K%v", bar.String())
 		}
