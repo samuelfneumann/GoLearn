@@ -52,6 +52,7 @@ type Discrete struct {
 	*base
 }
 
+// NewDiscrete returns a new Acrobot environment with discrete actions
 func NewDiscrete(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
 	acrobot, firstStep := newBase(t, discount)
 
