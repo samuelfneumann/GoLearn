@@ -191,3 +191,12 @@ func Wrap(x, lower, upper float64) float64 {
 func WrapInterval(x float64, interval r1.Interval) float64 {
 	return Wrap(x, interval.Min, interval.Max)
 }
+
+// Sign returns the sign of a number
+func Sign(i float64) float64 {
+	if i >= 0.0 {
+		return 1.0
+	} else {
+		return -1.0
+	}
+}
