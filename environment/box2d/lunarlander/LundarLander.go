@@ -350,8 +350,18 @@ func NewlunarLander(discount float64, seed uint64) (*lunarLander, timestep.TimeS
 		Max: MaxContinuousAction,
 	}
 
-	l.prevStep = l.Reset()
-	return &l, l.prevStep
+	// * Something like this will be used for lunarLanderTasks
+	// t, ok := task.(lunarLanderTask)
+	// if ok {
+	// 	t.registerEnv(l)
+	// 	l.Task = t
+	// } else {
+	// 	l.Task = task
+	// }
+
+	// Reset will set l.prevStep automatically
+	step := l.Reset()
+	return &l, step
 }
 
 func (l *lunarLander) destroy() {
@@ -669,7 +679,9 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 	stateVec := mat.NewVecDense(StateObservations, state)
 
 	// Calculate the reward
-	// !!!! This should be done in a Task laster
+	// !!!! This should be done in a Task later
+	// !!!! The l.prevShaping field and any reward shaping should be done
+	// !!!! in the task as well
 	reward := 0.0
 	shaping := (-100 * math.Sqrt(state[0]*state[0]+state[1]*state[1])) +
 		(-100 * math.Sqrt(state[2]*state[2]+state[3]*state[3])) +
