@@ -80,14 +80,14 @@ func Display() {
 
 	l, _ := NewlunarLander(0.99, 12)
 
-	src := rand.NewSource(15)
-	rng := distuv.Uniform{Min: -1.0, Max: 1.0, Src: src}
+	// src := rand.NewSource(15)
+	// rng := distuv.Uniform{Min: -1.0, Max: 1.0, Src: src}
 
 	for i := 0; i < 500; i++ {
 		l.Render(i)
 		// l.world.Step(0.02, int(6*Scale), int(2*Scale))
 
-		action := mat.NewVecDense(2, []float64{rng.Rand(), rng.Rand()})
+		action := mat.NewVecDense(2, []float64{1.0, 0.0})
 		l.Step(action)
 	}
 }
@@ -101,7 +101,6 @@ func newContactDetector(e *lunarLander) *contactDetector {
 }
 
 func (c *contactDetector) BeginContact(contact box2d.B2ContactInterface) {
-	fmt.Println("Begin")
 	// Check if lander touched the moon
 	if c.env.lander == contact.GetFixtureA().GetBody() ||
 		c.env.lander == contact.GetFixtureB().GetBody() {
@@ -124,7 +123,6 @@ func (c *contactDetector) BeginContact(contact box2d.B2ContactInterface) {
 }
 
 func (c *contactDetector) EndContact(contact box2d.B2ContactInterface) {
-
 	// Check if leg 1 left the ground
 	if c.env.legs[0] == contact.GetFixtureA().GetBody() ||
 		c.env.legs[0] == contact.GetFixtureB().GetBody() {
@@ -526,7 +524,6 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 }
 
 func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
-	fmt.Println("Action:", a)
 
 	// Clip actions
 	for i := 0; i < a.Len(); i++ {
@@ -561,7 +558,7 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 		)
 		linearImpulse := box2d.MakeB2Vec2(
 			-ox*MainEnginePower*mPower,
-			oy*MainEnginePower*mPower,
+			-oy*MainEnginePower*mPower,
 		)
 		l.lander.ApplyLinearImpulse(linearImpulse, impulsePos, true)
 	}
