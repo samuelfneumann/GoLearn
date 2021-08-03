@@ -14,6 +14,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
 	"gonum.org/v1/gonum/stat/distuv"
+	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
 )
@@ -31,6 +32,15 @@ import (
 // TODO: Implement Tasks & Add constants for Starters
 
 // TODO: moonVertices could be []box2d.B2Vec2
+
+// PrevShaping should be put in the Task
+// Every time reset is called, Task.resetPrevShaping() should be called
+//
+// Check if Task is a lunarLanderTask. If so, register the lunarLander
+// environment with the task at the end of each Step() (since Reset
+// calls Step, it will also re-register on environment reset).
+// lunarLander env can then have methods for accessing its mPower, sPower,
+// and any other fields that a lunarLanderTask may need for reward computation, etc.
 
 const (
 	FPS float64 = 50
@@ -61,6 +71,9 @@ const (
 	// Action
 	MaxContinuousAction float64 = 1.0
 	MinContinuousAction float64 = -MaxContinuousAction
+
+	// State observations
+	StateObservations int = 8
 )
 
 var (
@@ -613,7 +626,11 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 		leg1GroundContact,
 		leg2GroundContact,
 	}
-	stateVec := mat.NewVecDense(len(state), state)
+	if len(state) != StateObservations {
+		panic(fmt.Sprintf("step: illegal number of state observations "+
+			"\n\twant(%v) \n\thave(%v)", StateObservations, len(state)))
+	}
+	stateVec := mat.NewVecDense(StateObservations, state)
 
 	// Calculate the reward
 	// !!!! This should be done in a Task laster
@@ -644,5 +661,38 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 		l.prevStep.Number+1)
 	// !!!! l.End(&t)
 
+	l.prevStep = t
+
 	return t, t.Last()
+}
+
+func (l *lunarLander) DiscountSpec() spec.Environment {
+	shape := mat.NewVecDense(1, nil)
+	lowerBound := mat.NewVecDense(1, []float64{l.discount})
+
+	return spec.NewEnvironment(shape, spec.Discount, lowerBound, lowerBound,
+		spec.Continuous)
+}
+
+func (l *lunarLander) ObservationSpec() spec.Environment {
+	shape := mat.NewVecDense(StateObservations, nil)
+
+	lb := make([]float64, StateObservations)
+	for i := range lb {
+		lb[i] = math.Inf(-1)
+	}
+	lowerBound := mat.NewVecDense(StateObservations, lb)
+
+	ub := make([]float64, StateObservations)
+	for i := range ub {
+		ub[i] = math.Inf(1)
+	}
+	upperBound := mat.NewVecDense(StateObservations, ub)
+
+	return spec.NewEnvironment(shape, spec.Observation, lowerBound, upperBound,
+		spec.Continuous)
+}
+
+func (l *lunarLander) CurrentTimeStep() timestep.TimeStep {
+	return l.prevStep
 }
