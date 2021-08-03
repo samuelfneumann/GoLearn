@@ -189,6 +189,32 @@ type lunarLander struct {
 	actionBounds r1.Interval
 	discount     float64
 	prevStep     timestep.TimeStep
+	mPower       float64
+	sPower       float64
+}
+
+func (l *lunarLander) SPower() float64 {
+	return l.sPower
+}
+
+func (l *lunarLander) MPower() float64 {
+	return l.mPower
+}
+
+func (l *lunarLander) IsAwake() bool {
+	return l.Lander().IsAwake()
+}
+
+func (l *lunarLander) Lander() *box2d.B2Body {
+	return l.lander
+}
+
+func (l *lunarLander) GroundContact() (bool, bool) {
+	return l.leg1GroundContact, l.leg2GroundContact
+}
+
+func (l *lunarLander) IsGameOver() bool {
+	return l.gameOver
 }
 
 func WorldToPixelCoord(coords [2]float64) [2]float64 {
@@ -318,15 +344,14 @@ func NewlunarLander(discount float64, seed uint64) (*lunarLander, timestep.TimeS
 	rng := distuv.Uniform{Min: 0, Max: 1.0, Src: src}
 	l.rng = rng
 	l.discount = discount
-	l.prevStep = timestep.TimeStep{}
 
 	l.actionBounds = r1.Interval{
 		Min: MinContinuousAction,
 		Max: MaxContinuousAction,
 	}
 
-	step := l.Reset()
-	return &l, step
+	l.prevStep = l.Reset()
+	return &l, l.prevStep
 }
 
 func (l *lunarLander) destroy() {
@@ -348,6 +373,10 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	l.world.SetContactListener(newContactDetector(l))
 	l.gameOver = false
 	l.prevStep = timestep.TimeStep{}
+	l.mPower = 0.0
+	l.sPower = 0.0
+
+	// ! This should be moved to the task
 	l.prevShaping = new(float64)
 
 	// Maximum W and H for Box2D world
@@ -533,7 +562,12 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	l.legColour1 = color.RGBA{R: 128, G: 102, B: 230, A: 255}
 	l.legColour2 = color.RGBA{R: 77, G: 77, B: 128, A: 255}
 
-	return timestep.TimeStep{}
+	step, last := l.Step(mat.NewVecDense(2, []float64{0.0, 0.0}))
+	if last {
+		panic("reset: environment ended as soon as it began")
+	}
+
+	return step
 }
 
 func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
@@ -575,6 +609,7 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 		)
 		l.lander.ApplyLinearImpulse(linearImpulse, impulsePos, true)
 	}
+	l.mPower = mPower
 
 	// Side engies
 	sPower := 0.0
@@ -601,6 +636,7 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 		)
 		l.lander.ApplyLinearImpulse(linearImpulse, impulsePos, true)
 	}
+	l.sPower = sPower
 
 	l.world.Step(1.0/FPS, 6*int(Scale), 2*int(Scale))
 
@@ -649,10 +685,10 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 	reward -= (mPower * 0.30)
 	reward -= (sPower * 0.03)
 
-	if l.gameOver || math.Abs(stateVec.AtVec(0)) >= 1.0 {
+	if l.IsGameOver() || math.Abs(stateVec.AtVec(0)) >= 1.0 {
 		// done = true
 		reward = -100
-	} else if !l.lander.IsAwake() {
+	} else if !l.Lander().IsAwake() {
 		// done = true
 		reward = 100
 	}
