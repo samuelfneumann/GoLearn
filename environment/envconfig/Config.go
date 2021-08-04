@@ -8,6 +8,7 @@ import (
 
 	"gonum.org/v1/gonum/spatial/r1"
 	env "sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/box2d/lunarlander"
 	"sfneuman.com/golearn/environment/classiccontrol/acrobot"
 	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
 	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
@@ -28,6 +29,7 @@ const (
 	Cartpole    EnvName = "Cartpole"
 	Acrobot     EnvName = "Acrobot"
 	Gridworld   EnvName = "Gridworld"
+	LunarLander EnvName = "LunarLander"
 )
 
 // TaskName stores the tasks that can be configured with this package.
@@ -48,6 +50,7 @@ const (
 	Goal    TaskName = "Goal"
 	SwingUp TaskName = "SwingUp"
 	Balance TaskName = "Balance"
+	Land    TaskName = "Land"
 )
 
 // Config implements a specific configuration of a specific environment
@@ -107,6 +110,10 @@ func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
 
 	case Gridworld:
 		e, step = CreateGridworld(c.ContinuousActions, c.Task,
+			int(c.EpisodeCutoff), seed, c.Discount)
+
+	case LunarLander:
+		e, step = CreateLunarLander(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	default:
@@ -266,6 +273,43 @@ func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
 
 	// Create the gridworld
 	return gridworld.New(r, c, task, discount)
+}
+
+// CreateLunarLander is a factory for creating the Lunar Lander
+// environment with default physical parameters and default task
+// parameters.
+func CreateLunarLander(continuousActions bool, taskName TaskName,
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	xPosition := r1.Interval{
+		Min: lunarlander.InitialX,
+		Max: lunarlander.InitialX,
+	}
+	yPosition := r1.Interval{
+		Min: lunarlander.InitialY,
+		Max: lunarlander.InitialY,
+	}
+	initialRandom := r1.Interval{
+		Min: lunarlander.InitialRandom,
+		Max: lunarlander.InitialRandom,
+	}
+
+	s := env.NewUniformStarter([]r1.Interval{xPosition, yPosition,
+		initialRandom}, seed)
+
+	var task env.Task
+	switch taskName {
+	case Land:
+		task = lunarlander.NewLand(s, cutoff)
+
+	default:
+		panic(fmt.Sprintf("createLunarLander: LunarLander environment has "+
+			"no task %v", taskName))
+	}
+
+	if continuousActions {
+		return lunarlander.NewContinuous(task, discount, seed)
+	}
+	return lunarlander.NewDiscrete(task, discount, seed)
 }
 
 // tileCodingConfig implements configuration settings for tile coding
