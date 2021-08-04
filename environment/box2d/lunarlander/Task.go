@@ -76,11 +76,13 @@ func (l *Land) End(t *ts.TimeStep) bool {
 	fmt.Println(t.Number, l.env.Lander().GetLinearVelocity())
 
 	var done bool
-	if math.Abs(t.Observation.AtVec(0)) >= 1.0 {
-		done = true
-	} else if l.env.IsGameOver() && false {
+	if l.env.IsGameOver() && false {
 		done = true
 	} else if !l.env.Lander().IsAwake() {
+		done = true
+	} else if math.Abs(t.Observation.AtVec(0)) >= 1.0 {
+		// Due to the boundaries on the lunarLander environment, this
+		// case should never run
 		done = true
 	}
 
