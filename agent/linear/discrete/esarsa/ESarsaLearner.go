@@ -116,9 +116,7 @@ func (e *ESarsaLearner) Step() {
 	scale := e.learningRate * (target - currentEstimate)
 
 	// Perform gradient descent: ∇weights = scale * state
-	newWeights := mat.NewVecDense(weights.Len(), nil)
-	newWeights.AddScaledVec(weights, scale, state)
-	e.weights.SetRow(e.action, mat.Col(nil, 0, newWeights))
+	weights.(*mat.VecDense).AddScaledVec(weights, scale, state)
 
 }
 

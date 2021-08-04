@@ -110,10 +110,7 @@ func (q *QLearner) Step() {
 	scale := q.learningRate * (target - currentEstimate)
 
 	// Perform gradient descent: ∇weights = scale * state
-	newWeights := mat.NewVecDense(weights.Len(), nil)
-	newWeights.AddScaledVec(weights, scale, state)
-	q.weights.SetRow(q.action, mat.Col(nil, 0, newWeights))
-
+	weights.(*mat.VecDense).AddScaledVec(weights, scale, state)
 }
 
 // SetWeights sets the weight pointers to point to a new set of weights.
