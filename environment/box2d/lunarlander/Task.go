@@ -1,15 +1,19 @@
 package lunarlander
 
 import (
+	"fmt"
 	"math"
 
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/spec"
+	ts "sfneuman.com/golearn/timestep"
 )
 
 type lunarLanderTask interface {
 	environment.Task
 	registerEnv(*lunarLander)
+	reset()
 }
 
 type Land struct {
@@ -31,7 +35,7 @@ func (l *Land) registerEnv(env *lunarLander) {
 	l.env = env
 }
 
-func (l *Land) resetShaping() {
+func (l *Land) reset() {
 	l.prevShaping = new(float64)
 }
 
@@ -40,15 +44,15 @@ func (l *Land) AtGoal(state mat.Matrix) bool {
 	return leg1Contact && leg2Contact
 }
 
-func (l *Land) GetReward(s, a, nextState mat.Vector) float64 {
-	state := nextState.(*mat.VecDense).RawVector().Data
-
+func (l *Land) GetReward(_, _, nextState mat.Vector) float64 {
 	reward := 0.0
-	shaping := (-100 * math.Sqrt(state[0]*state[0]+state[1]*state[1])) +
-		(-100 * math.Sqrt(state[2]*state[2]+state[3]*state[3])) +
-		(-100 * math.Abs(state[4])) +
-		(10 * state[6]) +
-		(10 * state[7])
+	shaping := (-100 * math.Sqrt(nextState.AtVec(0)*nextState.AtVec(0)+
+		nextState.AtVec(1)*nextState.AtVec(1))) +
+		(-100 * math.Sqrt(nextState.AtVec(2)*nextState.AtVec(2)+
+			nextState.AtVec(3)*nextState.AtVec(3))) +
+		(-100 * math.Abs(nextState.AtVec(4))) +
+		(10 * nextState.AtVec(6)) +
+		(10 * nextState.AtVec(7))
 
 	if l.prevShaping != nil {
 		reward = shaping - *l.prevShaping
@@ -59,10 +63,53 @@ func (l *Land) GetReward(s, a, nextState mat.Vector) float64 {
 	reward -= (l.env.MPower() * 0.30)
 	reward -= (l.env.SPower() * 0.03)
 
-	if l.env.gameOver || math.Abs(nextState.AtVec(0)) >= 1.0 {
+	if l.env.gameOver || math.Abs(nextState.AtVec(0)) >= 1.0 ||
+		math.Abs(nextState.AtVec(1)) >= 1.0 {
 		reward = -100
 	} else if !l.env.lander.IsAwake() {
 		reward = 100
 	}
 	return reward
+}
+
+func (l *Land) End(t *ts.TimeStep) bool {
+	fmt.Println(t.Number, l.env.Lander().GetLinearVelocity())
+
+	var done bool
+	if math.Abs(t.Observation.AtVec(0)) >= 1.0 {
+		done = true
+	} else if l.env.IsGameOver() && false {
+		done = true
+	} else if !l.env.Lander().IsAwake() {
+		done = true
+	}
+
+	if done {
+		t.StepType = ts.Last
+		t.SetEnd(ts.TerminalStateReached)
+	} else {
+		l.stepLimit.End(t)
+	}
+
+	return t.Last()
+}
+
+func (l *Land) Max() float64 {
+	return 100.0
+}
+
+func (l *Land) Min() float64 {
+	// Technically, this reward can be achieved by this task, but it
+	// most likely will never occur.
+	return math.Inf(-1)
+}
+
+func (l *Land) RewardSpec() spec.Environment {
+	shape := mat.NewVecDense(1, nil)
+
+	lowerBound := mat.NewVecDense(1, []float64{l.Min()})
+	upperBound := mat.NewVecDense(1, []float64{l.Max()})
+
+	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
+		spec.Continuous)
 }

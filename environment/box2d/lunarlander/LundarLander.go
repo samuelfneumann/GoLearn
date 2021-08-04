@@ -14,6 +14,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
 	"gonum.org/v1/gonum/stat/distuv"
+	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
@@ -28,6 +29,8 @@ import (
 // TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
 // TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
 // TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
+
+// TODO: Document starter start values
 
 // TODO: Implement Tasks & Add constants for Starters
 
@@ -73,12 +76,20 @@ const (
 	MinContinuousAction float64 = -MaxContinuousAction
 
 	// State observations
-	StateObservations int = 8
+	StateObservations int     = 8
+	MinAngle          float64 = -math.Pi
+	MaxAngle          float64 = math.Pi
+	// Box2D limits on velocity: 2.0 units per timestep
+	MaxVelocity float64 = 2.0 / (1.0 / FPS) // In Box2D units
+	MinVelocity float64 = -MaxVelocity      // in Box2D units
+
+	// Default starting values
+	InitialX      float64 = (ViewportW / Scale / 2)
+	InitialY      float64 = ((ViewportH - ViewportH/25) / Scale)
+	InitialRandom float64 = 1000.0 // Set 1500 to make game harder
 )
 
 var (
-	InitialRandom float64 = 1000.0 // Set 1500 to make game harder
-
 	LanderPoly [][]float64 = [][]float64{
 		{-14, 17},
 		{-17, 0},
@@ -89,18 +100,33 @@ var (
 	}
 )
 
+func WorldToPixelCoord(coords [2]float64) [2]float64 {
+	x, y := coords[0], coords[1]
+
+	pixelX := Scale * x
+
+	pixelY := ViewportH - Scale*y
+
+	return [2]float64{pixelX, pixelY}
+}
+
 func Display() {
+	s := environment.NewUniformStarter([]r1.Interval{
+		{Min: InitialX, Max: InitialX},
+		{Min: InitialY, Max: InitialY},
+		{Min: InitialRandom, Max: InitialRandom},
+	}, 12)
+	task := NewLand(s, 500)
+	l, _ := newLunarLander(task, 0.99, 12)
 
-	l, _ := NewlunarLander(0.99, 12)
-
-	// src := rand.NewSource(15)
-	// rng := distuv.Uniform{Min: -1.0, Max: 1.0, Src: src}
+	src := rand.NewSource(123123)
+	rng := distuv.Uniform{Min: -1.0, Max: 1.0, Src: src}
 
 	for i := 0; i < 500; i++ {
 		l.Render(i)
 		// l.world.Step(0.02, int(6*Scale), int(2*Scale))
 
-		action := mat.NewVecDense(2, []float64{1.0, 0.0})
+		action := mat.NewVecDense(2, []float64{rng.Rand(), rng.Rand()})
 		l.Step(action)
 	}
 }
@@ -156,7 +182,14 @@ func (c *contactDetector) PostSolve(contact box2d.B2ContactInterface, impulse *b
 
 // Continuous actions
 type lunarLander struct {
+	environment.Task
+
 	world box2d.B2World
+
+	boundary       []*box2d.B2Body
+	boundaryColour color.Color
+	xBounds        r1.Interval
+	yBounds        r1.Interval
 
 	moon         *box2d.B2Body
 	moonVertices [][2]float64
@@ -174,23 +207,22 @@ type lunarLander struct {
 	legColour1        color.Color
 	legColour2        color.Color
 
-	particles []*box2d.B2Body
-
 	helipadX1 float64
 	helipadX2 float64
 	helipadY  float64
 
-	gameOver    bool
-	prevReward  float64
-	seed        uint64
-	prevShaping *float64
-	rng         distuv.Uniform
+	gameOver bool
+	seed     uint64
+	rng      distuv.Uniform
 
-	actionBounds r1.Interval
-	discount     float64
-	prevStep     timestep.TimeStep
-	mPower       float64
-	sPower       float64
+	actionBounds   r1.Interval
+	angleBounds    r1.Interval
+	velocityBounds r1.Interval
+
+	discount float64
+	prevStep timestep.TimeStep
+	mPower   float64
+	sPower   float64
 }
 
 func (l *lunarLander) SPower() float64 {
@@ -217,18 +249,6 @@ func (l *lunarLander) IsGameOver() bool {
 	return l.gameOver
 }
 
-func WorldToPixelCoord(coords [2]float64) [2]float64 {
-
-	// return coords
-	x, y := coords[0], coords[1]
-
-	pixelX := Scale * x
-
-	pixelY := ViewportH - Scale*y
-
-	return [2]float64{pixelX, pixelY}
-}
-
 func (l *lunarLander) Render(j int) {
 	dc := gg.NewContext(int(ViewportW), int(ViewportH))
 	dc.SetColor(l.moonShade)
@@ -249,7 +269,6 @@ func (l *lunarLander) Render(j int) {
 	startCoords := WorldToPixelCoord([2]float64{l.moonVertices[0][0], ViewportH / Scale})
 	dc.MoveTo(startCoords[0], startCoords[1])
 	for i := 0; i < len(l.moonVertices); i++ {
-
 		vertices := box2d.MakeB2Vec2(l.moonVertices[i][0], l.moonVertices[i][1])
 		trans := l.moon.M_xf
 		vertices = box2d.B2TransformVec2Mul(trans, vertices)
@@ -262,6 +281,22 @@ func (l *lunarLander) Render(j int) {
 	dc.LineTo(startCoords[0], startCoords[1])
 	dc.SetColor(l.skyShade)
 	dc.Fill()
+
+	// Bounds
+	dc.ClearPath()
+	dc.SetColor(l.boundaryColour)
+	dc.SetLineWidth(5.0)
+	for i := range l.boundary {
+		// var p [][2]float64
+		fix := l.boundary[i].GetFixtureList()
+		sh := fix.M_shape.(*box2d.B2EdgeShape)
+
+		pixelCoords1 := WorldToPixelCoord([2]float64{sh.M_vertex1.X, sh.M_vertex1.Y})
+		pixelCoords2 := WorldToPixelCoord([2]float64{sh.M_vertex2.X, sh.M_vertex2.Y})
+
+		dc.DrawLine(pixelCoords1[0], pixelCoords1[1], pixelCoords2[0], pixelCoords2[1])
+	}
+	dc.Stroke()
 
 	// Lander
 	landerFix := l.lander.GetFixtureList()
@@ -322,9 +357,13 @@ func (l *lunarLander) Render(j int) {
 	dc.SavePNG(fmt.Sprintf("./LL%v.png", j))
 }
 
-func NewlunarLander(discount float64, seed uint64) (*lunarLander, timestep.TimeStep) {
+func newLunarLander(task environment.Task, discount float64,
+	seed uint64) (*lunarLander, timestep.TimeStep) {
 	l := lunarLander{}
 	l.world = box2d.MakeB2World(box2d.B2Vec2{X: XGravity, Y: YGravity})
+	// l.boundaryColour = color.RGBA{R: 61, G: 53, B: 122, A: 255}
+	l.boundaryColour = color.RGBA{R: 255, G: 166, B: 0, A: 255}
+	// l.boundaryColour = color.RGBA{R: 255, G: 115, B: 76, A: 255}
 
 	l.moon = nil
 	l.moonVertices = make([][2]float64, 0, 2*(Chunks-1))
@@ -333,11 +372,13 @@ func NewlunarLander(discount float64, seed uint64) (*lunarLander, timestep.TimeS
 	l.skyShade = color.RGBA{R: 30, G: 30, B: 30, A: 255}
 
 	l.lander = nil
-	l.particles = make([]*box2d.B2Body, 0)
+	l.landerColour1 = color.RGBA{R: 128, G: 102, B: 230, A: 255}
+	l.landerColour2 = color.RGBA{R: 77, G: 77, B: 128, A: 255}
 
-	l.prevReward = 0.0
+	l.legColour1 = color.RGBA{R: 128, G: 102, B: 230, A: 255}
+	l.legColour2 = color.RGBA{R: 77, G: 77, B: 128, A: 255}
+
 	l.seed = seed
-	l.prevShaping = new(float64)
 	l.gameOver = false
 
 	src := rand.NewSource(seed)
@@ -350,14 +391,18 @@ func NewlunarLander(discount float64, seed uint64) (*lunarLander, timestep.TimeS
 		Max: MaxContinuousAction,
 	}
 
-	// * Something like this will be used for lunarLanderTasks
-	// t, ok := task.(lunarLanderTask)
-	// if ok {
-	// 	t.registerEnv(l)
-	// 	l.Task = t
-	// } else {
-	// 	l.Task = task
-	// }
+	l.angleBounds = r1.Interval{Min: MinAngle, Max: MaxAngle}
+	l.velocityBounds = r1.Interval{Min: MinVelocity, Max: MaxVelocity}
+	l.yBounds = r1.Interval{Min: ViewportH / Scale / 2, Max: InitialY}
+	l.xBounds = r1.Interval{Min: -ViewportW / 2, Max: ViewportW / 2}
+
+	t, ok := task.(lunarLanderTask)
+	if ok {
+		t.registerEnv(&l)
+		l.Task = t
+	} else {
+		l.Task = task
+	}
 
 	// Reset will set l.prevStep automatically
 	step := l.Reset()
@@ -372,10 +417,17 @@ func (l *lunarLander) destroy() {
 	// l.cleanParticles(true)
 	l.world.DestroyBody(l.moon)
 	l.moon = nil
+
 	l.world.DestroyBody(l.lander)
 	l.lander = nil
+
 	l.world.DestroyBody(l.legs[0])
 	l.world.DestroyBody(l.legs[1])
+
+	l.world.DestroyBody(l.boundary[0])
+	l.world.DestroyBody(l.boundary[1])
+	l.world.DestroyBody(l.boundary[2])
+	l.world.DestroyBody(l.boundary[3])
 }
 
 func (l *lunarLander) Reset() timestep.TimeStep {
@@ -386,15 +438,46 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	l.mPower = 0.0
 	l.sPower = 0.0
 
-	// ! This should be moved to the task
-	l.prevShaping = new(float64)
+	// If we have a lunarLanderTask, its internal variables wil lneed
+	// to be reset when the environment is reset.
+	t, ok := l.Task.(lunarLanderTask)
+	if ok {
+		t.reset()
+	}
+	start := t.Start()
+	err := validateStart(start, l.xBounds, l.yBounds)
+	if err != nil {
+		panic(fmt.Sprintf("reset: %v", err))
+	}
 
 	// Maximum W and H for Box2D world
 	W := ViewportW / Scale
 	H := ViewportH / Scale
 
+	// Bounds
+	l.boundary = make([]*box2d.B2Body, 4)
+	for i := 0; i < 4; i++ {
+		boundsDef := box2d.NewB2BodyDef()
+		boundsDef.Type = 0 // Static body
+		l.boundary[i] = l.world.CreateBody(boundsDef)
+		boundsShape := box2d.NewB2EdgeShape()
+		if i == 0 {
+			boundsShape.Set(box2d.MakeB2Vec2(0.0, 0.0), box2d.MakeB2Vec2(0.0, ViewportH/Scale))
+		} else if i == 1 {
+			boundsShape.Set(box2d.MakeB2Vec2(0.0, ViewportH/Scale), box2d.MakeB2Vec2(ViewportW/Scale, ViewportH/Scale))
+		} else if i == 2 {
+			boundsShape.Set(box2d.MakeB2Vec2(ViewportW/Scale, ViewportH/Scale),
+				box2d.MakeB2Vec2(ViewportW/Scale, 0.0))
+		} else {
+			boundsShape.Set(box2d.MakeB2Vec2(ViewportW/Scale, 0.0), box2d.MakeB2Vec2(0.0, 0.0))
+		}
+		boundsFix := box2d.MakeB2FixtureDef()
+		boundsFix.Shape = boundsShape
+		l.boundary[i].CreateFixtureFromDef(&boundsFix)
+
+	}
+
 	// Terrain
-	// chunks := 11
 	height := make([]float64, Chunks+1)
 	for i := 0; i < len(height); i++ {
 		height[i] = l.rng.Rand() * (H / 2.0)
@@ -466,11 +549,11 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	}
 
 	// Lander Body Def
+	initialX := start.AtVec(0)
+	initialY := start.AtVec(1)
 	landerDef := box2d.MakeB2BodyDef()
 	landerDef.Type = 2 // Dynamic body
-	// initialX := (ViewportH / Scale) * l.rng.Rand()
-	initialY := (ViewportH / Scale)
-	landerDef.Position = box2d.MakeB2Vec2(ViewportW/Scale/2, initialY)
+	landerDef.Position = box2d.MakeB2Vec2(initialX, initialY)
 	landerDef.Angle = 0.0
 
 	// Create lander body
@@ -502,15 +585,10 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	// Attach shape to body
 	landerBody.CreateFixtureFromDef(&landerFix)
 
-	// Lander colour
-	l.landerColour1 = color.RGBA{R: 128, G: 102, B: 230, A: 255}
-	l.landerColour2 = color.RGBA{R: 77, G: 77, B: 128, A: 255}
-
 	// Apply force to lander
-	initialForceX := (l.rng.Rand() * 2 * InitialRandom) - InitialRandom
-	// initialForceX /= 5
-	initialForceY := (l.rng.Rand() * 2 * InitialRandom) - InitialRandom
-	// initialForceY /= 5
+	initialRandom := start.AtVec(2)
+	initialForceX := (l.rng.Rand() * 2 * initialRandom) - initialRandom
+	initialForceY := (l.rng.Rand() * 2 * initialRandom) - initialRandom
 	initialForce := box2d.MakeB2Vec2(initialForceX, initialForceY)
 	l.lander.ApplyForceToCenter(initialForce, true)
 
@@ -519,8 +597,8 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	for _, i := range []float64{-1.0, 1.0} {
 		// Create leg body def
 		legDef := box2d.NewB2BodyDef()
-		legDef.Type = 2
-		legDef.Position = box2d.MakeB2Vec2(ViewportW/Scale/2-i*LegAway/Scale,
+		legDef.Type = 2 // Dynamic body
+		legDef.Position = box2d.MakeB2Vec2(initialX-i*LegAway/Scale,
 			initialY)
 		legDef.Angle = i * 0.05
 
@@ -567,10 +645,6 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	}
 	l.leg1GroundContact = false
 	l.leg2GroundContact = false
-
-	// Leg colours
-	l.legColour1 = color.RGBA{R: 128, G: 102, B: 230, A: 255}
-	l.legColour2 = color.RGBA{R: 77, G: 77, B: 128, A: 255}
 
 	step, last := l.Step(mat.NewVecDense(2, []float64{0.0, 0.0}))
 	if last {
@@ -651,8 +725,8 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 	l.world.Step(1.0/FPS, 6*int(Scale), 2*int(Scale))
 
 	// Calculate the state observation
-	pos := l.lander.GetPosition()
-	vel := l.lander.GetLinearVelocity()
+	pos := l.Lander().GetPosition()
+	vel := l.Lander().GetLinearVelocity()
 
 	var leg1GroundContact, leg2GroundContact float64
 	if l.leg1GroundContact {
@@ -664,50 +738,25 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 
 	state := []float64{
 		(pos.X - ViewportW/Scale/2.0) / (ViewportW / Scale / 2.0),
-		(pos.Y - (l.helipadY + LegDown/Scale)) / (ViewportH / Scale / 2.0),
+		(pos.Y - (l.helipadY + LegDown/Scale)) / (ViewportH/Scale - l.helipadY),
 		vel.X * (ViewportW / Scale / 2.0) / FPS,
 		vel.Y * (ViewportH / Scale / 2.0) / FPS,
-		l.lander.GetAngle(),
+		floatutils.Wrap(l.lander.GetAngle(), l.angleBounds.Min, l.angleBounds.Max),
 		20.0 * l.lander.GetAngularVelocity() / FPS,
 		leg1GroundContact,
 		leg2GroundContact,
 	}
+
 	if len(state) != StateObservations {
 		panic(fmt.Sprintf("step: illegal number of state observations "+
 			"\n\twant(%v) \n\thave(%v)", StateObservations, len(state)))
 	}
 	stateVec := mat.NewVecDense(StateObservations, state)
 
-	// Calculate the reward
-	// !!!! This should be done in a Task later
-	// !!!! The l.prevShaping field and any reward shaping should be done
-	// !!!! in the task as well
-	reward := 0.0
-	shaping := (-100 * math.Sqrt(state[0]*state[0]+state[1]*state[1])) +
-		(-100 * math.Sqrt(state[2]*state[2]+state[3]*state[3])) +
-		(-100 * math.Abs(state[4])) +
-		(10 * state[6]) +
-		(10 * state[7])
-	if l.prevShaping != nil {
-		reward = shaping - *l.prevShaping
-	}
-	*l.prevShaping = shaping
-
-	// Less fuel spent is better
-	reward -= (mPower * 0.30)
-	reward -= (sPower * 0.03)
-
-	if l.IsGameOver() || math.Abs(stateVec.AtVec(0)) >= 1.0 {
-		// done = true
-		reward = -100
-	} else if !l.Lander().IsAwake() {
-		// done = true
-		reward = 100
-	}
-
+	reward := l.GetReward(l.prevStep.Observation, a, stateVec)
 	t := timestep.New(timestep.Mid, reward, l.discount, stateVec,
 		l.prevStep.Number+1)
-	// !!!! l.End(&t)
+	l.End(&t)
 
 	l.prevStep = t
 
@@ -725,17 +774,28 @@ func (l *lunarLander) DiscountSpec() spec.Environment {
 func (l *lunarLander) ObservationSpec() spec.Environment {
 	shape := mat.NewVecDense(StateObservations, nil)
 
-	lb := make([]float64, StateObservations)
-	for i := range lb {
-		lb[i] = math.Inf(-1)
-	}
-	lowerBound := mat.NewVecDense(StateObservations, lb)
+	lowerBound := mat.NewVecDense(StateObservations, []float64{
+		0.,
+		0.,
+		l.velocityBounds.Min,
+		l.velocityBounds.Min,
+		l.angleBounds.Min,
+		l.velocityBounds.Min,
+		0.,
+		0.,
+	})
 
-	ub := make([]float64, StateObservations)
-	for i := range ub {
-		ub[i] = math.Inf(1)
-	}
-	upperBound := mat.NewVecDense(StateObservations, ub)
+	upperBound := mat.NewVecDense(StateObservations, []float64{
+		1.,
+		(ViewportH/Scale - (l.helipadY + LegDown)) /
+			(ViewportH/Scale - l.helipadY),
+		l.velocityBounds.Max,
+		l.velocityBounds.Max,
+		l.angleBounds.Max,
+		l.velocityBounds.Max,
+		1.,
+		1.,
+	})
 
 	return spec.NewEnvironment(shape, spec.Observation, lowerBound, upperBound,
 		spec.Continuous)
@@ -743,4 +803,27 @@ func (l *lunarLander) ObservationSpec() spec.Environment {
 
 func (l *lunarLander) CurrentTimeStep() timestep.TimeStep {
 	return l.prevStep
+}
+
+func validateStart(state *mat.VecDense, xBounds, yBounds r1.Interval) error {
+	if state.Len() != 3 {
+		return fmt.Errorf("starting values should be 4-dimensional")
+	}
+
+	fmt.Println("START", state, yBounds)
+	// InitialX      float64 = (ViewportW / Scale / 2)
+	// InitialY      float64 = ((ViewportH - ViewportH/25) / Scale)
+
+	if state.AtVec(0) > xBounds.Max || state.AtVec(0) < xBounds.Min {
+		return fmt.Errorf("x position out of bounds, expected x ϵ (%v, %v) "+
+			"but got x = %v", -ViewportW/Scale, ViewportW/Scale,
+			state.AtVec(0))
+	}
+
+	if state.AtVec(1) > yBounds.Max || state.AtVec(1) < yBounds.Min {
+		return fmt.Errorf("y position out of bounds, expected y ϵ (%v, %v) "+
+			"but got y = %v", ViewportH/Scale/2, InitialY, state.AtVec(1))
+	}
+
+	return nil
 }
