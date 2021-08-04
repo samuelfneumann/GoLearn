@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"time"
 
 	"golang.org/x/exp/rand"
 
@@ -19,16 +20,6 @@ import (
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
 )
-
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
-// TODO: NOW, WE DEAL ONLY WITH CONTINUOUS ACTIONS
 
 // TODO: Document starter start values
 
@@ -87,7 +78,7 @@ const (
 
 	// Default starting values
 	InitialX      float64 = (ViewportW / Scale / 2)
-	InitialY      float64 = ((ViewportH - ViewportH/25) / Scale)
+	InitialY      float64 = 0.92 * (ViewportH / Scale)
 	InitialRandom float64 = 1000.0 // Set 1500 to make game harder
 )
 
@@ -102,50 +93,24 @@ var (
 	}
 )
 
-func WorldToPixelCoord(coords [2]float64) [2]float64 {
-	x, y := coords[0], coords[1]
-
-	pixelX := Scale * x
-
-	pixelY := ViewportH - Scale*y
-
-	return [2]float64{pixelX, pixelY}
-}
-
-func Display() {
-	s := environment.NewUniformStarter([]r1.Interval{
-		{Min: InitialX, Max: InitialX},
-		{Min: InitialY, Max: InitialY},
-		{Min: InitialRandom, Max: InitialRandom},
-	}, 12)
-	task := NewLand(s, 500)
-	l, _ := newLunarLander(task, 0.99, 12)
-
-	src := rand.NewSource(123123)
-	rng := distuv.Uniform{Min: -1.0, Max: 1.0, Src: src}
-
-	for i := 0; i < 500; i++ {
-		l.Render(i)
-		// l.world.Step(0.02, int(6*Scale), int(2*Scale))
-
-		action := mat.NewVecDense(2, []float64{rng.Rand(), rng.Rand()})
-		l.Step(action)
-	}
-}
-
+// contactDetector detects and manages the contacts of objects in
+// the lunarLander environment.
 type contactDetector struct {
 	env *lunarLander
 }
 
+// newContactDetector returns a new contactDetector
 func newContactDetector(e *lunarLander) *contactDetector {
 	return &contactDetector{e}
 }
 
+// BeginContact performs housekeeping for the lunarLander environment
+// when two objects collide
 func (c *contactDetector) BeginContact(contact box2d.B2ContactInterface) {
 	// Check if lander touched the moon
 	if c.env.lander == contact.GetFixtureA().GetBody() ||
 		c.env.lander == contact.GetFixtureB().GetBody() {
-		// If the body touches the ground, it's game over.
+		// If the body touches the ground or boundary, it's game over.
 		// The ship should be landed gently.
 		c.env.gameOver = true
 	}
@@ -163,6 +128,8 @@ func (c *contactDetector) BeginContact(contact box2d.B2ContactInterface) {
 	}
 }
 
+// EndContact performs housekeeping for the lunarLander environment
+// when two objects which had previously collided separate
 func (c *contactDetector) EndContact(contact box2d.B2ContactInterface) {
 	// Check if leg 1 left the ground
 	if c.env.legs[0] == contact.GetFixtureA().GetBody() ||
@@ -178,27 +145,132 @@ func (c *contactDetector) EndContact(contact box2d.B2ContactInterface) {
 
 }
 
-func (c *contactDetector) PreSolve(contact box2d.B2ContactInterface, oldManifold box2d.B2Manifold) {}
-func (c *contactDetector) PostSolve(contact box2d.B2ContactInterface, impulse *box2d.B2ContactImpulse) {
+func (c *contactDetector) PreSolve(contact box2d.B2ContactInterface,
+	oldManifold box2d.B2Manifold) {
+}
+func (c *contactDetector) PostSolve(contact box2d.B2ContactInterface,
+	impulse *box2d.B2ContactImpulse) {
 }
 
-// Continuous actions
+// lunarLander implements the lunar lander environment. In this
+// environment, an agent can fly a ship within a set bounding box
+// viewport. At the bottom of the viewport is the moon, and the agent
+// can land the ship on the moon. There is a landing pad on the moon,
+// which is a completely horizontal portion of the moon and it is
+// always located at the point (0, 0).
+//
+// State observations are vectors consisting of the following features
+// in the following order:
+//
+//	1. The x distance from the lander to the center of the viewport
+//	   Bounds: [-1, 1]
+//	2. The y distance from the lander to the landing pad
+//	   Bounds: [0, 1]
+//	   Technically, the upper bound is ((ViewportH - (Lander.Top -
+//	   Lander.Centre) - LegDown)/Scale - l.helipadY) /
+//	   (ViewportH/Scale - l.helipadY) due to how the state observation
+//	   is constructed and due to the fact that the bottom of the
+//	   lander's legs cannot reach the boundary (since the lander cannot
+//	   flip onto its back and fly upward), but an approximation of 1.0
+//	   is sufficient. The true upper bound is approximately 0.88.
+//	3. The x velocity of the lander
+//	   Bounds: the bounds depend on the physical constants of the
+// 	   Box2D universe. With the defaults in this file, the bounds are
+//	   [-20, 20]
+//	4. The y velocity of the lander
+//	   Bounds: the bounds depend on the physical constants of the
+// 	   Box2D universe. With the defaults in this file, the bounds are
+//	   [-20, 20]
+//	5. The angle of the lander
+//	   Bounds: normalized between [-π, π]
+//	6. The angular velocity of the lander
+//	   Bounds: [-40, 40]
+//	7. Whether the left leg has contact with the ground
+//	   Bounds: feature in the set {0, 1}
+//	8. Whether the right leg has contact with the ground
+//	   Bounds: feature in the set {0, 1}
+//
+// More information on the Lunar Lander environment can be found at:
+// https://gym.openai.com/envs/LunarLander-v2/
+// https://gym.openai.com/envs/LunarLanderContinuous-v2/
+//
+// This implementation of LunarLander has a few differences from the
+// OpenAI Gym implementation:
+//
+//	1. In this implementation, a boundary is placed around the viewport
+//	   so that the lander cannot exit the viewport. This allows the
+//	   x and y position features to be bounded. In the OpenAI gym
+//	   implementation, there is no bounding box, and the agent is
+//	   free to fly the lander as high as it wants, but episodes are
+//	   terminated if the lander leaves the viewport along the x axis.
+//	   Due to the boundary in this implementation, episodes are not
+//	   cutoff when the lander leaves the viewport along the x axis,
+//	   as this is not possible. The benefit of having a bounded x and
+//	   y position is that tile-coding can easily be used.
+//
+//	2. State features are constructed slightly differently. In this
+//	   implementation, the lander angle is normalized between [-π, π].
+//	   So, if the lander rotates by an angle of 2π, the state
+//	   observation results in an angle of 0. In the OpenAI Gym
+//	   implementation, no normalization of the angle is done. Angle
+//	   normalization allows for tile-coding to be easily used.
+//
+//	   This implementation normalized the y position using the distance
+//	   from the landing pad to the top of the viewport bounding box.
+//	   The OpenAI gym implementation normalizes by the halved height
+//	   of the viewport. That is, the OpenAI Gym implementation's
+//	   y position feature measures how far the ship's leg is from the
+//	   landing pad in units of (viewport height / 2). This
+//	   implementation's y position feature measures how far the ship's
+//	   leg is from the landing pad in units of maximum possible
+//	   distance from the ship to the landing pad.
+//
+//	3. The observation space in this implementation explicitly takes the
+//	   limitations of Box2D into account. That is, the maximum velocity
+//	   allowed in Box2D is considered and returned when the user
+//	   asks for the observation space. In the OpenAI Gym implementation,
+//	   the limitation of Box2D are not considered, and the observation
+//	   space is considered to be (-∞, +∞) for all state features.
+//
+//	4. Due to (1), (2), and (3), bounds on the observation space are
+//	   different between this implementation and the implementation of
+//	   OpenAI Gym, and state observation features may be slightly
+//	   different between this implementation and that of OpenAI Gym
+//	   for the same underlying state.
+//
+// Any Task used in this struct must have a specific range of values
+// for its Starter. The Starter should return a vector of 3 elements
+// in the following order:
+//
+//	1. The x position to start at in the Box2D world. The specific
+//	   values that this element can take on must be in the interval
+//	   [0.05 * (ViewportW / Scale), 0.95 * (ViewportW / Scale)].
+//	   The default value to use in the Starter is InitialX for the
+//	   lower and upper bounds.
+//	2. The y position to start at in the Box2D world. The specific
+//	   values that this element can take on must be in the interval
+//	   [ViewportH / Scale / 2, InitialY].
+//	   The default value to use in the Starter is InitialY for the
+//	   lower and upper bounds.
+//	3. The initial random force to apply to the lander. This can be any
+//	   value, but the default is InitialRandom for the lower and
+//	   upper bounds for the Starter.
+//
+// This struct itself does not implement the environment.Environment
+// interface. To use the environment, use either the Discrete or
+// Continuous structs defined in this package.
 type lunarLander struct {
 	environment.Task
 
 	world box2d.B2World
 
-	boundary       []*box2d.B2Body
-	boundaryColour color.Color
-	xBounds        r1.Interval
-	yBounds        r1.Interval
-
+	// Moon and sky
 	moon         *box2d.B2Body
 	moonVertices [][2]float64
 	moonShade    color.Color
+	skyShade     color.Color
 
-	skyShade color.Color
-
+	// Lander and its legs
 	lander        *box2d.B2Body
 	landerColour1 color.Color
 	landerColour2 color.Color
@@ -209,195 +281,80 @@ type lunarLander struct {
 	legColour1        color.Color
 	legColour2        color.Color
 
+	// The position of the landing pad
 	helipadX1 float64
 	helipadX2 float64
 	helipadY  float64
 
-	gameOver bool
-	seed     uint64
-	rng      distuv.Uniform
+	// World boundary - bounds the x and y axes
+	boundary       []*box2d.B2Body
+	boundaryColour color.Color
 
+	// Bounds on actions and state observations
 	actionBounds   r1.Interval
 	angleBounds    r1.Interval
 	velocityBounds r1.Interval
 
+	// Bounds on the starting state position
+	startXBounds r1.Interval
+	startYBounds r1.Interval
+
+	// Whether the current episode resulted in a game over. A game
+	// over occurs if the ship touches the moon or the boundary. In
+	// such a case, the ship is considered to crash. Only the legs of
+	// the ship can touch the moon or any boundary.
+	gameOver bool
+
+	// Random environment variables
 	discount float64
 	prevStep timestep.TimeStep
+	seed     uint64
+	rng      distuv.Uniform
 	mPower   float64
 	sPower   float64
 }
 
-func (l *lunarLander) SPower() float64 {
-	return l.sPower
-}
-
-func (l *lunarLander) MPower() float64 {
-	return l.mPower
-}
-
-func (l *lunarLander) IsAwake() bool {
-	return l.Lander().IsAwake()
-}
-
-func (l *lunarLander) Lander() *box2d.B2Body {
-	return l.lander
-}
-
-func (l *lunarLander) GroundContact() (bool, bool) {
-	return l.leg1GroundContact, l.leg2GroundContact
-}
-
-func (l *lunarLander) IsGameOver() bool {
-	return l.gameOver
-}
-
-func (l *lunarLander) Render(j int) {
-	dc := gg.NewContext(int(ViewportW), int(ViewportH))
-	dc.SetColor(l.moonShade)
-	dc.Clear()
-
-	// Draw moon
-	for i := 0; i < len(l.moonVertices)-1; i++ {
-		v1 := WorldToPixelCoord(l.moonVertices[i])
-		v2 := WorldToPixelCoord(l.moonVertices[i+1])
-		dc.DrawLine(v1[0], v1[1], v2[0], v2[1])
-	}
-
-	dc.SetColor(l.moonShade)
-	dc.SetLineWidth(5.0)
-	dc.Stroke()
-
-	dc.ClearPath()
-	startCoords := WorldToPixelCoord([2]float64{l.moonVertices[0][0], ViewportH / Scale})
-	dc.MoveTo(startCoords[0], startCoords[1])
-	for i := 0; i < len(l.moonVertices); i++ {
-		vertices := box2d.MakeB2Vec2(l.moonVertices[i][0], l.moonVertices[i][1])
-		trans := l.moon.M_xf
-		vertices = box2d.B2TransformVec2Mul(trans, vertices)
-		coords := WorldToPixelCoord([2]float64{vertices.X, vertices.Y})
-		dc.LineTo(coords[0], coords[1])
-	}
-	last := len(l.moonVertices) - 1
-	endCoords := WorldToPixelCoord([2]float64{l.moonVertices[last][0], ViewportH / Scale})
-	dc.LineTo(endCoords[0], endCoords[1])
-	dc.LineTo(startCoords[0], startCoords[1])
-	dc.SetColor(l.skyShade)
-	dc.Fill()
-
-	// Bounds
-	dc.ClearPath()
-	dc.SetColor(l.boundaryColour)
-	dc.SetLineWidth(5.0)
-	for i := range l.boundary {
-		// var p [][2]float64
-		fix := l.boundary[i].GetFixtureList()
-		sh := fix.M_shape.(*box2d.B2EdgeShape)
-
-		pixelCoords1 := WorldToPixelCoord([2]float64{sh.M_vertex1.X, sh.M_vertex1.Y})
-		pixelCoords2 := WorldToPixelCoord([2]float64{sh.M_vertex2.X, sh.M_vertex2.Y})
-
-		dc.DrawLine(pixelCoords1[0], pixelCoords1[1], pixelCoords2[0], pixelCoords2[1])
-	}
-	dc.Stroke()
-
-	// Lander
-	landerFix := l.lander.GetFixtureList()
-	for landerFix != nil {
-		shape := landerFix.M_shape.(*box2d.B2PolygonShape)
-		path := make([][2]float64, 0, shape.M_count)
-		for i, vertex := range shape.M_vertices {
-			if i >= shape.M_count {
-				break
-			}
-			trans := landerFix.M_body.M_xf
-			vertex = box2d.B2TransformVec2Mul(trans, vertex)
-
-			pixelCoords := WorldToPixelCoord([2]float64{vertex.X, vertex.Y})
-			path = append(path, pixelCoords)
-		}
-
-		dc.ClearPath()
-		for _, point := range path {
-			dc.LineTo(point[0], point[1])
-		}
-		dc.LineTo(path[0][0], path[0][1])
-
-		dc.SetColor(l.landerColour1)
-		dc.Fill()
-		landerFix = landerFix.M_next
-	}
-
-	// Legs
-	for _, leg := range l.legs {
-		legFix := leg.GetFixtureList()
-		for legFix != nil {
-			dc.ClearPath()
-			shape := legFix.M_shape.(*box2d.B2PolygonShape)
-			path := make([][2]float64, 0, shape.M_count)
-			for i, vertex := range shape.M_vertices {
-				if i >= shape.M_count {
-					break
-				}
-				trans := legFix.M_body.M_xf
-				vertex := box2d.B2TransformVec2Mul(trans, vertex)
-
-				pixelCoords := WorldToPixelCoord([2]float64{vertex.X,
-					vertex.Y})
-				path = append(path, pixelCoords)
-			}
-			for _, point := range path {
-				dc.LineTo(point[0], point[1])
-			}
-			dc.LineTo(path[0][0], path[0][1])
-
-			dc.SetColor(l.legColour1)
-			dc.Fill()
-			legFix = legFix.M_next
-		}
-	}
-
-	dc.SavePNG(fmt.Sprintf("./LL%v.png", j))
-}
-
+// newLunarLander creates and returns a new base lunarLander struct
 func newLunarLander(task environment.Task, discount float64,
 	seed uint64) (*lunarLander, timestep.TimeStep) {
 	l := lunarLander{}
 	l.world = box2d.MakeB2World(box2d.B2Vec2{X: XGravity, Y: YGravity})
-	// l.boundaryColour = color.RGBA{R: 61, G: 53, B: 122, A: 255}
 	l.boundaryColour = color.RGBA{R: 255, G: 166, B: 0, A: 255}
-	// l.boundaryColour = color.RGBA{R: 255, G: 115, B: 76, A: 255}
 
 	l.moon = nil
 	l.moonVertices = make([][2]float64, 0, 2*(Chunks-1))
 	l.moonShade = color.RGBA{R: 255, G: 255, B: 255, A: 255}
-
 	l.skyShade = color.RGBA{R: 30, G: 30, B: 30, A: 255}
 
 	l.lander = nil
 	l.landerColour1 = color.RGBA{R: 128, G: 102, B: 230, A: 255}
 	l.landerColour2 = color.RGBA{R: 77, G: 77, B: 128, A: 255}
-
 	l.legColour1 = color.RGBA{R: 128, G: 102, B: 230, A: 255}
 	l.legColour2 = color.RGBA{R: 77, G: 77, B: 128, A: 255}
 
-	l.seed = seed
 	l.gameOver = false
+	l.discount = discount
 
+	l.seed = seed
 	src := rand.NewSource(seed)
 	rng := distuv.Uniform{Min: 0, Max: 1.0, Src: src}
 	l.rng = rng
-	l.discount = discount
 
+	// Bounds on actions and state observations
 	l.actionBounds = r1.Interval{
 		Min: MinContinuousAction,
 		Max: MaxContinuousAction,
 	}
-
 	l.angleBounds = r1.Interval{Min: MinAngle, Max: MaxAngle}
 	l.velocityBounds = r1.Interval{Min: MinVelocity, Max: MaxVelocity}
-	l.yBounds = r1.Interval{Min: ViewportH / Scale / 2, Max: InitialY}
-	l.xBounds = r1.Interval{Min: -ViewportW / 2, Max: ViewportW / 2}
 
+	// Bounds on the starting state position
+	l.startYBounds = r1.Interval{Min: ViewportH / Scale / 2,
+		Max: InitialY}
+	l.startXBounds = r1.Interval{Min: 0.05 * (ViewportW / Scale),
+		Max: 0.95 * (ViewportW / Scale)}
+
+	// Register the task if needed
 	t, ok := task.(lunarLanderTask)
 	if ok {
 		t.registerEnv(&l)
@@ -411,12 +368,13 @@ func newLunarLander(task environment.Task, discount float64,
 	return &l, step
 }
 
+// destroy performs housekeeping to destroy Box2D objects when the
+// environment needs to be reset
 func (l *lunarLander) destroy() {
 	if l.moon == nil {
 		return
 	}
 	l.world.SetContactListener(nil)
-	// l.cleanParticles(true)
 	l.world.DestroyBody(l.moon)
 	l.moon = nil
 
@@ -432,6 +390,8 @@ func (l *lunarLander) destroy() {
 	l.world.DestroyBody(l.boundary[3])
 }
 
+// Reset resets the environment and returns the first timestep of the
+// next episode
 func (l *lunarLander) Reset() timestep.TimeStep {
 	l.destroy()
 	l.world.SetContactListener(newContactDetector(l))
@@ -440,14 +400,16 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	l.mPower = 0.0
 	l.sPower = 0.0
 
-	// If we have a lunarLanderTask, its internal variables wil lneed
+	// If we have a lunarLanderTask, its internal variables will need
 	// to be reset when the environment is reset.
 	t, ok := l.Task.(lunarLanderTask)
 	if ok {
 		t.reset()
 	}
+
+	// Get a starting state
 	start := t.Start()
-	err := validateStart(start, l.xBounds, l.yBounds)
+	err := validateStart(start, l.startXBounds, l.startYBounds)
 	if err != nil {
 		panic(fmt.Sprintf("reset: %v", err))
 	}
@@ -464,14 +426,25 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 		l.boundary[i] = l.world.CreateBody(boundsDef)
 		boundsShape := box2d.NewB2EdgeShape()
 		if i == 0 {
-			boundsShape.Set(box2d.MakeB2Vec2(0.0, 0.0), box2d.MakeB2Vec2(0.0, ViewportH/Scale))
+			boundsShape.Set(
+				box2d.MakeB2Vec2(0.0, 0.0),
+				box2d.MakeB2Vec2(0.0, ViewportH/Scale),
+			)
 		} else if i == 1 {
-			boundsShape.Set(box2d.MakeB2Vec2(0.0, ViewportH/Scale), box2d.MakeB2Vec2(ViewportW/Scale, ViewportH/Scale))
+			boundsShape.Set(
+				box2d.MakeB2Vec2(0.0, ViewportH/Scale),
+				box2d.MakeB2Vec2(ViewportW/Scale, ViewportH/Scale),
+			)
 		} else if i == 2 {
-			boundsShape.Set(box2d.MakeB2Vec2(ViewportW/Scale, ViewportH/Scale),
-				box2d.MakeB2Vec2(ViewportW/Scale, 0.0))
+			boundsShape.Set(
+				box2d.MakeB2Vec2(ViewportW/Scale, ViewportH/Scale),
+				box2d.MakeB2Vec2(ViewportW/Scale, 0.0),
+			)
 		} else {
-			boundsShape.Set(box2d.MakeB2Vec2(ViewportW/Scale, 0.0), box2d.MakeB2Vec2(0.0, 0.0))
+			boundsShape.Set(
+				box2d.MakeB2Vec2(ViewportW/Scale, 0.0),
+				box2d.MakeB2Vec2(0.0, 0.0),
+			)
 		}
 		boundsFix := box2d.MakeB2FixtureDef()
 		boundsFix.Shape = boundsShape
@@ -649,13 +622,16 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	l.leg2GroundContact = false
 
 	step, last := l.Step(mat.NewVecDense(2, []float64{0.0, 0.0}))
+	step.StepType = timestep.First
 	if last {
 		panic("reset: environment ended as soon as it began")
 	}
-
 	return step
 }
 
+// Step takes one environmental step given some action to apply to
+// the lander. This function returns the next step in the episode and
+// whether this next step was the last in the episode.
 func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 	// Clip actions
 	for i := 0; i < a.Len(); i++ {
@@ -723,12 +699,12 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 	}
 	l.sPower = sPower
 
+	// Update the Box2D world
 	l.world.Step(1.0/FPS, 6*int(Scale), 2*int(Scale))
 
 	// Calculate the state observation
 	pos := l.Lander().GetPosition()
 	vel := l.Lander().GetLinearVelocity()
-
 	var leg1GroundContact, leg2GroundContact float64
 	if l.leg1GroundContact {
 		leg1GroundContact = 1.0
@@ -747,23 +723,19 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 		leg1GroundContact,
 		leg2GroundContact,
 	}
-
-	if len(state) != StateObservations {
-		panic(fmt.Sprintf("step: illegal number of state observations "+
-			"\n\twant(%v) \n\thave(%v)", StateObservations, len(state)))
-	}
 	stateVec := mat.NewVecDense(StateObservations, state)
 
+	// Construct the next timestep in the episode
 	reward := l.GetReward(l.prevStep.Observation, a, stateVec)
 	t := timestep.New(timestep.Mid, reward, l.discount, stateVec,
 		l.prevStep.Number+1)
 	l.End(&t)
 
 	l.prevStep = t
-
 	return t, t.Last()
 }
 
+// DiscountSpec returns the discount specification of the environment
 func (l *lunarLander) DiscountSpec() spec.Environment {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{l.discount})
@@ -772,28 +744,35 @@ func (l *lunarLander) DiscountSpec() spec.Environment {
 		spec.Continuous)
 }
 
+// ObservationSpec returns the observation specification of the
+// environment
 func (l *lunarLander) ObservationSpec() spec.Environment {
 	shape := mat.NewVecDense(StateObservations, nil)
 
+	minXVelocity := l.velocityBounds.Min * (ViewportW / Scale / 2) / FPS
+	minYVelocity := l.velocityBounds.Min * (ViewportH / Scale / 2) / FPS
+	minAngularVelocity := l.velocityBounds.Min * 20.0 / FPS
 	lowerBound := mat.NewVecDense(StateObservations, []float64{
+		-1.,
 		0.,
-		0.,
-		l.velocityBounds.Min,
-		l.velocityBounds.Min,
+		minXVelocity,
+		minYVelocity,
 		l.angleBounds.Min,
-		l.velocityBounds.Min,
+		minAngularVelocity,
 		0.,
 		0.,
 	})
 
+	maxXVelocity := l.velocityBounds.Max * (ViewportW / Scale / 2) / FPS
+	maxYVelocity := l.velocityBounds.Max * (ViewportH / Scale / 2) / FPS
+	maxAngularVelocity := l.velocityBounds.Max * 20.0 / FPS
 	upperBound := mat.NewVecDense(StateObservations, []float64{
 		1.,
-		(ViewportH/Scale - (l.helipadY + LegDown)) /
-			(ViewportH/Scale - l.helipadY),
-		l.velocityBounds.Max,
-		l.velocityBounds.Max,
+		1., // Approximate the true upper bound by 1.0
+		maxXVelocity,
+		maxYVelocity,
 		l.angleBounds.Max,
-		l.velocityBounds.Max,
+		maxAngularVelocity,
 		1.,
 		1.,
 	})
@@ -802,25 +781,195 @@ func (l *lunarLander) ObservationSpec() spec.Environment {
 		spec.Continuous)
 }
 
+// CurrentTimeStep returns the current timestep of the environment
 func (l *lunarLander) CurrentTimeStep() timestep.TimeStep {
 	return l.prevStep
 }
 
-func validateStart(state *mat.VecDense, xBounds, yBounds r1.Interval) error {
+// SPower returns the current power of the side/orientation engine that
+// is active
+func (l *lunarLander) SPower() float64 {
+	return l.sPower
+}
+
+// MPower returns the current power of the main engine
+func (l *lunarLander) MPower() float64 {
+	return l.mPower
+}
+
+// IsAwake returns whether the lander is awake
+func (l *lunarLander) IsAwake() bool {
+	return l.Lander().IsAwake()
+}
+
+// Lander returns a pointer to the Box2D lander of the environment
+func (l *lunarLander) Lander() *box2d.B2Body {
+	return l.lander
+}
+
+// Ground contact returns wheter each of the lander's two legs are
+// in contact with the ground
+func (l *lunarLander) GroundContact() (bool, bool) {
+	return l.leg1GroundContact, l.leg2GroundContact
+}
+
+// IsGameOver returns whether the current episode resulted in a game
+// over
+func (l *lunarLander) IsGameOver() bool {
+	return l.gameOver
+}
+
+// Render saves the current environment as a PNG with
+// the given filename.
+func (l *lunarLander) Render(filename string) {
+	dc := gg.NewContext(int(ViewportW), int(ViewportH))
+
+	// Draw moon as background
+	dc.SetColor(l.moonShade)
+	dc.Clear()
+
+	// Draw sky
+	dc.ClearPath()
+	trans := l.moon.M_xf
+	startCoords := WorldToPixelCoord([2]float64{l.moonVertices[0][0], ViewportH / Scale})
+	dc.MoveTo(startCoords[0], startCoords[1])
+	for i := 0; i < len(l.moonVertices); i++ {
+		vertices := box2d.MakeB2Vec2(l.moonVertices[i][0], l.moonVertices[i][1])
+		vertices = box2d.B2TransformVec2Mul(trans, vertices)
+		coords := WorldToPixelCoord([2]float64{vertices.X, vertices.Y})
+		dc.LineTo(coords[0], coords[1])
+	}
+	last := len(l.moonVertices) - 1
+	endCoords := WorldToPixelCoord([2]float64{l.moonVertices[last][0], ViewportH / Scale})
+	dc.LineTo(endCoords[0], endCoords[1])
+	dc.LineTo(startCoords[0], startCoords[1])
+	dc.SetColor(l.skyShade)
+	dc.Fill()
+
+	// Boundary
+	dc.ClearPath()
+	dc.SetColor(l.boundaryColour)
+	dc.SetLineWidth(5.0)
+	for i := range l.boundary {
+		fix := l.boundary[i].GetFixtureList()
+		sh := fix.M_shape.(*box2d.B2EdgeShape)
+
+		pixelCoords1 := WorldToPixelCoord([2]float64{sh.M_vertex1.X, sh.M_vertex1.Y})
+		pixelCoords2 := WorldToPixelCoord([2]float64{sh.M_vertex2.X, sh.M_vertex2.Y})
+
+		dc.DrawLine(pixelCoords1[0], pixelCoords1[1], pixelCoords2[0], pixelCoords2[1])
+	}
+	dc.Stroke()
+
+	// Lander
+	landerFix := l.lander.GetFixtureList()
+	for landerFix != nil {
+		shape := landerFix.M_shape.(*box2d.B2PolygonShape)
+		path := make([][2]float64, 0, shape.M_count)
+		for i, vertex := range shape.M_vertices {
+			if i >= shape.M_count {
+				break
+			}
+			trans := landerFix.M_body.M_xf
+			vertex = box2d.B2TransformVec2Mul(trans, vertex)
+
+			pixelCoords := WorldToPixelCoord([2]float64{vertex.X, vertex.Y})
+			path = append(path, pixelCoords)
+		}
+
+		dc.ClearPath()
+		for _, point := range path {
+			dc.LineTo(point[0], point[1])
+		}
+		dc.LineTo(path[0][0], path[0][1])
+
+		dc.SetColor(l.landerColour1)
+		dc.Fill()
+		landerFix = landerFix.M_next
+	}
+
+	// Legs
+	for _, leg := range l.legs {
+		legFix := leg.GetFixtureList()
+		for legFix != nil {
+			dc.ClearPath()
+			shape := legFix.M_shape.(*box2d.B2PolygonShape)
+			path := make([][2]float64, 0, shape.M_count)
+			for i, vertex := range shape.M_vertices {
+				if i >= shape.M_count {
+					break
+				}
+				trans := legFix.M_body.M_xf
+				vertex := box2d.B2TransformVec2Mul(trans, vertex)
+
+				pixelCoords := WorldToPixelCoord([2]float64{vertex.X,
+					vertex.Y})
+				path = append(path, pixelCoords)
+			}
+			for _, point := range path {
+				dc.LineTo(point[0], point[1])
+			}
+			dc.LineTo(path[0][0], path[0][1])
+
+			dc.SetColor(l.legColour1)
+			dc.Fill()
+			legFix = legFix.M_next
+		}
+	}
+
+	dc.SavePNG(fmt.Sprintf("%v.png", filename))
+}
+
+// validateStart validates a starting state to ensure that it is legal
+func validateStart(state *mat.VecDense, startXBounds,
+	startYBounds r1.Interval) error {
 	if state.Len() != 3 {
 		return fmt.Errorf("starting values should be 4-dimensional")
 	}
 
-	if state.AtVec(0) > xBounds.Max || state.AtVec(0) < xBounds.Min {
-		return fmt.Errorf("x position out of bounds, expected x ϵ (%v, %v) "+
-			"but got x = %v", -ViewportW/Scale, ViewportW/Scale,
+	if state.AtVec(0) > startXBounds.Max || state.AtVec(0) < startXBounds.Min {
+		return fmt.Errorf("x position out of bounds, expected x ϵ [%v, %v] "+
+			"but got x = %v", startXBounds.Min, startXBounds.Max,
 			state.AtVec(0))
 	}
 
-	if state.AtVec(1) > yBounds.Max || state.AtVec(1) < yBounds.Min {
+	if state.AtVec(1) > startYBounds.Max || state.AtVec(1) < startYBounds.Min {
 		return fmt.Errorf("y position out of bounds, expected y ϵ (%v, %v) "+
-			"but got y = %v", ViewportH/Scale/2, InitialY, state.AtVec(1))
+			"but got y = %v", startYBounds.Min, startYBounds.Max, state.AtVec(1))
 	}
 
 	return nil
+}
+
+// WorldToPixelCoord changes the world coordinates to pixel coordinates
+// for drawing to the screen
+func WorldToPixelCoord(coords [2]float64) [2]float64 {
+	x, y := coords[0], coords[1]
+
+	pixelX := Scale * x
+
+	pixelY := ViewportH - Scale*y
+
+	return [2]float64{pixelX, pixelY}
+}
+
+// Display saves n PNG frames of a random agent on the environment
+func Display(n int) {
+	s := environment.NewUniformStarter([]r1.Interval{
+		{Min: InitialX, Max: InitialX},
+		{Min: InitialY, Max: InitialY},
+		{Min: InitialRandom, Max: InitialRandom},
+	}, uint64(time.Now().UnixNano()))
+	task := NewLand(s, 500)
+	l, _ := newLunarLander(task, 0.99, uint64(time.Now().UnixNano()))
+
+	src := rand.NewSource(uint64(time.Now().UnixNano()))
+	rng := distuv.Uniform{Min: -1.0, Max: 1.0, Src: src}
+
+	for i := 0; i < n; i++ {
+		l.Render(fmt.Sprint(i))
+		action := mat.NewVecDense(2, []float64{rng.Rand(), rng.Rand()})
+		l.Step(action)
+	}
+	l.Render(fmt.Sprint(n))
 }
