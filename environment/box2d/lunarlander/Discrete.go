@@ -133,7 +133,7 @@ type Discrete struct {
 func NewDiscrete(task environment.Task, discount float64,
 	seed uint64) (environment.Environment, timestep.TimeStep) {
 	l, step := newLunarLander(task, discount, seed)
-	return &Continuous{l}, step
+	return &Discrete{l}, step
 }
 
 // ActionSpec returns the action specification of the environment
