@@ -17,7 +17,7 @@ import (
 	"gonum.org/v1/gonum/stat/distuv"
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
+	ts "sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
 )
 
@@ -292,7 +292,7 @@ type lunarLander struct {
 
 	// Random environment variables
 	discount float64
-	prevStep timestep.TimeStep
+	prevStep ts.TimeStep
 	seed     uint64
 	rng      distuv.Uniform
 	mPower   float64
@@ -301,7 +301,7 @@ type lunarLander struct {
 
 // newLunarLander creates and returns a new base lunarLander struct
 func newLunarLander(task environment.Task, discount float64,
-	seed uint64) (*lunarLander, timestep.TimeStep) {
+	seed uint64) (*lunarLander, ts.TimeStep) {
 	l := lunarLander{}
 	l.world = box2d.MakeB2World(box2d.B2Vec2{X: XGravity, Y: YGravity})
 	l.boundaryColour = color.RGBA{R: 255, G: 166, B: 0, A: 255}
@@ -377,11 +377,10 @@ func (l *lunarLander) destroy() {
 
 // Reset resets the environment and returns the first timestep of the
 // next episode
-func (l *lunarLander) Reset() timestep.TimeStep {
+func (l *lunarLander) Reset() ts.TimeStep {
 	l.destroy()
 	l.world.SetContactListener(newContactDetector(l))
 	l.gameOver = false
-	l.prevStep = timestep.TimeStep{}
 	l.mPower = 0.0
 	l.sPower = 0.0
 
@@ -606,8 +605,17 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 	l.leg1GroundContact = false
 	l.leg2GroundContact = false
 
+	// Get the timestep for the beginning of the next episode
+	l.prevStep = ts.TimeStep{StepType: ts.First, Number: 0}
 	step, last := l.Step(mat.NewVecDense(2, []float64{0.0, 0.0}))
-	step.StepType = timestep.First
+
+	// Adjust the stored current timestep to ensure it is the first
+	// in the episode and its state reflects this (Number = 0,
+	// Type = First)
+	step.StepType = ts.First
+	step.Number = 0
+	l.prevStep = step
+
 	if last {
 		panic("reset: environment ended as soon as it began")
 	}
@@ -617,7 +625,7 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 // Step takes one environmental step given some action to apply to
 // the lander. This function returns the next step in the episode and
 // whether this next step was the last in the episode.
-func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
+func (l *lunarLander) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Clip actions
 	for i := 0; i < a.Len(); i++ {
 		a.SetVec(i, floatutils.ClipInterval(a.AtVec(i), l.actionBounds))
@@ -712,7 +720,7 @@ func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
 
 	// Construct the next timestep in the episode
 	reward := l.GetReward(l.prevStep.Observation, a, stateVec)
-	t := timestep.New(timestep.Mid, reward, l.discount, stateVec,
+	t := ts.New(ts.Mid, reward, l.discount, stateVec,
 		l.prevStep.Number+1)
 	l.End(&t)
 
@@ -767,7 +775,7 @@ func (l *lunarLander) ObservationSpec() spec.Environment {
 }
 
 // CurrentTimeStep returns the current timestep of the environment
-func (l *lunarLander) CurrentTimeStep() timestep.TimeStep {
+func (l *lunarLander) CurrentTimeStep() ts.TimeStep {
 	return l.prevStep
 }
 
