@@ -74,6 +74,8 @@ const (
 	// Action
 	MaxContinuousAction float64 = 1.0
 	MinContinuousAction float64 = -MaxContinuousAction
+	MinDiscreteAction   int     = 0
+	MaxDiscreteAction   int     = 3
 
 	// State observations
 	StateObservations int     = 8
@@ -655,7 +657,6 @@ func (l *lunarLander) Reset() timestep.TimeStep {
 }
 
 func (l *lunarLander) Step(a *mat.VecDense) (timestep.TimeStep, bool) {
-
 	// Clip actions
 	for i := 0; i < a.Len(); i++ {
 		a.SetVec(i, floatutils.ClipInterval(a.AtVec(i), l.actionBounds))
@@ -809,10 +810,6 @@ func validateStart(state *mat.VecDense, xBounds, yBounds r1.Interval) error {
 	if state.Len() != 3 {
 		return fmt.Errorf("starting values should be 4-dimensional")
 	}
-
-	fmt.Println("START", state, yBounds)
-	// InitialX      float64 = (ViewportW / Scale / 2)
-	// InitialY      float64 = ((ViewportH - ViewportH/25) / Scale)
 
 	if state.AtVec(0) > xBounds.Max || state.AtVec(0) < xBounds.Min {
 		return fmt.Errorf("x position out of bounds, expected x ϵ (%v, %v) "+

@@ -1,7 +1,6 @@
 package lunarlander
 
 import (
-	"fmt"
 	"math"
 
 	"gonum.org/v1/gonum/mat"
@@ -73,8 +72,6 @@ func (l *Land) GetReward(_, _, nextState mat.Vector) float64 {
 }
 
 func (l *Land) End(t *ts.TimeStep) bool {
-	fmt.Println(t.Number, l.env.Lander().GetLinearVelocity())
-
 	var done bool
 	if l.env.IsGameOver() && false {
 		done = true
