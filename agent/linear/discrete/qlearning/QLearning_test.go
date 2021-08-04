@@ -43,20 +43,4 @@ func BenchmarkLunarLander(b *testing.B) {
 
 	exp := experiment.NewOnline(tm, q, 20, nil, nil)
 	exp.Run()
-
-	// q.ObserveFirst(step)
-
-	// for i := 0; i < b.N; i++ {
-	// 	a := q.SelectAction(step)
-	// 	var last bool
-	// 	step, last = tm.Step(a)
-	// 	q.Observe(a, step)
-	// 	q.Step()
-
-	// 	if last {
-	// 		step = tm.Reset()
-	// 		q.ObserveFirst(step)
-	// 	}
-	// }
-
 }

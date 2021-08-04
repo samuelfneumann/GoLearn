@@ -222,3 +222,14 @@ tracked.
 - [ ] Would be cool if eventually the network package looked more like something like github.com/aunum/goro.
 - [ ] Gridworld wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
 - [ ] Task AtGoal() -> argument should be Vector or *VecDense
+
+- [ ] Multi dimensional gaussian tree mlp is broken
+- [ ] Progress bar seems to be affecting the efficiency
+
+
+- [ ] Ideas to speed things up:
+	1. In tile coding: calculate each tiling in a separate goroutine and use wait groups
+		e.g. 10 tilings -> each tiling gets its own goroutine to calculate the index and have wait.Add(10). Use channels to send indices back and forth
+	2. We compute action values twice for q learning and Esars: once for the policy and once for the learner. Combine agent and learner, then just get the most recent action values from the policy instead of computing it twice.
+	3. Have function to return the indices the tile coder would make 1's. Then instead of doing a dot product, just sum up the weights at those indices, this will save a ton of time for large vectors
+	4. Also, deepQ can remove target policy

@@ -50,7 +50,7 @@ func NewReturn(filename string) *Return {
 func (r *Return) Track(step ts.TimeStep) {
 	// Ensure that Track is called on sequential timesteps
 	if r.lastTimeStep+1 != step.Number {
-		msg := fmt.Sprintf("warning: last two timesteps tracked are not"+
+		msg := fmt.Sprintf("warning: last two timesteps tracked are not "+
 			"sequential: timestep %v --> timestep %v were tracked",
 			r.lastTimeStep, step.Number)
 		panic(msg)

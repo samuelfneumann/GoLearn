@@ -1,0 +1,110 @@
+{
+	"Type": "OnlineExperiment",
+	"MaxSteps": 1000000,
+	"EnvConf": {
+		"Environment": "LunarLander",
+		"Task": "Land",
+		"ContinuousActions": false,
+		"EpisodeCutoff": 500,
+		"Discount": 0.99,
+		"Gym": false,
+		"TileCoding": {
+			"UseTileCoding": false,
+			"Bins": []
+		}
+	},
+	"AgentConf": {
+		"Type": "CategoricalVanillaPG-MLP",
+		"ConfigList": {
+			"PolicyLayers": [
+				[
+					100,
+					50,
+					25
+				]
+			],
+			"PolicyBiases": [
+				[
+					true,
+					true,
+					true
+				]
+			],
+			"PolicyActivations": [
+				[
+					"relu",
+					"relu",
+					"relu"
+				]
+			],
+			"ValueFnLayers": [
+				[
+					100,
+					50,
+					25
+				]
+			],
+			"ValueFnBiases": [
+				[
+					true,
+					true,
+					true
+				]
+			],
+			"ValueFnActivations": [
+				[
+					"relu",
+					"relu",
+					"relu"
+				]
+			],
+			"InitWFn": [
+				{
+					"Type": "GlorotU",
+					"Config": {
+						"Gain": 1.4142135623730951
+					}
+				}
+			],
+			"PolicySolver": [
+				{
+					"Type": "Adam",
+					"Config": {
+						"StepSize": 0.0005,
+						"Epsilon": 1e-8,
+						"Beta1": 0.9,
+						"Beta2": 0.999,
+						"Batch": 1
+					}
+				}
+			],
+			"VSolver": [
+				{
+					"Type": "Adam",
+					"Config": {
+						"StepSize": 0.0005,
+						"Epsilon": 1e-8,
+						"Beta1": 0.9,
+						"Beta2": 0.999,
+						"Batch": 1
+					}
+				}
+			],
+			"ValueGradSteps": [
+				25
+			],
+			"EpochLength": [
+				50000
+			],
+			"FinishEpisodeOnEpochEnd": [
+				true
+			],
+			"Lambda": [
+				1
+			],
+			"Gamma": [
+				0.99
+			]
+		}
+	}
+}

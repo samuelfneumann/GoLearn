@@ -1,0 +1,28 @@
+{
+	"Type": "OnlineExperiment",
+	"MaxSteps": 200000,
+	"EnvConf": {
+		"Environment": "LunarLander",
+		"Task": "Land",
+		"ContinuousActions": false,
+		"EpisodeCutoff": 500,
+		"Discount": 0.99,
+		"Gym": false,
+		"TileCoding": {
+			"UseTileCoding": true,
+			"Bins": [[8,8,8,8,8,8,8,8]]
+		}
+	},
+	"AgentConf": {
+		"Type": "EGreedyQLearning-Linear",
+		"ConfigList": {
+			"Epsilon": [
+				0.01
+			],
+			"LearningRate": [
+				0.1,
+				0.05
+			]
+		}
+	}
+}
