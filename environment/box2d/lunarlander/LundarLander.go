@@ -21,21 +21,6 @@ import (
 	"sfneuman.com/golearn/utils/floatutils"
 )
 
-// TODO: Document starter start values
-
-// TODO: Implement Tasks & Add constants for Starters
-
-// TODO: moonVertices could be []box2d.B2Vec2
-
-// PrevShaping should be put in the Task
-// Every time reset is called, Task.resetPrevShaping() should be called
-//
-// Check if Task is a lunarLanderTask. If so, register the lunarLander
-// environment with the task at the end of each Step() (since Reset
-// calls Step, it will also re-register on environment reset).
-// lunarLander env can then have methods for accessing its mPower, sPower,
-// and any other fields that a lunarLanderTask may need for reward computation, etc.
-
 const (
 	FPS float64 = 50
 
