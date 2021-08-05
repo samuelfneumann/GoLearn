@@ -4,6 +4,7 @@ package tilecoder
 import (
 	"fmt"
 	"math"
+	"sync"
 
 	"golang.org/x/exp/rand"
 
@@ -49,6 +50,10 @@ type TileCoder struct {
 	binLengths  [][]float64
 	seed        uint64
 	includeBias bool
+
+	// Concurrent index encoding
+	wait    sync.WaitGroup
+	indices chan int
 }
 
 // NewTileCoder creates and returns a new TileCoder struct. The minDims
@@ -122,8 +127,11 @@ func New(minDims, maxDims mat.Vector, bins [][]int,
 		offsets = append(offsets, samples)
 	}
 
+	// Channel along which encoded indices are sent
+	indices := make(chan int, numTilings)
+
 	return &TileCoder{numTilings, minDims, offsets, bins, binLengths, seed,
-		includeBias}
+		includeBias, sync.WaitGroup{}, indices}
 }
 
 // Calculates how many features exist in the tile-coded representation
@@ -220,51 +228,94 @@ func (t *TileCoder) EncodeBatch(b *mat.Dense) *mat.Dense {
 	return tileCoded
 }
 
-// Encode encodes a single vector as a tile-coded vector
-func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
+// encodeWithTiling returns the index of the tile coded feature vector
+// which should be a 1.0 when the input vector v is encoded with tiling
+// number tiling in the TileCoder.
+func (t *TileCoder) encodeWithTiling(v mat.Vector, tiling int) int {
 	bias := 0
 	if t.includeBias {
 		bias = 1
 	}
 
+	// indexOffset is the index into the tile-coded vector at which
+	// the current tiling will start
+	indexOffset := t.featuresBeforeTiling(tiling)
+	index := 0
+
+	// Tile code the vector based on the current tiling
+	// We loop through each feature to calculate the tile index to
+	// set to 1.0 along this feature dimension
+	for i := len(t.bins[tiling]) - 1; i > -1; i-- {
+		// Offset the tiling
+		data := v.AtVec(i) + t.offsets[tiling].At(0, i)
+
+		// Calculate the index of the tile along the current feature
+		// dimension in which the feature falls
+		tile := math.Floor((data - t.minDims.AtVec(i)) / t.binLengths[tiling][i])
+
+		// Clip tile to within tiling bounds
+		tile = floatutils.Clip(tile, 0.0, float64(t.bins[tiling][i]-1))
+
+		// Calculate the index into the tile-coded representation
+		// that should be 1.0 for this tiling
+		tileIndex := int(tile)
+		if i == len(t.bins[tiling])-1 {
+			index += tileIndex
+		} else {
+			index += tileIndex * t.bins[tiling][i+1]
+		}
+	}
+	return indexOffset + index + bias
+}
+
+// EncodedIndices returns a slice of the non-zero indices in the tile
+// coded vector when v is tile coded with the receiving TileCoder t.
+func (t *TileCoder) EncodedIndices(v mat.Vector) []int {
+	// Check if using a bias unit
+	bias := 0
+	if t.includeBias {
+		bias = 1
+	}
+
+	// Create the slice of non-zero indices
+	indices := make([]int, t.numTilings+bias)
+
+	// Listen on the indices channel for indices to set non-zero
+	t.wait.Add(1)
+	go func() {
+		for i := 0; i < t.numTilings; i++ {
+			index := <-t.indices
+			indices[i] = index
+		}
+		t.wait.Done()
+	}()
+
+	// Concurrently calculate the non-zero indices for each tiling
+	t.wait.Add(t.numTilings)
+	for i := 0; i < t.numTilings; i++ {
+		go func(tiling int) {
+			t.indices <- t.encodeWithTiling(v, tiling)
+			t.wait.Done()
+		}(i)
+	}
+
+	// If using a bias unit, add its index to the list of non-zero indices
+	if t.includeBias {
+		indices[len(indices)-1] = 0.0
+	}
+
+	// Ensure all goroutines have finished adding non-zero indices to
+	// the indices slice before returning
+	t.wait.Wait()
+	return indices
+}
+
+// Encode encodes a single vector as a tile-coded vector
+func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 	tileCoded := mat.NewVecDense(t.VecLength(), nil)
 
-	// Tile code for each sequential tiling
-	for j := 0; j < t.numTilings; j++ {
-		// indexOffset is the index into the tile-coded vector at which
-		// the current tiling will start
-		indexOffset := t.featuresBeforeTiling(j)
-		index := 0
-
-		// Tile code the vector based on the current tiling
-		// We loop through each feature to calculate the tile index to
-		// set to 1.0 along this feature dimension
-		for i := len(t.bins[j]) - 1; i > -1; i-- {
-			// Offset the tiling
-			data := v.AtVec(i) + t.offsets[j].At(0, i)
-
-			// Calculate the index of the tile along the current feature
-			// dimension in which the feature falls
-			tile := math.Floor((data - t.minDims.AtVec(i)) / t.binLengths[j][i])
-
-			// Clip tile to within tiling bounds
-			tile = floatutils.Clip(tile, 0.0, float64(t.bins[j][i]-1))
-
-			// Calculate the index into the tile-coded representation
-			// that should be 1.0 for this tiling
-			tileIndex := int(tile)
-			if i == len(t.bins[j])-1 {
-				index += tileIndex
-			} else {
-				index += tileIndex * t.bins[j][i+1]
-			}
-		}
-		// Offset the 1.0 based on which tiling was used for the previous
-		// iteration of coding
-		tileCoded.SetVec(indexOffset+index+bias, 1.0)
-	}
-	if t.includeBias {
-		tileCoded.SetVec(0, 1.0)
+	for _, index := range t.EncodedIndices(v) {
+		tileCoded.SetVec(int(index), 1.0)
 	}
 	return tileCoded
 }
