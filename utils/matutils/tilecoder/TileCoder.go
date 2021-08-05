@@ -270,7 +270,7 @@ func (t *TileCoder) encodeWithTiling(v mat.Vector, tiling int) int {
 
 // EncodedIndices returns a slice of the non-zero indices in the tile
 // coded vector when v is tile coded with the receiving TileCoder t.
-func (t *TileCoder) EncodedIndices(v mat.Vector) []int {
+func (t *TileCoder) EncodeIndices(v mat.Vector) []float64 {
 	// Check if using a bias unit
 	bias := 0
 	if t.includeBias {
@@ -278,13 +278,13 @@ func (t *TileCoder) EncodedIndices(v mat.Vector) []int {
 	}
 
 	// Create the slice of non-zero indices
-	indices := make([]int, t.numTilings+bias)
+	indices := make([]float64, t.numTilings+bias)
 
 	// Listen on the indices channel for indices to set non-zero
 	t.wait.Add(1)
 	go func() {
 		for i := 0; i < t.numTilings; i++ {
-			index := <-t.indices
+			index := float64(<-t.indices)
 			indices[i] = index
 		}
 		t.wait.Done()
@@ -314,7 +314,7 @@ func (t *TileCoder) EncodedIndices(v mat.Vector) []int {
 func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 	tileCoded := mat.NewVecDense(t.VecLength(), nil)
 
-	for _, index := range t.EncodedIndices(v) {
+	for _, index := range t.EncodeIndices(v) {
 		tileCoded.SetVec(int(index), 1.0)
 	}
 	return tileCoded
@@ -335,6 +335,12 @@ func (t *TileCoder) VecLength() int {
 		return baseVec + 1
 	}
 	return baseVec
+}
+
+// NumTilings returns the number of tilings the tile coder uses for
+// encoding vectors
+func (t *TileCoder) NumTilings() int {
+	return t.numTilings
 }
 
 // prod calculates the product of all integers in a []int

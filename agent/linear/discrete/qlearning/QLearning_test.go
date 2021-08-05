@@ -8,32 +8,31 @@ import (
 	"sfneuman.com/golearn/environment"
 	"sfneuman.com/golearn/environment/box2d/lunarlander"
 	"sfneuman.com/golearn/environment/wrappers"
-	"sfneuman.com/golearn/experiment"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
 )
 
-func BenchmarkLunarLander(b *testing.B) {
+func BenchmarkIndexTileCoderLunarLanderAgentStep(b *testing.B) {
+	// Set up the lunar lander environment
 	seed := uint64(time.Now().UnixNano())
 	s := environment.NewUniformStarter([]r1.Interval{
 		{Min: lunarlander.InitialX, Max: lunarlander.InitialX},
 		{Min: lunarlander.InitialY, Max: lunarlander.InitialY},
 		{Min: lunarlander.InitialRandom, Max: lunarlander.InitialRandom},
 	}, seed)
-	task := lunarlander.NewLand(s, 500)
-
-	// Create the QLearning config
-	args := Config{Epsilon: 0.25, LearningRate: 0.01}
-	// Create the Mountain Car environment
+	task := lunarlander.NewLand(s, 250)
 	discount := 1.0
 	env, _ := lunarlander.NewDiscrete(task, discount, seed)
 
-	numTilings := 1
+	// Set up the index tile coding environment
+	numTilings := 5
 	tilings := make([][]int, numTilings)
 	for i := 0; i < len(tilings); i++ {
-		tilings[i] = []int{8, 8, 8, 8, 8, 8, 8, 8}
+		tilings[i] = []int{4, 4, 4, 4, 4, 4, 4, 4}
 	}
-	tm, _ := wrappers.NewTileCoding(env, tilings, seed)
+	tm, step := wrappers.NewIndexTileCoding(env, tilings, seed)
 
+	// Create the QLearning agent
+	args := Config{Epsilon: 0.25, LearningRate: 0.01}
 	rand := weights.NewZeroUV() // Zero RNG
 	init := weights.NewLinearUV(rand)
 	q, err := New(tm, args, init, seed)
@@ -41,6 +40,14 @@ func BenchmarkLunarLander(b *testing.B) {
 		panic(err)
 	}
 
-	exp := experiment.NewOnline(tm, q, 20, nil, nil)
-	exp.Run()
+	// Observe the first environment transition
+	q.ObserveFirst(step)
+	a := q.SelectAction(step)
+	step, _ = tm.Step(a)
+	q.Observe(a, step)
+
+	// Evaluate the stepping time of the agent
+	for i := 0; i < b.N; i++ {
+		q.Step()
+	}
 }

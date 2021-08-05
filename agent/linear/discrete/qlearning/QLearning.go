@@ -13,6 +13,7 @@ import (
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/discrete/policy"
 	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/matutils/initializers/weights"
@@ -27,6 +28,10 @@ type QLearning struct {
 	Target       agent.Policy
 	seed         uint64
 	eval         bool // Whether or not in evaluation mode
+
+	// indexTileCoding represents whether the environment is using
+	// tile coding and returning the non-zero indices as features
+	indexTileCoding bool
 }
 
 // New creates a new QLearning struct. The agent spec agent should be
@@ -85,7 +90,12 @@ func New(env environment.Environment, config agent.Config,
 	weights := behaviour.Weights()
 	target.SetWeights(weights)
 
-	learner, err := NewQLearner(behaviour, learningRate)
+	// Check if the environment uses tile coding and returns the
+	// indices of non-zero elements of the tile-coded vectors as
+	// state representations
+	_, indexTileCoding := env.(*wrappers.IndexTileCoding)
+
+	learner, err := NewQLearner(behaviour, learningRate, indexTileCoding)
 	if err != nil {
 		err := fmt.Errorf("qlearning: cannot create learner")
 		return &QLearning{}, err
@@ -96,7 +106,14 @@ func New(env environment.Environment, config agent.Config,
 		init.Initialize(weights[weight])
 	}
 
-	return &QLearning{learner, behaviour, target, seed, false}, nil
+	return &QLearning{
+		Learner:         learner,
+		Policy:          behaviour,
+		Target:          target,
+		seed:            seed,
+		eval:            false,
+		indexTileCoding: indexTileCoding,
+	}, nil
 }
 
 // SelectAction selects an action from either the agent's behaviour or

@@ -9,6 +9,7 @@ import (
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/agent/linear/continuous/policy"
 	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/spec"
 	ts "sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
@@ -56,6 +57,11 @@ type LinearGaussian struct {
 // NewLinearGaussian returns a new LinearGaussian
 func NewLinearGaussian(env environment.Environment, c agent.Config,
 	init weights.Initializer, seed uint64) (agent.Agent, error) {
+	_, ok := env.(*wrappers.IndexTileCoding)
+	if ok {
+		panic("newLinearGaussian: index tile coding not yet implemented")
+	}
+
 	// Error checking
 	actionSpec := env.ActionSpec()
 	if actionSpec.Cardinality != spec.Continuous {

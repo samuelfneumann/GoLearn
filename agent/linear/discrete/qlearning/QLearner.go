@@ -26,17 +26,21 @@ type QLearner struct {
 	nextStep timestep.TimeStep
 
 	learningRate float64
+
+	// indexTileCoding represents whether the environment is using
+	// tile coding and returning the non-zero indices as features
+	indexTileCoding bool
 }
 
 // NewQLearner creates a new QLearner struct
 //
 // egreedy is the policy.EGreedy to learn
 func NewQLearner(egreedy *policy.EGreedy,
-	learningRate float64) (*QLearner, error) {
+	learningRate float64, indexTileCoding bool) (*QLearner, error) {
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
-	learner := &QLearner{nil, step, 0, nextStep, learningRate}
+	learner := &QLearner{nil, step, 0, nextStep, learningRate, indexTileCoding}
 	weights := egreedy.Weights()
 
 	err := learner.SetWeights(weights)
@@ -85,32 +89,65 @@ func (q *QLearner) TdError(t timestep.Transition) float64 {
 	return tdError
 }
 
-// Step updates the weights of the Agent's Learner and Policy
-func (q *QLearner) Step() {
+func (q *QLearner) stepIndex() {
 	numActions, _ := q.weights.Dims()
-
-	// Calculate the action values in the next state
 	actionValues := mat.NewVecDense(numActions, nil)
-	nextState := q.nextStep.Observation
-	actionValues.MulVec(q.weights, nextState)
 
-	// Find the maximum action value in the next state
+	for _, i := range q.nextStep.Observation.RawVector().Data {
+		actionValues.AddVec(actionValues, q.weights.ColView(int(i)))
+	}
 	maxVal := mat.Max(actionValues)
 
 	// Create the update target
 	discount := q.nextStep.Discount
 	target := q.nextStep.Reward + discount*maxVal
 
-	// Find the current estimate of the taken action
-	weights := q.weights.RowView(q.action)
-	state := q.step.Observation
-	currentEstimate := mat.Dot(weights, state)
+	// Find current estimate of the taken action
+	currentEstimate := 0.0
+	for _, i := range q.step.Observation.RawVector().Data {
+		currentEstimate += q.weights.At(q.action, int(i))
+	}
 
-	// Construct the scaling factor of the gradient
 	scale := q.learningRate * (target - currentEstimate)
 
-	// Perform gradient descent: ∇weights = scale * state
-	weights.(*mat.VecDense).AddScaledVec(weights, scale, state)
+	// Upate weights
+	for _, i := range q.step.Observation.RawVector().Data {
+		w := q.weights.At(q.action, int(i))
+		newW := w + scale
+		q.weights.Set(q.action, int(i), newW)
+	}
+}
+
+// Step updates the weights of the Agent's Learner and Policy
+func (q *QLearner) Step() {
+	if q.indexTileCoding {
+		q.stepIndex()
+	} else {
+		numActions, _ := q.weights.Dims()
+
+		// Calculate the action values in the next state
+		actionValues := mat.NewVecDense(numActions, nil)
+		nextState := q.nextStep.Observation
+		actionValues.MulVec(q.weights, nextState)
+
+		// Find the maximum action value in the next state
+		maxVal := mat.Max(actionValues)
+
+		// Create the update target
+		discount := q.nextStep.Discount
+		target := q.nextStep.Reward + discount*maxVal
+
+		// Find the current estimate of the taken action
+		weights := q.weights.RowView(q.action)
+		state := q.step.Observation
+		currentEstimate := mat.Dot(weights, state)
+
+		// Construct the scaling factor of the gradient
+		scale := q.learningRate * (target - currentEstimate)
+
+		// Perform gradient descent: ∇weights = scale * state
+		weights.(*mat.VecDense).AddScaledVec(weights, scale, state)
+	}
 }
 
 // SetWeights sets the weight pointers to point to a new set of weights.

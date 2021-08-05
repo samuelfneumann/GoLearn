@@ -10,6 +10,7 @@
 		"Gym": false,
 		"TileCoding": {
 			"UseTileCoding": false,
+			"UseIndices": true,
 			"Bins": null
 		}
 	},

@@ -10,6 +10,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 	"sfneuman.com/golearn/agent"
 	"sfneuman.com/golearn/environment"
+	"sfneuman.com/golearn/environment/wrappers"
 	"sfneuman.com/golearn/spec"
 	"sfneuman.com/golearn/timestep"
 	"sfneuman.com/golearn/utils/floatutils"
@@ -28,6 +29,10 @@ type EGreedy struct {
 	epsilon float64
 	rng     *rand.Rand // Seed for random number generation
 	eval    bool
+
+	// indexTileCoding represents whether the environment is using
+	// tile coding and returning the non-zero indices as features
+	indexTileCoding bool
 }
 
 // NewEGreedy constructs a new EGreedy policy, where e=epislon is the
@@ -60,7 +65,12 @@ func NewEGreedy(e float64, seed uint64,
 	// Create the weight matrix: rows = actions, cols = features
 	weights := mat.NewDense(actions, features, nil)
 
-	return &EGreedy{weights, e, rng, false}, nil
+	// Check if the environment uses tile coding and returns the
+	// indices of non-zero elements of the tile-coded vectors as
+	// state representations
+	_, indexTileCoding := env.(*wrappers.IndexTileCoding)
+
+	return &EGreedy{weights, e, rng, false, indexTileCoding}, nil
 
 }
 
@@ -88,10 +98,20 @@ func (p *EGreedy) SetWeights(weights map[string]*mat.Dense) error {
 
 // actionValues calculates the values of each action in a state
 func (e *EGreedy) actionValues(obs mat.Vector) *mat.VecDense {
-	// Calculate all action values
 	numActions, _ := e.weights.Dims()
 	actionValues := mat.NewVecDense(numActions, nil)
-	actionValues.MulVec(e.weights, obs)
+
+	if e.indexTileCoding {
+		for i := 0; i < obs.Len(); i++ {
+			index := obs.AtVec(i) // Index of non-zero feature
+			// fmt.Println(e.weights.Dims())
+			actionValues.AddVec(actionValues, e.weights.ColView(int(index)))
+		}
+	} else {
+		actionValues := mat.NewVecDense(numActions, nil)
+		actionValues.MulVec(e.weights, obs)
+
+	}
 
 	return actionValues
 }

@@ -122,7 +122,12 @@ func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
 	}
 
 	if c.TileCoding.UseTileCoding {
-		e, step = wrappers.NewTileCoding(e, c.TileCoding.Bins, seed)
+		if c.TileCoding.UseIndices {
+			e, step = wrappers.NewIndexTileCoding(e, c.TileCoding.Bins, seed)
+		} else {
+			e, step = wrappers.NewTileCoding(e, c.TileCoding.Bins, seed)
+
+		}
 	}
 
 	return e, step
@@ -317,5 +322,6 @@ func CreateLunarLander(continuousActions bool, taskName TaskName,
 // used to make the JSON file look prettier.
 type tileCodingConfig struct {
 	UseTileCoding bool
+	UseIndices    bool
 	Bins          [][]int
 }
