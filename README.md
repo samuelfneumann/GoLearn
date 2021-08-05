@@ -113,6 +113,9 @@ Any other combination of `Environment`-`Task` will result in a panic
 when calling `CreateEnv()`.
 
 ## `gym` Package
+The `gym` package provides acces to OpenAI Gym's environments through an
+`HTTP` server. Currently, the server is implemented but the Go client for
+running and creating `Environment`s is not implemented.
 
 ## `timestep` Package
 The `timestep` package manages environmental timesteps with the `TimeStep`
