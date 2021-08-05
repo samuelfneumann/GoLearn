@@ -1,9 +1,37 @@
 # GoLearn: A Reinforcement Learning Framework in Go
 
 # Algorithms
-##Learner
+A number of algorithms are implemented. These are separated into the
+`agent/linear` and `agent/nonlinear` packages.
+
+The `agent/linear` package contains agents that **only** use linear function
+approximation, and are implemented in GoNum. The `agent/nonlinear`
+package contains agents that are implemented with Gorgonia for neural
+network function approximation. Note that agents in the `agent/nonlinear`
+package can use **either linear or nonlinear** function approximation
+depending on how the neural network is set up. The *nonlinear* part
+of the `agent/nonlinear` package refers to the ability of the package to use
+nonlinear function approximation, but the package is not restricted to
+only use nonlinear function approximation.
+
 ## Value-Based Algorithms
+The following value based algorithms are implemented in the following
+packages:
+
+|          Agent          |                Package            |
+|-------------------------|-----------------------------------|
+|   `Linear Q-learning`   | `agent/linear/discrete/qlearning` |
+| `Linear Expected SARSA` |   `agent/linear/discrete/esarsa`  |
+|    `Deep Q-learning`    |  `agent/nonlinear/discrete/deepq` |
+
 ## Policy Gradient Algorithms
+The following policy gradient algorithms are implemented in the following
+packages:
+
+|              Agent             |                 Package                |
+|--------------------------------|----------------------------------------|
+| `Linear-Gaussian Actor-Critic` | `agent/linear/continuous/actorcritic`  |
+|   `Vanilla Policy Gradient`    | `agent/nonlinear/continuous/vanillapg` |
 # Environments
 This library makes a separation between an `Environment` and a `Task`. An
 `Environment` is simply some domain that can be acted in, but does not
@@ -19,6 +47,9 @@ Pendulum and its tasks
 Mountain Car and its tasks
 * `classiccontrol/cartpole`: Implements the classic control problem
 Cartpole and its tasks
+* `classiccontrol/acrobot`: Implements the classic control problem
+Acrobot and its tasks
+* `box2d/lunarlander`: Implements the Lunar Lander environment
 
 Each package also defines public constants that determine the physical
 parameters of the `Environment`. For example, `mountaincar.Gravity` is
@@ -218,18 +249,10 @@ tracked.
 - [ ] Readme should outline what exactly configs are and what they do for each package. Also, mention that environment Configs only allow environments with default behaviour, physical parameters, and task parameters to be created. To create a custom environemnt, you should use the relevant constructors with the relevant structs.
 - [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
 
-- [ ] Might be useful to benchmark VanillaPG and see how we can make it faster (without exploiting the simulator).
 - [ ] Would be cool if eventually the network package looked more like something like github.com/aunum/goro.
 - [ ] Gridworld wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
 - [ ] Task AtGoal() -> argument should be Vector or *VecDense
 
 - [ ] Multi dimensional gaussian tree mlp is broken
-- [ ] Progress bar seems to be affecting the efficiency
 
-
-- [ ] Ideas to speed things up:
-	1. In tile coding: calculate each tiling in a separate goroutine and use wait groups
-		e.g. 10 tilings -> each tiling gets its own goroutine to calculate the index and have wait.Add(10). Use channels to send indices back and forth
-	2. We compute action values twice for q learning and Esars: once for the policy and once for the learner. Combine agent and learner, then just get the most recent action values from the policy instead of computing it twice.
-	3. Have function to return the indices the tile coder would make 1's. Then instead of doing a dot product, just sum up the weights at those indices, this will save a ton of time for large vectors
-	4. Also, deepQ can remove target policy
+- [ ] For many linear agents, action/state values are computed more than once. The Policy computes the action/state values at each timestep, and the Learner computes the same state/action values for the timestep when learning.

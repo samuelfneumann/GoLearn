@@ -8,7 +8,6 @@ import (
 
 	// Blank imports needed for registering agents with agent package
 	// to enable TypedConfigList's
-
 	_ "sfneuman.com/golearn/agent/linear/continuous/actorcritic"
 	_ "sfneuman.com/golearn/agent/linear/discrete/esarsa"
 	_ "sfneuman.com/golearn/agent/linear/discrete/qlearning"
