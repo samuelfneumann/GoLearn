@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
-	"sfneuman.com/golearn/environment/wrappers"
-	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/tracker"
-	"sfneuman.com/golearn/utils/matutils/initializers/weights"
+	"github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/classiccontrol/mountaincar"
+	"github.com/samuelfneumann/golearn/environment/wrappers"
+	"github.com/samuelfneumann/golearn/experiment"
+	"github.com/samuelfneumann/golearn/experiment/tracker"
+	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
 )
 
 func QlearningMountainCar() {

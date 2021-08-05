@@ -8,15 +8,15 @@ import (
 
 	// Blank imports needed for registering agents with agent package
 	// to enable TypedConfigList's
-	_ "sfneuman.com/golearn/agent/linear/continuous/actorcritic"
-	_ "sfneuman.com/golearn/agent/linear/discrete/esarsa"
-	_ "sfneuman.com/golearn/agent/linear/discrete/qlearning"
-	_ "sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
-	_ "sfneuman.com/golearn/agent/nonlinear/discrete/deepq"
+	_ "github.com/samuelfneumann/golearn/agent/linear/continuous/actorcritic"
+	_ "github.com/samuelfneumann/golearn/agent/linear/discrete/esarsa"
+	_ "github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
+	_ "github.com/samuelfneumann/golearn/agent/nonlinear/continuous/vanillapg"
+	_ "github.com/samuelfneumann/golearn/agent/nonlinear/discrete/deepq"
 
-	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/checkpointer"
-	"sfneuman.com/golearn/experiment/tracker"
+	"github.com/samuelfneumann/golearn/experiment"
+	"github.com/samuelfneumann/golearn/experiment/checkpointer"
+	"github.com/samuelfneumann/golearn/experiment/tracker"
 )
 
 func main() {

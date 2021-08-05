@@ -1,10 +1,10 @@
 package vanillapg
 
 import (
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/initwfn"
-	"sfneuman.com/golearn/network"
-	"sfneuman.com/golearn/solver"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/initwfn"
+	"github.com/samuelfneumann/golearn/network"
+	"github.com/samuelfneumann/golearn/solver"
 )
 
 // Config implements an interface for any VanillaPG configuration.

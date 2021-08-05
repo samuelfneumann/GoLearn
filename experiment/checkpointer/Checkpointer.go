@@ -3,7 +3,7 @@ package checkpointer
 import (
 	"encoding/gob"
 
-	ts "sfneuman.com/golearn/timestep"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 // Serializable is an object that can be saved/serialized

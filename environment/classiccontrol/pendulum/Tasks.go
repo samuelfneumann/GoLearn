@@ -4,8 +4,8 @@ import (
 	"math"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/spec"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/spec"
 )
 
 // SwingUp implements the classic control Pendulum swingup task. In

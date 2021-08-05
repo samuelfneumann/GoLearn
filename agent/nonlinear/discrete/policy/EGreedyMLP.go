@@ -13,13 +13,13 @@ import (
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
 
-	"sfneuman.com/golearn/agent"
-	env "sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/experiment/checkpointer"
-	"sfneuman.com/golearn/network"
-	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/floatutils"
+	"github.com/samuelfneumann/golearn/agent"
+	env "github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/experiment/checkpointer"
+	"github.com/samuelfneumann/golearn/network"
+	"github.com/samuelfneumann/golearn/spec"
+	"github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/floatutils"
 )
 
 // MultiHeadEGreedyMLP implements an epsilon greedy policy using a

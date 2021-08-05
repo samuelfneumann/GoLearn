@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	ts "sfneuman.com/golearn/timestep"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 // nStep implements checkpointing every N steps by saving a Serializable

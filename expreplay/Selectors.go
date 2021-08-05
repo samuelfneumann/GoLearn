@@ -3,7 +3,7 @@ package expreplay
 import (
 	"math/rand"
 
-	"sfneuman.com/golearn/utils/intutils"
+	"github.com/samuelfneumann/golearn/utils/intutils"
 )
 
 type SelectorType string

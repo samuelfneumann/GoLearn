@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	ts "sfneuman.com/golearn/timestep"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 // Interface Tracker keeps track of experiment data and saves the data

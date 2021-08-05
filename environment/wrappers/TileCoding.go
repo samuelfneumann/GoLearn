@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/spec"
-	ts "sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/matutils"
-	"sfneuman.com/golearn/utils/matutils/tilecoder"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/spec"
+	ts "github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/matutils"
+	"github.com/samuelfneumann/golearn/utils/matutils/tilecoder"
 )
 
 // TileCoding wraps an environment and returns tile-coded observations

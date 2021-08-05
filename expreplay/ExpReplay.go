@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/intutils"
+	"github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/intutils"
 )
 
 // orderedSampler implements an experience replay buffer that can return

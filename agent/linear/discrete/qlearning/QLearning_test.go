@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/box2d/lunarlander"
-	"sfneuman.com/golearn/environment/wrappers"
-	"sfneuman.com/golearn/utils/matutils/initializers/weights"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/box2d/lunarlander"
+	"github.com/samuelfneumann/golearn/environment/wrappers"
+	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
 )
 
 func BenchmarkIndexTileCoderLunarLanderAgentStep(b *testing.B) {

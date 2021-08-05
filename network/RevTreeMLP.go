@@ -5,7 +5,7 @@ import (
 
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
-	"sfneuman.com/golearn/utils/intutils"
+	"github.com/samuelfneumann/golearn/utils/intutils"
 )
 
 // RevTreeMLP implements a reverse tree MLP. A reverse tree MLP has

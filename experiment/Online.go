@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	ag "sfneuman.com/golearn/agent"
-	env "sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/experiment/checkpointer"
-	"sfneuman.com/golearn/experiment/tracker"
-	ts "sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/progressbar"
+	ag "github.com/samuelfneumann/golearn/agent"
+	env "github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/experiment/checkpointer"
+	"github.com/samuelfneumann/golearn/experiment/tracker"
+	ts "github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/progressbar"
 )
 
 // Online is an Experiment that runs an agent online only. No offline

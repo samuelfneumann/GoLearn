@@ -9,10 +9,10 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/distmv"
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/floatutils"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/floatutils"
 )
 
 // StdOffset is added to the standard deviation for numerical stability

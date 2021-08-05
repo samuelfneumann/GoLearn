@@ -9,13 +9,13 @@ import (
 	"gonum.org/v1/gonum/stat/distuv"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/network"
-	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/floatutils"
-	"sfneuman.com/golearn/utils/op"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/network"
+	"github.com/samuelfneumann/golearn/spec"
+	"github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"github.com/samuelfneumann/golearn/utils/op"
 )
 
 // CategoricalMLP implements a categorical policy using an MLP to

@@ -5,9 +5,9 @@ import (
 	"math"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/spec"
-	ts "sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/spec"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 const (

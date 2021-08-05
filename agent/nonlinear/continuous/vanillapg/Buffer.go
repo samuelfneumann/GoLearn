@@ -10,7 +10,7 @@ import (
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"
-	"sfneuman.com/golearn/utils/matutils"
+	"github.com/samuelfneumann/golearn/utils/matutils"
 )
 
 // Interesting: This is a GAE(λ) buffer. What about n-Step GAE?

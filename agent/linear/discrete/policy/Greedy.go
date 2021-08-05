@@ -1,8 +1,8 @@
 package policy
 
 import (
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/environment"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
 )
 
 // NewGreedy creates a new Greedy policy

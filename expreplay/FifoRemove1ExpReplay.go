@@ -3,7 +3,7 @@ package expreplay
 import (
 	"fmt"
 
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // fifoRemove1Cache implements a concrete ExperienceReplayer where

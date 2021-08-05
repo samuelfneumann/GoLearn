@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // EpisodeLength tracks and saves the lengths of episodes in an

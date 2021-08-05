@@ -2,7 +2,7 @@ package environment
 
 import (
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // FunctionEnder ends an episode whenever a function of a vector

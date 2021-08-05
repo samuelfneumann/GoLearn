@@ -1,7 +1,7 @@
 package expreplay
 
 import (
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // onlineCache implements an experience replay buffer for sampling

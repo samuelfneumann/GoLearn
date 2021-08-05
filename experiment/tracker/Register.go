@@ -1,8 +1,8 @@
 package tracker
 
 import (
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // registeredTracker registers an Environment with some Tracker so

@@ -8,13 +8,13 @@ import (
 	"golang.org/x/exp/rand"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/wrappers"
-	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/floatutils"
-	"sfneuman.com/golearn/utils/matutils"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/wrappers"
+	"github.com/samuelfneumann/golearn/spec"
+	"github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"github.com/samuelfneumann/golearn/utils/matutils"
 )
 
 const (

@@ -10,7 +10,7 @@ import (
 
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
-	"sfneuman.com/golearn/utils/tensorutils"
+	"github.com/samuelfneumann/golearn/utils/tensorutils"
 )
 
 // Clip clips the value of a node

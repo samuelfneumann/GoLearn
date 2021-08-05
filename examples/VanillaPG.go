@@ -6,16 +6,16 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/agent/nonlinear/continuous/vanillapg"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
-	"sfneuman.com/golearn/environment/envconfig"
-	"sfneuman.com/golearn/environment/gridworld"
-	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/tracker"
-	"sfneuman.com/golearn/initwfn"
-	"sfneuman.com/golearn/network"
-	"sfneuman.com/golearn/solver"
+	"github.com/samuelfneumann/golearn/agent/nonlinear/continuous/vanillapg"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/classiccontrol/cartpole"
+	"github.com/samuelfneumann/golearn/environment/envconfig"
+	"github.com/samuelfneumann/golearn/environment/gridworld"
+	"github.com/samuelfneumann/golearn/experiment"
+	"github.com/samuelfneumann/golearn/experiment/tracker"
+	"github.com/samuelfneumann/golearn/initwfn"
+	"github.com/samuelfneumann/golearn/network"
+	"github.com/samuelfneumann/golearn/solver"
 )
 
 // VanillaPG provides an example on how to use the vanillapg package.

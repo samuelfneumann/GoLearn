@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/mat"
-	env "sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/spec"
-	ts "sfneuman.com/golearn/timestep"
+	env "github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/spec"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 // cartpole.Discrete implements the classic control environment

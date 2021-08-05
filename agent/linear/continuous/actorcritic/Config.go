@@ -3,9 +3,9 @@ package actorcritic
 import (
 	"reflect"
 
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/utils/matutils/initializers/weights"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
 )
 
 func init() {

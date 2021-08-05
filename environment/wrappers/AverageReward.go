@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/spec"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // AverageReward wraps an environment and alters rewards so that the

@@ -1,6 +1,6 @@
 package environment
 
-import "sfneuman.com/golearn/timestep"
+import "github.com/samuelfneumann/golearn/timestep"
 
 // StepLimit implements the Ender interface to end episodes at specific
 // timestep limits

@@ -7,8 +7,8 @@ import (
 
 	"github.com/fogleman/gg"
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/spec"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // Starter implements a distribution of starting states and samples starting

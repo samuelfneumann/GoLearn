@@ -4,8 +4,8 @@ package agent
 import (
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
-	"sfneuman.com/golearn/network"
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/network"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // Agent determines the implementation details of an agent or algorithm

@@ -13,8 +13,8 @@ import (
 	"gonum.org/v1/gonum/stat/distmv"
 	"gonum.org/v1/gonum/stat/samplemv"
 
-	"sfneuman.com/golearn/utils/floatutils"
-	"sfneuman.com/golearn/utils/matutils"
+	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"github.com/samuelfneumann/golearn/utils/matutils"
 )
 
 // Controls tiling offsets. For each dimension, tilings are offset by

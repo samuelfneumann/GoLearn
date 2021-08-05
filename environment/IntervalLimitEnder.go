@@ -2,7 +2,7 @@ package environment
 
 import (
 	"gonum.org/v1/gonum/spatial/r1"
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // IntervalLimit implements the Ender interface to end episodes

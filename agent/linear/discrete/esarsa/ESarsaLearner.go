@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/agent/linear/discrete/policy"
-	"sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/agent/linear/discrete/policy"
+	"github.com/samuelfneumann/golearn/timestep"
 )
 
 // ESarsaLearner implements the update functionality for the

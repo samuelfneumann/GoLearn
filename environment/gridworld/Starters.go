@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment"
 )
 
 // SingleStart represents a single starting position in a GridWorld

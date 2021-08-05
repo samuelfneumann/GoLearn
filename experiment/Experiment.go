@@ -4,12 +4,12 @@ package experiment
 import (
 	"fmt"
 
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/envconfig"
-	"sfneuman.com/golearn/experiment/checkpointer"
-	"sfneuman.com/golearn/experiment/tracker"
-	ts "sfneuman.com/golearn/timestep"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/envconfig"
+	"github.com/samuelfneumann/golearn/experiment/checkpointer"
+	"github.com/samuelfneumann/golearn/experiment/tracker"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 // Interface Experiment outlines structs that can run experiments.

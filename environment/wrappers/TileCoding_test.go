@@ -9,8 +9,8 @@ import (
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
 	"gonum.org/v1/gonum/stat/distuv"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/box2d/lunarlander"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/box2d/lunarlander"
 )
 
 func BenchmarkLunarLander(b *testing.B) {

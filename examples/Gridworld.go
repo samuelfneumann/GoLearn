@@ -3,11 +3,11 @@ package examples
 import (
 	"fmt"
 
-	"sfneuman.com/golearn/agent/linear/discrete/qlearning"
-	"sfneuman.com/golearn/environment/gridworld"
-	"sfneuman.com/golearn/experiment"
-	"sfneuman.com/golearn/experiment/tracker"
-	"sfneuman.com/golearn/utils/matutils/initializers/weights"
+	"github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
+	"github.com/samuelfneumann/golearn/environment/gridworld"
+	"github.com/samuelfneumann/golearn/experiment"
+	"github.com/samuelfneumann/golearn/experiment/tracker"
+	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
 )
 
 func Gridworld() {

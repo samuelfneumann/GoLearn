@@ -10,13 +10,13 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/mat"
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/agent/linear/discrete/policy"
-	"sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/wrappers"
-	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
-	"sfneuman.com/golearn/utils/matutils/initializers/weights"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/agent/linear/discrete/policy"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/wrappers"
+	"github.com/samuelfneumann/golearn/spec"
+	"github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
 )
 
 // QLearning implements the online Q-Learning algorithm. Actions selected by

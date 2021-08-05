@@ -5,12 +5,12 @@ import (
 	"reflect"
 
 	G "gorgonia.org/gorgonia"
-	"sfneuman.com/golearn/agent"
-	"sfneuman.com/golearn/agent/nonlinear/continuous/policy"
-	env "sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/initwfn"
-	"sfneuman.com/golearn/network"
-	"sfneuman.com/golearn/solver"
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/agent/nonlinear/continuous/policy"
+	env "github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/initwfn"
+	"github.com/samuelfneumann/golearn/network"
+	"github.com/samuelfneumann/golearn/solver"
 )
 
 func init() {

@@ -3,7 +3,7 @@ package agent
 import (
 	"reflect"
 
-	"sfneuman.com/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment"
 )
 
 // ConfigList represents a list of Config structs

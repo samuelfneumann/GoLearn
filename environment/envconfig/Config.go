@@ -7,15 +7,15 @@ import (
 	"fmt"
 
 	"gonum.org/v1/gonum/spatial/r1"
-	env "sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/environment/box2d/lunarlander"
-	"sfneuman.com/golearn/environment/classiccontrol/acrobot"
-	"sfneuman.com/golearn/environment/classiccontrol/cartpole"
-	"sfneuman.com/golearn/environment/classiccontrol/mountaincar"
-	"sfneuman.com/golearn/environment/classiccontrol/pendulum"
-	"sfneuman.com/golearn/environment/gridworld"
-	"sfneuman.com/golearn/environment/wrappers"
-	ts "sfneuman.com/golearn/timestep"
+	env "github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/box2d/lunarlander"
+	"github.com/samuelfneumann/golearn/environment/classiccontrol/acrobot"
+	"github.com/samuelfneumann/golearn/environment/classiccontrol/cartpole"
+	"github.com/samuelfneumann/golearn/environment/classiccontrol/mountaincar"
+	"github.com/samuelfneumann/golearn/environment/classiccontrol/pendulum"
+	"github.com/samuelfneumann/golearn/environment/gridworld"
+	"github.com/samuelfneumann/golearn/environment/wrappers"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 // EnvName stores the name of environments that can be configured with

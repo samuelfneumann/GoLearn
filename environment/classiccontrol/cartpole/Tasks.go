@@ -5,10 +5,10 @@ import (
 
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
-	env "sfneuman.com/golearn/environment"
-	"sfneuman.com/golearn/spec"
-	"sfneuman.com/golearn/timestep"
-	ts "sfneuman.com/golearn/timestep"
+	env "github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/spec"
+	"github.com/samuelfneumann/golearn/timestep"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 const (

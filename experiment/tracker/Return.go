@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	ts "sfneuman.com/golearn/timestep"
+	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
 // Return tracks and saves the episodic return in an experiment. When
