@@ -3,7 +3,6 @@ package examples
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/esarsa"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/mountaincar"
@@ -11,6 +10,7 @@ import (
 	"github.com/samuelfneumann/golearn/experiment"
 	"github.com/samuelfneumann/golearn/experiment/tracker"
 	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 func DifferentialESarsa() {

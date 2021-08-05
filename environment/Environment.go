@@ -6,9 +6,9 @@ import (
 	"image"
 
 	"github.com/fogleman/gg"
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
 )
 
 // Starter implements a distribution of starting states and samples starting

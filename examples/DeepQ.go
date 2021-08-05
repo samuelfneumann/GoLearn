@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
 	"github.com/samuelfneumann/golearn/agent/nonlinear/discrete/deepq"
 	"github.com/samuelfneumann/golearn/environment"
@@ -17,6 +16,7 @@ import (
 	"github.com/samuelfneumann/golearn/initwfn"
 	"github.com/samuelfneumann/golearn/network"
 	"github.com/samuelfneumann/golearn/solver"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 // DeepQCartpole gives an example of Deep Q on Cartpole

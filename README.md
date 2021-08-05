@@ -1,4 +1,8 @@
-# GoLearn: A Reinforcement Learning Framework in Go
+# GoLearn: A Reinforcement Learning in Go
+GoLearn is a reinforcement learning Go module. It implements many environments
+for reinforcement learning as well as agents. It also allows users to easily
+run experiments through `JSON` configuration files without ever touching
+the code.
 
 # Algorithms
 A number of algorithms are implemented. These are separated into the
@@ -32,6 +36,7 @@ packages:
 |--------------------------------|----------------------------------------|
 | `Linear-Gaussian Actor-Critic` | `agent/linear/continuous/actorcritic`  |
 |   `Vanilla Policy Gradient`    | `agent/nonlinear/continuous/vanillapg` |
+
 # Environments
 This library makes a separation between an `Environment` and a `Task`. An
 `Environment` is simply some domain that can be acted in, but does not
@@ -55,13 +60,118 @@ Each package also defines public constants that determine the physical
 parameters of the `Environment`. For example, `mountaincar.Gravity` is
 the gravity used in the Mountain Car environment.
 
+In depth documentation for each environment is included in the source
+files. You can view the documentation, which includes descriptions of
+state features, bounds on state features, actions, dimensionality of
+action, and more by using the `go doc` command or by viewing the source
+files in a text editor.
+
+Classic control environments were adapted from OpenAI gym's implementations.
+All classic control environments have both discrete and continuous action
+variants. Box2D environments were also adapted from OpenAI gym's
+implementations and also have both discrete and continuous action variants.
+
 Although an `Environment` has no concept of rewards, an `Environment` does
 have a `Task`, which determines the rewards taken for actions in the
 `Environment`, the starting states in an`Environment`, and the end conditions
 of an agent-environment interaction.
 
+## `envconfig` Package
+The `envconfig` package is used to construct `Environment`s with specific
+`Task`s with default parameters. For example, to create the Cartpole
+environment with the `Balance` task with default parameters, one can
+first construct a `Config` that describes the `Environment` and `Task`.
+Once the `Config` has been constructed, the `CreateEnv()` method will
+return the respective `Environment`:
+
+```
+c := envconfig.NewConfig(
+	envconfig.Cartpole,		// Environment
+	envconfig.Balance,		// Task
+	true,					// Continuous actions?
+	500,					// Episode cutoff
+	0.99,					// Discount
+	false,					// Use the OpenAI Gym (true) or the GoLearn (false) implementation
+)
+
+env, firstStep := c.CreateEnv()
+
+// Use env in some agent-environment interaction
+```
+
+Currently, the following `Environment`-`Task` combinations are valid
+configurations:
+| Environment |               Task              |
+|-------------|---------------------------------|
+| MountainCar |               Goal              |
+|  Cartpole   | Balance, SwingUp (soon to come) |
+|  Pendulum   |             SwingUp             |
+|   Acrobot   | SwingUp, Balance (soon to come) |
+| LunarLander |               Land              |
+
+Any other combination of `Environment`-`Task` will result in a panic
+when calling `CreateEnv()`.
+
+## `gym` Package
+
 ## `timestep` Package
+The `timestep` package manages environmental timesteps with the `TimeStep`
+struct. Each time an `Environment` takes a step, it returns a new `TimeStep`
+`struct`. A `TimeStep` contains a `StepType` (either `First`, `Middle`,
+or `Last`), a reward for the previous action, a discount value, the observation
+of the next state, the number of the timestep in the current episode, and the
+`EndType` (either `TerminalStateReached`, `Timeout`, or `Nil`). `EndType`s have
+the following meanings:
+
+* `TerminalStateReached`: The episode ended because some terminal state (such
+as a goal state) was reached. For example, in Mountain Car reaching the goal,
+or in Cartpole `Balance` having the pole fall below some set angle.
+* `Timeout`: The episode ended because a timestep limit was reached.
+* `Nil`: The episode ended in some unspecified or unknown way.
+
+The `timestep` package also contains a `Transition` `struct`. These are used
+to model a transition of `(state, action, reward, discount, next state, next
+action)`. Sometimes the `next action` is omitted. These `struct`s are sent to
+`Agent`s for many different reasons, for example, to compute the TD error on a
+transition in order to track the average reward.
+
 ## Task Interface
+An `Environment` has a `Task` which outlines what the agent should acomplish.
+For example, the `mountaincar` package implements a `Goal` `Task` where,
+when added to a Mountain Car environment, rewards the agent for reaching a
+goal state.
+
+Each `Task` has a `Starter` and `Ender` (more on those later) which determine
+how episodes start and end respectively. The `Task` computes rewards for
+`state, action, next state` transitions and determines the goal states
+that the agent should reach. The `Task` interface is:
+
+```
+type Task interface {
+	Starter
+	Ender
+	GetReward(state mat.Vector, a mat.Vector, nextState mat.Vector) float64
+	AtGoal(state mat.Matrix) bool
+	Min() float64 // returns the min possible reward
+	Max() float64 // returns the max possible reward
+	RewardSpec() spec.Environment
+}
+```
+
+All `Task`s have in-depth documentation in the `Go` source files. These
+can be viewed with the `go doc` command.
+
+New `Task`s can easily be implemented and added to existing environments
+to change what the agent should accomplish in a given environment. This
+kind of modularity makes it very easy to have a single environment with
+different goals. For example, the Cartpole environment has a `Balance`
+`Task`, but one could easily create a new `Task`, e.g. `SwingUp`, and
+pass this task into the Cartpole constructor to create a totally new
+environment that is not yet implemented by this module.
+
+Each `Environment` can use any `struct` implementing the `Task` interface,
+but commonly used `Task`s for each `Environment` are implemented in the
+`Environment`'s respective package.
 
 ### Starter Interface
 The `Starter` interface determines how a `Task` starts in an `Environment`:
@@ -258,6 +368,53 @@ episode, not the differential return. In this case, the underlying, wrapped
 and the episodic return (rather than the episodic differential return) can be
 tracked.
 
+## Checkpointers
+A `Checkpointer` checkpoints an `Agent` during an experiment by saving the
+`Agent` to a binary file. The `Checkpointer` interface is:
+```
+type Checkpointer interface {
+	Checkpoint(ts.TimeStep) error
+}
+```
+
+Checkpointers can only work with `Serializable` `struct`s. A `struct` is
+serializable if it implements the `Serializable` interface:
+```
+type Serializable interface {
+	gob.GobEncoder
+	gob.GobDecoder
+}
+```
+
+Currently, the only implemented `Checkpointer` is an `nStep` `Checkpointer`
+which checkpoints an `Agent` every `n` steps of an agent-environment
+interaction. For more information, see the `checkpointer` package.
+
+## Running the program
+To run the program, simply run the `main.go` file. The program takes two
+commandline arguments: a `JSON` configuration file for an `Experiment` and
+a hyperparameter setting index for the `Agent` defined in the configuration
+file. Example `JSON` `Experiment` configuration files are given in the
+`experiments` directory.
+
+An `Experiment` configuration file describes an `Environment` for the
+`Experiment` as well as an `Agent` to run on the environment. For each
+possible hyperparameter of the agent, the configuration file lists all
+possible values that the user would like to test for that hyperparameter.
+When running the program, the user must then specify a hyperparameter index
+to use for the `Experiment`. The program will use that hyperparameter setting
+index to get only the relevant hyperparameters from the configuration file,
+construct an `Agent` using those hyperparameters, and then run the `Experiment`.
+Hyperparameter settings indices wrap around, so that if there are `10` hyperparameter
+settings, then hyperparameter settings indices `0 - 9` determine each hyperparameter
+setting for the first run of the `Experiment`. Indices `10 - 19` determine each
+hyperparameter setting for the second run of the `Experiment`. In general,
+indices `10n -  10(n+1)` determine the hyperparameter settings for run
+`n+1` of the `Experiment` and indices `10n + m` (for `m` fixed) refer to
+sequential runs of hyperparameter setting `m` of the `Agent` in the
+`Experiment`.
+
+
 # ToDo
 
 
@@ -276,3 +433,5 @@ tracked.
 - [ ] Multi dimensional gaussian tree mlp is broken
 
 - [ ] For many linear agents, action/state values are computed more than once. The Policy computes the action/state values at each timestep, and the Learner computes the same state/action values for the timestep when learning.
+
+- [ ] `spec` package should be combined with `environment` package.

@@ -3,11 +3,11 @@ package wrappers
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
 )
 
 // AverageReward wraps an environment and alters rewards so that the

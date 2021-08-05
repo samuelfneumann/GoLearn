@@ -4,12 +4,12 @@ package wrappers
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/matutils"
 	"github.com/samuelfneumann/golearn/utils/matutils/tilecoder"
+	"gonum.org/v1/gonum/mat"
 )
 
 // IndexTileCoding wraps an environment and returns as observations
