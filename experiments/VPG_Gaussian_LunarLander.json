@@ -1,9 +1,9 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 1000000,
+	"MaxSteps": 3000000,
 	"EnvConf": {
-		"Environment": "Cartpole",
-		"Task": "Balance",
+		"Environment": "LunarLander",
+		"Task": "Land",
 		"ContinuousActions": true,
 		"EpisodeCutoff": 500,
 		"Discount": 0.99,
@@ -128,7 +128,7 @@
 				25
 			],
 			"EpochLength": [
-				500
+				50000
 			],
 			"FinishEpisodeOnEpochEnd": [
 				true

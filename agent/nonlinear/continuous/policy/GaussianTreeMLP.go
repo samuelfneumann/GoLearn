@@ -3,11 +3,6 @@ package policy
 import (
 	"fmt"
 
-	"golang.org/x/exp/rand"
-	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/stat/distmv"
-	G "gorgonia.org/gorgonia"
-	"gorgonia.org/tensor"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/network"
@@ -15,6 +10,11 @@ import (
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
 	"github.com/samuelfneumann/golearn/utils/op"
+	"golang.org/x/exp/rand"
+	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/stat/distmv"
+	G "gorgonia.org/gorgonia"
+	"gorgonia.org/tensor"
 )
 
 // For stability, the standard deviation of the Gaussian distribution
@@ -120,14 +120,18 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 	std = G.Must(G.Add(offset, std))
 
 	// Calculate log probability of input actions
-	actions := G.NewMatrix(
-		net.Graph(),
-		tensor.Float64,
-		G.WithName("InputActions"),
-		G.WithShape(batchForLogProb, actionDims),
-		G.WithInit(G.Zeroes()),
-	)
-	logPdfNode := op.GaussianLogPdf(mean, std, actions)
+	var actions *G.Node
+	var logPdfNode *G.Node
+	if batchForLogProb > 1 {
+		actions = G.NewMatrix(
+			net.Graph(),
+			tensor.Float64,
+			G.WithName("InputActions"),
+			G.WithShape(batchForLogProb, actionDims),
+			G.WithInit(G.Zeroes()),
+		)
+		logPdfNode = op.GaussianLogPdf(mean, std, actions)
+	}
 
 	// Create standard normal for action selection
 	means := make([]float64, actionDims)
@@ -152,7 +156,9 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 	}
 
 	// Record values of Gorgonia nodes
-	G.Read(pol.logPdfNode, &pol.logPdfVal)
+	if batchForLogProb > 1 {
+		G.Read(pol.logPdfNode, &pol.logPdfVal)
+	}
 	G.Read(mean, &pol.meanVal)
 	G.Read(std, &pol.stddevVal)
 
@@ -267,4 +273,12 @@ func (g *GaussianTreeMLP) Eval() {
 // IsEval returns whether or not the policy is in evaluation mode
 func (g *GaussianTreeMLP) IsEval() bool {
 	return g.eval
+}
+
+func (g *GaussianTreeMLP) Mean() G.Value {
+	return g.meanVal
+}
+
+func (g *GaussianTreeMLP) StdDev() G.Value {
+	return g.stddevVal
 }

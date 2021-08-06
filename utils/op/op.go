@@ -4,13 +4,11 @@
 package op
 
 import (
-	"fmt"
 	"math"
-	"os"
 
+	"github.com/samuelfneumann/golearn/utils/tensorutils"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
-	"github.com/samuelfneumann/golearn/utils/tensorutils"
 )
 
 // Clip clips the value of a node
@@ -165,7 +163,6 @@ func Prod(input *G.Node, along int) *G.Node {
 	prod := G.Must(G.Slice(input, dims...))
 
 	for i := 1; i < input.Shape()[along]; i++ {
-
 		// Calculate the column that should be multiplied next
 		for j := 0; j < len(shape); j++ {
 			if j == along {
@@ -180,54 +177,47 @@ func Prod(input *G.Node, along int) *G.Node {
 }
 
 // GaussianLogPdf calculate the log of the probability density function
-// of actions drawn from a Gaussian distribution with mean mean and
+// of actions drawn from a diagonal Gaussian distribution with mean mean and
 // standard deviation std.
+//
+// If given a matrix of size m x n, then each argument should
+// be a matrix of size m x n, where each row is a single observation
+// in a batch of observations.
 func GaussianLogPdf(mean, std, actions *G.Node) *G.Node {
 	graph := mean.Graph()
 	if graph != std.Graph() || graph != actions.Graph() {
-		panic("logPdf: all nodes must share the same graph")
+		panic("gaussianLogPdf: all nodes must share the same graph")
 	}
 
 	negativeHalf := G.NewConstant(-0.5)
 
 	if std.Shape()[1] != 1 {
-		fmt.Fprintf(os.Stderr, "GuassianLogProb: warning - not tested for "+
-			"multi-dimensional actions")
 		// Multi-dimensional actions
-		// Calculate det(σ). Since σ is a diagonal matrix stored as a vector,
-		// the determinant == prod(diagonal of σ) = prod(σ)
+		variance := G.Must(G.Square(std))
 		dims := float64(mean.Shape()[1])
-		multiplier := G.NewConstant(math.Pow(math.Pi*2, -dims/2), G.WithName("multiplier"))
-		// det := G.Must(G.Slice(std, nil, tensorutils.NewSlice(0, 1, 1)))
-		// for i := 1; i < std.Shape()[1]; i++ {
-		// 	s := G.Must(G.Slice(std, nil, tensorutils.NewSlice(i, i+1, 1)))
-		// 	det = G.Must(G.HadamardProd(det, s))
-		// }
-		det := Prod(std, 1)
-		invDet := G.Must(G.Inverse(det))
+		term1 := G.NewConstant((-dims / 2.0) * math.Log(2*math.Pi))
 
-		// Calculate (2*π)^(-k/2) * det(σ)
-		det = G.Must(G.Pow(det, negativeHalf))
-		multiplier = G.Must(G.Mul(multiplier, det))
+		det := Prod(variance, 1)
+		term2 := G.Must(G.Log(det))
+		term2 = G.Must(G.HadamardProd(term2, negativeHalf))
 
 		// Calculate (-1/2) * (A - μ)^T σ^(-1) (A - μ)
 		// Since everything is stored as a vector, this boils down to a
 		// bunch of Hadamard products, sums, and differences.
 		diff := G.Must(G.Sub(actions, mean))
-		exponent := G.Must(G.HadamardProd(diff, invDet))
+		exponent := G.Must(G.HadamardDiv(diff, variance))
 		exponent = G.Must(G.HadamardProd(exponent, diff))
 		exponent = G.Must(G.Sum(exponent, 1))
-		exponent = G.Must(G.Mul(exponent, negativeHalf))
+		exponent = G.Must(G.HadamardProd(exponent, negativeHalf))
 
 		// Calculate the probability
-		prob := G.Must(G.Exp(exponent))
-		prob = G.Must(G.HadamardProd(multiplier, prob))
-
-		logProb := G.Must(G.Log(prob))
+		terms := G.Must(G.Add(term1, term2))
+		logProb := G.Must(G.Add(exponent, terms))
 
 		return logProb
 	} else {
-		// Single-dimensional actions
+		// If actions are sinlge-dimensional, we can cut a few corners
+		// to increase the computational efficiency
 		two := G.NewConstant(2.0)
 		exponent := G.Must(G.Sub(actions, mean))
 		exponent = G.Must(G.HadamardDiv(exponent, std))
