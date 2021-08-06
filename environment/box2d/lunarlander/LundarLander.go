@@ -16,6 +16,7 @@ import (
 	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"github.com/samuelfneumann/golearn/utils/matutils"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
 	"gonum.org/v1/gonum/stat/distuv"
@@ -627,9 +628,7 @@ func (l *lunarLander) Reset() ts.TimeStep {
 // whether this next step was the last in the episode.
 func (l *lunarLander) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Clip actions
-	for i := 0; i < a.Len(); i++ {
-		a.SetVec(i, floatutils.ClipInterval(a.AtVec(i), l.actionBounds))
-	}
+	matutils.VecClip(a, l.actionBounds.Min, l.actionBounds.Max)
 
 	// Engines
 	tip := [2]float64{

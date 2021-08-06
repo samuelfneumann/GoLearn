@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/samuelfneumann/golearn/utils/floatutils"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"
 )
@@ -85,15 +86,7 @@ func RowMean(matrix *mat.Dense) *mat.VecDense {
 // VecClip performs an element-wise clipping of a vector's values such
 // that each value is at least min and at most max
 func VecClip(a *mat.VecDense, min, max float64) {
-	for i := 0; i < a.Len(); i++ {
-		value := a.AtVec(i)
-
-		if value < min {
-			a.SetVec(i, min)
-		} else if value > max {
-			a.SetVec(i, max)
-		}
-	}
+	floatutils.ClipSlice(a.RawVector().Data, min, max)
 }
 
 // VecFloor performs an element-wise floor division of a vector by some
