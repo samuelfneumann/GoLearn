@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"gonum.org/v1/gonum/mat"
-	G "gorgonia.org/gorgonia"
-	"gorgonia.org/tensor"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/network"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
+	G "gorgonia.org/gorgonia"
+	"gorgonia.org/tensor"
 )
 
 // Note: Step() is called on each timestep. When the epoch is finished
@@ -293,7 +293,7 @@ func (v *VPG) Step() {
 	}
 
 	// Policy gradient step
-	advantagesTensor := tensor.NewDense( // * technically this needs to be called only once
+	advantagesTensor := tensor.NewDense(
 		tensor.Float64,
 		v.advantages.Shape(),
 		tensor.WithBacking(adv),

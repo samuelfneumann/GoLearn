@@ -10,6 +10,7 @@ import (
 	"github.com/samuelfneumann/golearn/experiment/tracker"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/progressbar"
+	"gonum.org/v1/gonum/mat"
 )
 
 // Online is an Experiment that runs an agent online only. No offline
@@ -71,9 +72,14 @@ func (o *Online) RunEpisode() bool {
 		o.progBar.Increment()
 		o.currentSteps++
 
-		// Select action, step in environment
+		// Select action
 		action := o.agent.SelectAction(step)
-		step, _ = o.environment.Step(action)
+
+		// Step in the environment with a *copy* of the action. A copy is
+		// necessary because some Agents store their actions for updates and
+		// many Environments clip actions. Failing to copy would cause the
+		// Agent's stored value to also be clipped.
+		step, _ = o.environment.Step(mat.VecDenseCopyOf(action))
 
 		// Cache the environment step in each Saver
 		o.track(step)

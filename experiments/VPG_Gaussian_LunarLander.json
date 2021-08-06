@@ -128,7 +128,7 @@
 				25
 			],
 			"EpochLength": [
-				50000
+				500
 			],
 			"FinishEpisodeOnEpochEnd": [
 				true
