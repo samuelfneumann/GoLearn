@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/policy"
 	"github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
 )
 
 // ESarsaLearner implements the update functionality for the
@@ -24,20 +24,45 @@ type ESarsaLearner struct {
 	// ϵ of ϵ-greedy target policy
 	targetE float64
 
-	policy *policy.EGreedy // The policy to learn
+	policy *policy.EGreedy // The behaviour policy
+	target *policy.EGreedy // The target policy
+
+	// indexTileCoding represents whether the environment is using
+	// tile coding and returning the non-zero indices as features
+	indexTileCoding bool
 }
 
 // NewESarsaLearner creates a new ESarsaLearner struct
 //
 // egreedy is the policy.EGreedy to learn
-func NewESarsaLearner(egreedy *policy.EGreedy, learningRate,
-	targetE float64) (*ESarsaLearner, error) {
+func NewESarsaLearner(behaviour, target *policy.EGreedy, learningRate,
+	targetE float64, indexTileCoding bool) (*ESarsaLearner, error) {
+	// Ensure the behaviour and target share the same weights
+	bWeights := behaviour.Weights()
+	tWeights := target.Weights()
+	for key := range bWeights {
+		if bWeights[key] != tWeights[key] {
+			fmt.Fprintf(os.Stderr, "newESarsaLearner: behaviour and target "+
+				"policies do not share weights. Updates using Step() will "+
+				"not be reflected in the target policy.")
+		}
+	}
+
 	step := timestep.TimeStep{}
 	nextStep := timestep.TimeStep{}
 
-	learner := &ESarsaLearner{nil, step, 0, nextStep, learningRate, targetE,
-		egreedy}
-	weights := egreedy.Weights()
+	learner := &ESarsaLearner{
+		weights:         nil,
+		step:            step,
+		action:          0,
+		nextStep:        nextStep,
+		learningRate:    learningRate,
+		targetE:         targetE,
+		policy:          behaviour,
+		target:          target,
+		indexTileCoding: indexTileCoding,
+	}
+	weights := behaviour.Weights()
 	err := learner.SetWeights(weights)
 	return learner, err
 }
@@ -90,34 +115,73 @@ func (e *ESarsaLearner) TdError(t timestep.Transition) float64 {
 	return tdError
 }
 
-// Step updates the weights of the Agent's Learner and Policy
-func (e *ESarsaLearner) Step() {
+// stepIndex updates the weights of the Agent's Learner and Policy
+// assuming that the last seen feature vector was of the form returned
+// by environment/wrappers.IndexTileCoding, that is, the feature vector
+// records the indices of non-zero components of a tile-coded state
+// observation vector.
+func (e *ESarsaLearner) stepIndex() {
 	numActions, _ := e.weights.Dims()
-
-	// Calculate the action values in the next state
 	actionValues := mat.NewVecDense(numActions, nil)
-	nextState := e.nextStep.Observation
-	actionValues.MulVec(e.weights, nextState)
 
-	// Find the target policy's probability of each action
-	targetProbs := e.policy.ActionProbabilities(nextState)
+	for _, i := range e.nextStep.Observation.RawVector().Data {
+		actionValues.AddVec(actionValues, e.weights.ColView(int(i)))
+	}
+
+	targetProbs := e.target.ActionProbabilities(e.nextStep.Observation)
+	expectedVal := mat.Dot(targetProbs, actionValues)
 
 	// Create the update target
 	discount := e.nextStep.Discount
-	expectedQ := mat.Dot(targetProbs, actionValues)
-	target := e.nextStep.Reward + discount*expectedQ
+	target := e.nextStep.Reward + discount*expectedVal
 
-	// Find the current estimate of the taken action
-	weights := e.weights.RowView(e.action)
-	state := e.step.Observation
-	currentEstimate := mat.Dot(weights, state)
+	// Find current estimate of the taken action
+	currentEstimate := 0.0
+	for _, i := range e.step.Observation.RawVector().Data {
+		currentEstimate += e.weights.At(e.action, int(i))
+	}
 
-	// Construct the scaling factor of the gradient
 	scale := e.learningRate * (target - currentEstimate)
 
-	// Perform gradient descent: ∇weights = scale * state
-	weights.(*mat.VecDense).AddScaledVec(weights, scale, state)
+	// Upate weights
+	for _, i := range e.step.Observation.RawVector().Data {
+		w := e.weights.At(e.action, int(i))
+		newW := w + scale
+		e.weights.Set(e.action, int(i), newW)
+	}
+}
 
+// Step updates the weights of the Agent's Learner and Policy
+func (e *ESarsaLearner) Step() {
+	if e.indexTileCoding {
+		e.stepIndex()
+	} else {
+		numActions, _ := e.weights.Dims()
+
+		// Calculate the action values in the next state
+		actionValues := mat.NewVecDense(numActions, nil)
+		nextState := e.nextStep.Observation
+		actionValues.MulVec(e.weights, nextState)
+
+		// Find the target policy's probability of each action
+		targetProbs := e.policy.ActionProbabilities(nextState)
+
+		// Create the update target
+		discount := e.nextStep.Discount
+		expectedQ := mat.Dot(targetProbs, actionValues)
+		target := e.nextStep.Reward + discount*expectedQ
+
+		// Find the current estimate of the taken action
+		weights := e.weights.RowView(e.action)
+		state := e.step.Observation
+		currentEstimate := mat.Dot(weights, state)
+
+		// Construct the scaling factor of the gradient
+		scale := e.learningRate * (target - currentEstimate)
+
+		// Perform gradient descent: ∇weights = scale * state
+		weights.(*mat.VecDense).AddScaledVec(weights, scale, state)
+	}
 }
 
 // SetWeights sets the weight pointers to point to a new set of weights.

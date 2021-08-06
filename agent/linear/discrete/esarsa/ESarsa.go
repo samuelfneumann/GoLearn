@@ -4,13 +4,14 @@ package esarsa
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/policy"
 	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/wrappers"
 	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
+	"gonum.org/v1/gonum/mat"
 )
 
 // ESarsa implements the online Expected Sarsa algorithm. Actions selected by
@@ -22,6 +23,10 @@ type ESarsa struct {
 	Target       agent.Policy
 	seed         uint64
 	eval         bool // Whether or not in evaluation mode
+
+	// indexTileCoding represents whether the environment is using
+	// tile coding and returning the non-zero indices as features
+	indexTileCoding bool
 }
 
 // New creates a new ESarsa struct. The agent spec agent should be a
@@ -77,7 +82,13 @@ func New(env environment.Environment, c agent.Config,
 	weights := behaviour.Weights()
 	target.SetWeights(weights)
 
-	learner, err := NewESarsaLearner(behaviour, learningRate, targetE)
+	// Check if the environment uses tile coding and returns the
+	// indices of non-zero elements of the tile-coded vectors as
+	// state representations
+	_, indexTileCoding := env.(*wrappers.IndexTileCoding)
+
+	learner, err := NewESarsaLearner(behaviour, target, learningRate, targetE,
+		indexTileCoding)
 	if err != nil {
 		err := fmt.Errorf("esarsa: cannot create learner")
 		return &ESarsa{}, err
@@ -88,7 +99,14 @@ func New(env environment.Environment, c agent.Config,
 		init.Initialize(weights[weight])
 	}
 
-	return &ESarsa{learner, behaviour, target, seed, false}, nil
+	return &ESarsa{
+		Learner:         learner,
+		Policy:          behaviour,
+		Target:          target,
+		seed:            seed,
+		eval:            false,
+		indexTileCoding: indexTileCoding,
+	}, nil
 }
 
 // SelectAction selects an action from either the agent's behaviour or

@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"gonum.org/v1/gonum/mat"
-	G "gorgonia.org/gorgonia"
-	"gorgonia.org/tensor"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
 	"github.com/samuelfneumann/golearn/environment"
@@ -16,6 +13,9 @@ import (
 	"github.com/samuelfneumann/golearn/solver"
 	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
+	G "gorgonia.org/gorgonia"
+	"gorgonia.org/tensor"
 )
 
 // DeepQ implements the deep Q-learning algorithm. This algorithm is

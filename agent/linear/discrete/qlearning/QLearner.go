@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/policy"
 	"github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
 )
 
 // QLearner implements the update functionality for the Q-Learning
@@ -89,6 +89,11 @@ func (q *QLearner) TdError(t timestep.Transition) float64 {
 	return tdError
 }
 
+// stepIndex updates the weights of the Agent's Learner and Policy
+// assuming that the last seen feature vector was of the form returned
+// by environment/wrappers.IndexTileCoding, that is, the feature vector
+// records the indices of non-zero components of a tile-coded state
+// observation vector.
 func (q *QLearner) stepIndex() {
 	numActions, _ := q.weights.Dims()
 	actionValues := mat.NewVecDense(numActions, nil)

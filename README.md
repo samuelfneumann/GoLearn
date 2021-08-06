@@ -1,4 +1,4 @@
-# GoLearn: A Reinforcement Learning in Go
+# GoLearn: Reinforcement Learning in Go
 GoLearn is a reinforcement learning Go module. It implements many environments
 for reinforcement learning as well as agents. It also allows users to easily
 run experiments through `JSON` configuration files without ever touching
@@ -36,6 +36,8 @@ packages:
 |--------------------------------|----------------------------------------|
 | `Linear-Gaussian Actor-Critic` | `agent/linear/continuous/actorcritic`  |
 |   `Vanilla Policy Gradient`    | `agent/nonlinear/continuous/vanillapg` |
+
+## Agent `Config`s and `ConfigList`s
 
 # Environments
 This library makes a separation between an `Environment` and a `Task`. An

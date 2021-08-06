@@ -7,14 +7,13 @@ import (
 
 	"golang.org/x/exp/rand"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
 	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
-	"github.com/samuelfneumann/golearn/utils/matutils"
+	"gonum.org/v1/gonum/mat"
 )
 
 const (
@@ -104,13 +103,11 @@ func (e *EGreedy) actionValues(obs mat.Vector) *mat.VecDense {
 	if e.indexTileCoding {
 		for i := 0; i < obs.Len(); i++ {
 			index := obs.AtVec(i) // Index of non-zero feature
-			// fmt.Println(e.weights.Dims())
 			actionValues.AddVec(actionValues, e.weights.ColView(int(index)))
 		}
 	} else {
 		actionValues := mat.NewVecDense(numActions, nil)
 		actionValues.MulVec(e.weights, obs)
-
 	}
 
 	return actionValues
@@ -165,8 +162,13 @@ func (e *EGreedy) ActionProbabilities(obs mat.Vector) mat.Vector {
 	for i := 0; i < actionValues.Len(); i++ {
 		prob = append(prob, epsProb)
 	}
-	maxAction := matutils.MaxVec(actionValues)
-	prob[maxAction] += (1.0 - e.epsilon)
+
+	// For each maximum valued action, set its probability
+	// to [(ɛ / |A|) + (1 - ɛ)] / |A_{maxValued}|
+	maxActions := floatutils.ArgMax(actionValues.RawVector().Data...)
+	for _, maxAction := range maxActions {
+		prob[maxAction] += ((1.0 - e.epsilon) / float64(len(maxActions)))
+	}
 
 	return mat.NewVecDense(len(prob), prob)
 }

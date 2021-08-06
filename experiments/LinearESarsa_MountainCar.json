@@ -1,6 +1,6 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 1000,
+	"MaxSteps": 200000,
 	"EnvConf": {
 		"Environment": "MountainCar",
 		"Task": "Goal",
@@ -18,14 +18,11 @@
 		"Type": "EGreedyESarsa-Linear",
 		"ConfigList": {
 			"BehaviourE": [
-				0.05,
-				0.1,
+				0.001,
 				0.25
 			],
 			"TargetE": [
-				0.05,
-				0.1,
-				0.25
+				0.05
 			],
 			"LearningRate": [
 				0.1,
