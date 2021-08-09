@@ -3,9 +3,8 @@ package pendulum
 import (
 	"math"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
+	"gonum.org/v1/gonum/mat"
 )
 
 // SwingUp implements the classic control Pendulum swingup task. In
@@ -53,8 +52,8 @@ func (s *SwingUp) Max() float64 {
 	return 1.0
 }
 
-// RewardSpec returns the reward specification of the Task
-func (s *SwingUp) RewardSpec() spec.Environment {
+// RewardSpec returns the reward environmentification of the Task
+func (s *SwingUp) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
 	minReward := s.Min()
@@ -63,6 +62,6 @@ func (s *SwingUp) RewardSpec() spec.Environment {
 	maxReward := s.Max()
 	upperBound := mat.NewVecDense(1, []float64{maxReward})
 
-	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Reward, lowerBound, upperBound,
+		environment.Continuous)
 }

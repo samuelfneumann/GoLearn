@@ -3,10 +3,9 @@ package lunarlander
 import (
 	"math"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
 )
 
 // lunarLanderTask implements functionality for a Task to track internal
@@ -133,13 +132,13 @@ func (l *Land) Min() float64 {
 	return math.Inf(-1)
 }
 
-// RewardSpec returns the reward specification for the environment
-func (l *Land) RewardSpec() spec.Environment {
+// RewardSpec returns the reward environmentification for the environment
+func (l *Land) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
 	lowerBound := mat.NewVecDense(1, []float64{l.Min()})
 	upperBound := mat.NewVecDense(1, []float64{l.Max()})
 
-	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Reward, lowerBound, upperBound,
+		environment.Continuous)
 }

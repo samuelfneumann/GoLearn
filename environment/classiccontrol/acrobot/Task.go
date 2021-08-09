@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"math"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
 )
 
 const (
@@ -135,12 +134,12 @@ func (s *SwingUp) Max() float64 {
 	return maxReward
 }
 
-// RewardSpec returns the reward specification for the environment
-func (s *SwingUp) RewardSpec() spec.Environment {
+// RewardSpec returns the reward environmentification for the environment
+func (s *SwingUp) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{s.Min()})
 	upperBound := mat.NewVecDense(1, []float64{s.Max()})
 
-	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Reward, lowerBound, upperBound,
+		environment.Continuous)
 }

@@ -6,13 +6,12 @@ import (
 	"math"
 	"os"
 
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/floatutils"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
-	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
-	"github.com/samuelfneumann/golearn/timestep"
-	"github.com/samuelfneumann/golearn/utils/floatutils"
 )
 
 // default physical constants
@@ -139,21 +138,21 @@ func (p *base) update(action, newState *mat.VecDense) (timestep.TimeStep,
 	return nextStep, nextStep.Last()
 }
 
-// DiscountSpec returns the discount specification of the environment
-func (p *base) DiscountSpec() spec.Environment {
+// DiscountSpec returns the discount environmentification of the environment
+func (p *base) DiscountSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
 	lowerBound := mat.NewVecDense(1, []float64{p.discount})
 
 	upperBound := mat.NewVecDense(1, []float64{p.discount})
 
-	return spec.NewEnvironment(shape, spec.Discount, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Discount, lowerBound, upperBound,
+		environment.Continuous)
 
 }
 
-// ObservationSpec returns the observation specification of the environment
-func (p *base) ObservationSpec() spec.Environment {
+// ObservationSpec returns the observation environmentification of the environment
+func (p *base) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(ObservationDims, nil)
 
 	minObs := []float64{p.angleBounds.Min, p.speedBounds.Min}
@@ -162,8 +161,8 @@ func (p *base) ObservationSpec() spec.Environment {
 	maxObs := []float64{p.angleBounds.Max, p.speedBounds.Max}
 	upperBound := mat.NewVecDense(ObservationDims, maxObs)
 
-	return spec.NewEnvironment(shape, spec.Observation, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Observation, lowerBound, upperBound,
+		environment.Continuous)
 
 }
 

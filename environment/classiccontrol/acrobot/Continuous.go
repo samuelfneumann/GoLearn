@@ -1,11 +1,11 @@
 package acrobot
 
 import (
-	"gonum.org/v1/gonum/mat"
+	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"gonum.org/v1/gonum/mat"
 )
 
 // Continuous implements the classic control environment Acrobot. In
@@ -51,14 +51,14 @@ func NewContinuous(t env.Task, discount float64) (env.Environment, ts.TimeStep) 
 	return &Continuous{acrobot}, firstStep
 }
 
-// ActionSpec returns the action specification of the environment
-func (d *Continuous) ActionSpec() spec.Environment {
+// ActionSpec returns the action environmentification of the environment
+func (d *Continuous) ActionSpec() environment.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 	lowerBound := mat.NewVecDense(ActionDims, []float64{float64(MinContinuousAction)})
 	upperBound := mat.NewVecDense(ActionDims, []float64{float64(MaxContinuousAction)})
 
-	return spec.NewEnvironment(shape, spec.Action, lowerBound,
-		upperBound, spec.Continuous)
+	return environment.NewSpec(shape, environment.Action, lowerBound,
+		upperBound, environment.Continuous)
 }
 
 // Step takes one environmental step given action a and returns the next

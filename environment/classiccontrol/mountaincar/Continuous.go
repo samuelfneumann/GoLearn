@@ -1,11 +1,11 @@
 package mountaincar
 
 import (
-	"gonum.org/v1/gonum/mat"
+	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"gonum.org/v1/gonum/mat"
 )
 
 // Continuous implements the classic control Mountain Car environment.
@@ -45,14 +45,14 @@ func NewContinuous(t env.Task, discount float64) (*Continuous, ts.TimeStep) {
 
 }
 
-// ActionSpec returns the action specification of the environment
-func (m *Continuous) ActionSpec() spec.Environment {
+// ActionSpec returns the action environmentification of the environment
+func (m *Continuous) ActionSpec() environment.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 	lowerBound := mat.NewVecDense(ActionDims, []float64{MinContinuousAction})
 	upperBound := mat.NewVecDense(ActionDims, []float64{MaxContinuousAction})
 
-	return spec.NewEnvironment(shape, spec.Action, lowerBound,
-		upperBound, spec.Continuous)
+	return environment.NewSpec(shape, environment.Action, lowerBound,
+		upperBound, environment.Continuous)
 
 }
 

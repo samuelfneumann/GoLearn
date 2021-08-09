@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/matutils"
 	"github.com/samuelfneumann/golearn/utils/matutils/tilecoder"
@@ -33,7 +32,7 @@ type IndexTileCoding struct {
 // is reset when wrapped by the IndexTileCoding environment by calling
 // the wrapped environment's Reset() method.
 //
-// The bins parameter specifies both how many tilings to use as well
+// The bins parameter environmentifies both how many tilings to use as well
 // as the number of tiles per tiling. The length of the outer-slice is
 // the number of tilings. The lengths of the inner-slices are the
 // number of bins per dimension for that tiling.
@@ -81,9 +80,9 @@ func (t *IndexTileCoding) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	return step, last
 }
 
-// ObservationSpec returns the observation specification of the
+// ObservationSpec returns the observation environmentification of the
 // environment
-func (t *IndexTileCoding) ObservationSpec() spec.Environment {
+func (t *IndexTileCoding) ObservationSpec() environment.Spec {
 	length := t.coder.VecLength()
 	shape := mat.NewVecDense(length, nil)
 
@@ -91,8 +90,8 @@ func (t *IndexTileCoding) ObservationSpec() spec.Environment {
 
 	upperBound := matutils.VecOnes(length)
 
-	return spec.NewEnvironment(shape, spec.Observation, lowerBound,
-		upperBound, spec.Continuous)
+	return environment.NewSpec(shape, environment.Observation, lowerBound,
+		upperBound, environment.Continuous)
 
 }
 

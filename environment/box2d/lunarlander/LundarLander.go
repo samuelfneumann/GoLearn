@@ -13,7 +13,6 @@ import (
 	"github.com/ByteArena/box2d"
 	"github.com/fogleman/gg"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
 	"github.com/samuelfneumann/golearn/utils/matutils"
@@ -224,16 +223,16 @@ func (c *contactDetector) PostSolve(contact box2d.B2ContactInterface,
 //	   different between this implementation and that of OpenAI Gym
 //	   for the same underlying state.
 //
-// Any Task used in this struct must have a specific range of values
+// Any Task used in this struct must have a environmentific range of values
 // for its Starter. The Starter should return a vector of 3 elements
 // in the following order:
 //
-//	1. The x position to start at in the Box2D world. The specific
+//	1. The x position to start at in the Box2D world. The environmentific
 //	   values that this element can take on must be in the interval
 //	   [0.05 * (ViewportW / Scale), 0.95 * (ViewportW / Scale)].
 //	   The default value to use in the Starter is InitialX for the
 //	   lower and upper bounds.
-//	2. The y position to start at in the Box2D world. The specific
+//	2. The y position to start at in the Box2D world. The environmentific
 //	   values that this element can take on must be in the interval
 //	   [ViewportH / Scale / 2, InitialY].
 //	   The default value to use in the Starter is InitialY for the
@@ -727,18 +726,18 @@ func (l *lunarLander) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	return t, t.Last()
 }
 
-// DiscountSpec returns the discount specification of the environment
-func (l *lunarLander) DiscountSpec() spec.Environment {
+// DiscountSpec returns the discount environmentification of the environment
+func (l *lunarLander) DiscountSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{l.discount})
 
-	return spec.NewEnvironment(shape, spec.Discount, lowerBound, lowerBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Discount, lowerBound, lowerBound,
+		environment.Continuous)
 }
 
-// ObservationSpec returns the observation specification of the
+// ObservationSpec returns the observation environmentification of the
 // environment
-func (l *lunarLander) ObservationSpec() spec.Environment {
+func (l *lunarLander) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(StateObservations, nil)
 
 	minXVelocity := l.velocityBounds.Min * (ViewportW / Scale / 2) / FPS
@@ -769,8 +768,8 @@ func (l *lunarLander) ObservationSpec() spec.Environment {
 		1.,
 	})
 
-	return spec.NewEnvironment(shape, spec.Observation, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Observation, lowerBound, upperBound,
+		environment.Continuous)
 }
 
 // CurrentTimeStep returns the current timestep of the environment

@@ -4,11 +4,10 @@ package pendulum
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"gonum.org/v1/gonum/mat"
 )
 
 // Continuous implements the classic control environment Pendulum. In this
@@ -74,16 +73,16 @@ func (p *Continuous) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	return nextStep, last
 }
 
-// ActionSpec returns the action specification of the environment
-func (p *Continuous) ActionSpec() spec.Environment {
+// ActionSpec returns the action environmentification of the environment
+func (p *Continuous) ActionSpec() environment.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 
 	minAction, maxAction := p.torqueBounds.Min, p.torqueBounds.Max
 	lowerBound := mat.NewVecDense(ActionDims, []float64{minAction})
 	upperBound := mat.NewVecDense(ActionDims, []float64{maxAction})
 
-	return spec.NewEnvironment(shape, spec.Action, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Action, lowerBound, upperBound,
+		environment.Continuous)
 
 }
 

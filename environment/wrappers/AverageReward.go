@@ -5,7 +5,6 @@ import (
 
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
 )
@@ -161,8 +160,8 @@ func (a *AverageReward) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	return step, step.Last()
 }
 
-// RewardSpec returns the reward specification for the environment
-func (a *AverageReward) RewardSpec() spec.Environment {
+// RewardSpec returns the reward environmentification for the environment
+func (a *AverageReward) RewardSpec() environment.Spec {
 	rewardSpec := a.Environment.RewardSpec()
 
 	// Bounds depend on environment and policy which is constantly
@@ -170,14 +169,14 @@ func (a *AverageReward) RewardSpec() spec.Environment {
 	rewardSpec.LowerBound = nil
 	rewardSpec.UpperBound = nil
 
-	rewardSpec.Type = spec.AverageReward
+	rewardSpec.Type = environment.AverageReward
 	return rewardSpec
 }
 
-// DiscountSpec returns the discount specification for the environment
+// DiscountSpec returns the discount environmentification for the environment
 // Average reward setting does not use discounting, so the discount
 // value is always set to 1.0.
-func (a *AverageReward) DiscountSpec() spec.Environment {
+func (a *AverageReward) DiscountSpec() environment.Spec {
 	discountSpec := a.Environment.DiscountSpec()
 
 	// Replace each discount value with a 1.0 since no discounting is used.

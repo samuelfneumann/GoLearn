@@ -10,7 +10,6 @@ import (
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
 	"gonum.org/v1/gonum/mat"
@@ -50,7 +49,7 @@ func NewEGreedy(e float64, seed uint64,
 	}
 
 	// Ensure actions are discrete
-	if env.ActionSpec().Cardinality != spec.Discrete {
+	if env.ActionSpec().Cardinality != environment.Discrete {
 		return &EGreedy{}, fmt.Errorf("egreedy: can only use " +
 			"discrete actions")
 	}

@@ -3,10 +3,10 @@ package acrobot
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
+	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
 )
 
 // Discrete implements the classic control environment Acrobot. In
@@ -59,16 +59,16 @@ func NewDiscrete(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
 	return &Discrete{acrobot}, firstStep
 }
 
-// ActionSpec returns the action specification of the environment
-func (d *Discrete) ActionSpec() spec.Environment {
+// ActionSpec returns the action environmentification of the environment
+func (d *Discrete) ActionSpec() environment.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 	lowerBound := mat.NewVecDense(ActionDims,
 		[]float64{float64(MinDiscreteAction)})
 	upperBound := mat.NewVecDense(ActionDims,
 		[]float64{float64(MaxDiscreteAction)})
 
-	return spec.NewEnvironment(shape, spec.Action, lowerBound,
-		upperBound, spec.Discrete)
+	return environment.NewSpec(shape, environment.Action, lowerBound,
+		upperBound, environment.Discrete)
 }
 
 // Step takes one environmental step given action a and returns the next

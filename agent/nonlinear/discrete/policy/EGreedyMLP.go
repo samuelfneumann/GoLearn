@@ -14,10 +14,10 @@ import (
 	G "gorgonia.org/gorgonia"
 
 	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/experiment/checkpointer"
 	"github.com/samuelfneumann/golearn/network"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
 )
@@ -75,7 +75,7 @@ func NewMultiHeadEGreedyMLP(epsilon float64, batch int, env env.Environment,
 	init G.InitWFn, activations []*network.Activation,
 	seed int64) (agent.EGreedyNNPolicy, error) {
 
-	if env.ActionSpec().Cardinality == spec.Continuous {
+	if env.ActionSpec().Cardinality == environment.Continuous {
 		err := fmt.Errorf("newMultiHeadEGreedyMLP: cannot use egreedy " +
 			"policy with continuous actions")
 		return &MultiHeadEGreedyMLP{}, err

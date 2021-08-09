@@ -6,7 +6,6 @@ import (
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/network"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
 	"github.com/samuelfneumann/golearn/utils/op"
@@ -83,7 +82,7 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 	leafBiases [][]bool, leafActivations [][]*network.Activation,
 	init G.InitWFn, seed uint64) (agent.LogPdfOfer, error) {
 
-	if env.ActionSpec().Cardinality != spec.Continuous {
+	if env.ActionSpec().Cardinality != environment.Continuous {
 		panic("newGaussianTreeMLP: actions should be continuous")
 	}
 	if len(leafHiddenSizes) != 2 {
@@ -173,7 +172,7 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 
 // LogPdfOf sets the state and action inputs of the policy's
 // computational graph to the argument state and actions (s and a
-// respectively) so that when a VM of the policy is run, the log
+// reenvironmenttively) so that when a VM of the policy is run, the log
 // probabliity of actions a taken in states s will be computed and
 // stored in the policy's associate log PDF node, which is returned.
 //

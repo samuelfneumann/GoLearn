@@ -4,11 +4,10 @@ package gridworld
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/matutils"
+	"gonum.org/v1/gonum/mat"
 )
 
 const numActions int = 4
@@ -212,20 +211,20 @@ func (g *GridWorld) getCoordinates(v int) mat.Matrix {
 	return coords
 }
 
-// DiscountSpec generates the discount specification for the GridWorld
-func (g *GridWorld) DiscountSpec() spec.Environment {
+// DiscountSpec generates the discount environmentification for the GridWorld
+func (g *GridWorld) DiscountSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
 	min := mat.NewVecDense(1, []float64{g.discount})
 
-	return spec.NewEnvironment(shape, spec.Discount, min, min,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Discount, min, min,
+		environment.Continuous)
 
 }
 
-// ObservationSpec generates the observation specification for the
+// ObservationSpec generates the observation environmentification for the
 // GridWorld
-func (g *GridWorld) ObservationSpec() spec.Environment {
+func (g *GridWorld) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(g.r*g.c, nil)
 
 	min := mat.NewVecDense(g.r*g.c, nil)
@@ -235,18 +234,18 @@ func (g *GridWorld) ObservationSpec() spec.Environment {
 	}
 	max := mat.NewVecDense(g.r*g.c, ones)
 
-	return spec.NewEnvironment(shape, spec.Observation, min, max,
-		spec.Discrete)
+	return environment.NewSpec(shape, environment.Observation, min, max,
+		environment.Discrete)
 }
 
-// ActionSpec generates the action specification for the GridWorld
-func (g *GridWorld) ActionSpec() spec.Environment {
+// ActionSpec generates the action environmentification for the GridWorld
+func (g *GridWorld) ActionSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
 	min := mat.NewVecDense(1, []float64{0})
 	maxAction := float64(numActions - 1)
 	max := mat.NewVecDense(1, []float64{maxAction})
 
-	return spec.NewEnvironment(shape, spec.Action, min, max,
-		spec.Discrete)
+	return environment.NewSpec(shape, environment.Action, min, max,
+		environment.Discrete)
 }

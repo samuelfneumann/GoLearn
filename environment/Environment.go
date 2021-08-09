@@ -6,7 +6,6 @@ import (
 	"image"
 
 	"github.com/fogleman/gg"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
 )
@@ -33,7 +32,7 @@ type Task interface {
 	AtGoal(state mat.Matrix) bool
 	Min() float64 // returns the min possible reward
 	Max() float64 // returns the max possible reward
-	RewardSpec() spec.Environment
+	RewardSpec() Spec
 }
 
 // Environment implements a simualted environment, which includes a Task to
@@ -43,9 +42,9 @@ type Environment interface {
 	Task
 	Reset() timestep.TimeStep // Resets between episodes
 	Step(action *mat.VecDense) (timestep.TimeStep, bool)
-	DiscountSpec() spec.Environment
-	ObservationSpec() spec.Environment
-	ActionSpec() spec.Environment
+	DiscountSpec() Spec
+	ObservationSpec() Spec
+	ActionSpec() Spec
 	CurrentTimeStep() timestep.TimeStep
 }
 

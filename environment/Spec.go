@@ -1,6 +1,4 @@
-// Package spec implements specifications/configurations for agents and
-// environments
-package spec
+package environment
 
 import (
 	"fmt"
@@ -28,10 +26,10 @@ const (
 	Discrete   Cardinality = "Discrete"
 )
 
-// Environment implements a specification, which tells the type, shape,
-// and bounds of an action, observation, discount, or reward in an
-// environment
-type Environment struct {
+// Spec implements an environment specification, which tells the type,
+// shape, and bounds of an action, observation, discount, or reward in
+// an environment
+type Spec struct {
 	Shape      mat.Vector
 	Type       SpecType
 	LowerBound mat.Vector
@@ -39,14 +37,14 @@ type Environment struct {
 	Cardinality
 }
 
-// NewEnvironment constructs a new environment specification
+// NewSpec constructs a new environment specification
 // The shape argument outlines the shape of the data described by the
 // specification. The argument t outlines what the specification is
 // describing (e.g. actions, observations, etc.). The cardinality
 // arguments describes whether the values that the spec describes are
 // continuous or discrete.
-func NewEnvironment(shape mat.Vector, t SpecType, lowerBound,
-	upperBound mat.Vector, cardinality Cardinality) Environment {
+func NewSpec(shape mat.Vector, t SpecType, lowerBound,
+	upperBound mat.Vector, cardinality Cardinality) Spec {
 	if shape.Len() != lowerBound.Len() {
 		panic(fmt.Sprintf("shape length %v must match lower bounds length %v",
 			shape.Len(), lowerBound.Len()))
@@ -55,5 +53,5 @@ func NewEnvironment(shape mat.Vector, t SpecType, lowerBound,
 		panic(fmt.Sprintf("shape length %v must match uuper bounds length %v",
 			shape.Len(), upperBound.Len()))
 	}
-	return Environment{shape, t, lowerBound, upperBound, cardinality}
+	return Spec{shape, t, lowerBound, upperBound, cardinality}
 }

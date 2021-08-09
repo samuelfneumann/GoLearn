@@ -5,17 +5,16 @@ import (
 
 	"golang.org/x/exp/rand"
 
+	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/network"
+	"github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"github.com/samuelfneumann/golearn/utils/op"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/distuv"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
-	"github.com/samuelfneumann/golearn/agent"
-	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/network"
-	"github.com/samuelfneumann/golearn/spec"
-	"github.com/samuelfneumann/golearn/timestep"
-	"github.com/samuelfneumann/golearn/utils/floatutils"
-	"github.com/samuelfneumann/golearn/utils/op"
 )
 
 // CategoricalMLP implements a categorical policy using an MLP to
@@ -56,7 +55,7 @@ type CategoricalMLP struct {
 	logProbInputActions    *G.Node
 	logProbInputActionsVal G.Value
 
-	// Matrix of one-hot rows, where each row specifies which action
+	// Matrix of one-hot rows, where each row environmentifies which action
 	// to calculate the log prob of. These actions are input to the
 	// policy, they may or may not have been selected by the policy
 	// previously and are provided by an external source using the
@@ -94,7 +93,7 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 	activations []*network.Activation, init G.InitWFn,
 	seed uint64) (agent.LogPdfOfer, error) {
 	// Categorical policies can only be used with discrete actions
-	if env.ActionSpec().Cardinality == spec.Continuous {
+	if env.ActionSpec().Cardinality == environment.Continuous {
 		err := fmt.Errorf("newCategoricalMLP: softmax policy cannot be " +
 			"used with continuous actions")
 		return &CategoricalMLP{}, err

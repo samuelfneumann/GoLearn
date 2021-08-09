@@ -5,15 +5,14 @@ import (
 	"math"
 	"os"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/continuous/policy"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
 	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
+	"gonum.org/v1/gonum/mat"
 )
 
 // LinearGaussian implements the Linear-Gaussian Actor-Critic algorithm:
@@ -64,7 +63,7 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 
 	// Error checking
 	actionSpec := env.ActionSpec()
-	if actionSpec.Cardinality != spec.Continuous {
+	if actionSpec.Cardinality != environment.Continuous {
 		return nil, fmt.Errorf("newLinearGaussian: actions must be continuous")
 	}
 	if actionSpec.Shape.Len() != 1 {

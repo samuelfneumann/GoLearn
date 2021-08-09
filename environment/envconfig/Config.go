@@ -6,7 +6,6 @@ package envconfig
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	env "github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/box2d/lunarlander"
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/acrobot"
@@ -16,6 +15,7 @@ import (
 	"github.com/samuelfneumann/golearn/environment/gridworld"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 // EnvName stores the name of environments that can be configured with
@@ -53,8 +53,8 @@ const (
 	Land    TaskName = "Land"
 )
 
-// Config implements a specific configuration of a specific environment
-// and specific task. Not all environments can have all tasks.
+// Config implements a environmentific configuration of a environmentific environment
+// and environmentific task. Not all environments can have all tasks.
 type Config struct {
 	Environment       EnvName
 	Task              TaskName
@@ -260,7 +260,7 @@ func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
 	switch taskName {
 	case Goal:
 		// Create the gridworld task of reaching a goal state. The goals
-		// are specified as a []int, representing (x, y) coordinates
+		// are environmentified as a []int, representing (x, y) coordinates
 		goalX, goalY := []int{goalX}, []int{goalY}
 		task, err = gridworld.NewGoal(starter, goalX, goalY, r, c,
 			timestepReward, goalReward, cutoff)

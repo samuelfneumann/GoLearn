@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/spatial/r1"
+	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 const (
@@ -50,7 +50,7 @@ const (
 // direction to apply this force. Actions may be discrete or continuous.
 // Environments that deal with discrete and continuous actions are the
 // public mountaincar.Discrete and mountaincar.Continuous structs
-// respectively. These are the only public Mountain Car environments
+// reenvironmenttively. These are the only public Mountain Car environments
 // that can be used.
 //
 // base does not implement the environment.Environment interface
@@ -87,27 +87,27 @@ func (b *base) CurrentTimeStep() ts.TimeStep {
 	return b.lastStep
 }
 
-// ObservationSpec returns the observation specification of the
+// ObservationSpec returns the observation environmentification of the
 // environment
-func (m *base) ObservationSpec() spec.Environment {
+func (m *base) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(ObservationDims, nil)
 	lowerBound := mat.NewVecDense(ObservationDims, []float64{m.positionBounds.Min,
 		m.speedBounds.Min})
 	upperBound := mat.NewVecDense(ObservationDims, []float64{m.positionBounds.Max,
 		m.speedBounds.Max})
 
-	return spec.NewEnvironment(shape, spec.Observation, lowerBound,
-		upperBound, spec.Continuous)
+	return environment.NewSpec(shape, environment.Observation, lowerBound,
+		upperBound, environment.Continuous)
 }
 
-// DiscountSpec returns the discounting specification of the environment
-func (m *base) DiscountSpec() spec.Environment {
+// DiscountSpec returns the discounting environmentification of the environment
+func (m *base) DiscountSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{m.discount})
 	upperBound := mat.NewVecDense(1, []float64{m.discount})
 
-	return spec.NewEnvironment(shape, spec.Discount, lowerBound,
-		upperBound, spec.Continuous)
+	return environment.NewSpec(shape, environment.Discount, lowerBound,
+		upperBound, environment.Continuous)
 }
 
 // Reset resets the environment and returns a starting state drawn from

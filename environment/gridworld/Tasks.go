@@ -3,12 +3,11 @@ package gridworld
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/floats"
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/matutils"
+	"gonum.org/v1/gonum/floats"
+	"gonum.org/v1/gonum/mat"
 )
 
 // Goal represents the task of reaching goal states in a GridWorld
@@ -23,7 +22,7 @@ type Goal struct {
 
 // NewGoal creates and returns a new goal at position (x, y), given that
 // the gridworld has r rows and c columns. The parameters tr and gr
-// determine the timestep rewards and goal rewards respectively
+// determine the timestep rewards and goal rewards reenvironmenttively
 func NewGoal(s environment.Starter, x, y []int, r, c int,
 	tr, gr float64, stepLimit int) (*Goal, error) {
 	if len(x) != len(y) {
@@ -98,8 +97,8 @@ func (g *Goal) AtGoal(state mat.Matrix) bool {
 	return false
 }
 
-// RewardSpec generates the reward specification for the GridWorld
-func (g *Goal) RewardSpec() spec.Environment {
+// RewardSpec generates the reward environmentification for the GridWorld
+func (g *Goal) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
 	minReward := g.Min()
@@ -108,8 +107,8 @@ func (g *Goal) RewardSpec() spec.Environment {
 	maxReward := g.Max()
 	upperBound := mat.NewVecDense(1, []float64{maxReward})
 
-	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Reward, lowerBound, upperBound,
+		environment.Continuous)
 }
 
 // getCoordinates gets the (x, y) coordinates of non-zero elements in a

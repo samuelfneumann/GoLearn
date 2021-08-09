@@ -3,12 +3,12 @@ package cartpole
 import (
 	"math"
 
-	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/spatial/r1"
+	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 const (
@@ -90,12 +90,12 @@ func (b *Balance) Max() float64 {
 	return 1.0
 }
 
-// RewardSpec returns the reward specification for the environment
-func (b *Balance) RewardSpec() spec.Environment {
+// RewardSpec returns the reward environmentification for the environment
+func (b *Balance) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{b.Min()})
 	upperBound := mat.NewVecDense(1, []float64{b.Max()})
 
-	return spec.NewEnvironment(shape, spec.Reward, lowerBound, upperBound,
-		spec.Continuous)
+	return environment.NewSpec(shape, environment.Reward, lowerBound, upperBound,
+		environment.Continuous)
 }

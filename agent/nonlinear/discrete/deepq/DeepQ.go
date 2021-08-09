@@ -11,7 +11,6 @@ import (
 	"github.com/samuelfneumann/golearn/initwfn"
 	"github.com/samuelfneumann/golearn/network"
 	"github.com/samuelfneumann/golearn/solver"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
 	G "gorgonia.org/gorgonia"
@@ -23,7 +22,7 @@ import (
 type DeepQ struct {
 	// Action selection policy. We only need a single policy for both
 	// target and behaviour policy. DeepQ's target policy is greedy
-	// with respect to action values, which we can get by setting
+	// with reenvironmentt to action values, which we can get by setting
 	// the policy to evaluation mode.
 	policy agent.EGreedyNNPolicy
 
@@ -73,7 +72,7 @@ func New(env environment.Environment, c agent.Config,
 	}
 
 	// Ensure environment has discrete actions
-	if env.ActionSpec().Cardinality != spec.Discrete {
+	if env.ActionSpec().Cardinality != environment.Discrete {
 		return &DeepQ{}, fmt.Errorf("deepq: cannot use non-discrete " +
 			"actions")
 	}
@@ -159,7 +158,7 @@ func New(env environment.Environment, c agent.Config,
 		}
 	}
 
-	// Compute the gradient with respect to the Mean Squarred TD error
+	// Compute the gradient with reenvironmentt to the Mean Squarred TD error
 	_, err = G.Grad(cost, trainNet.Learnables()...)
 	if err != nil {
 		msg := fmt.Sprintf("new: could not compute gradient: %v", err)

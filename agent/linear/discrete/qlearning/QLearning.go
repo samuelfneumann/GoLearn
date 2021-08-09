@@ -1,6 +1,6 @@
 // Package qlearning implements the Q-Learning algorithm.
 //
-// The Q-Learning algorithm is a special case of the Expected Sarsa
+// The Q-Learning algorithm is a environmential case of the Expected Sarsa
 // algorithm. This package implements the same functionality as the
 // esarsa package, but with some minor performance improvements due to
 // the nature of the Q-Learning target policy being known before-hand.
@@ -9,14 +9,13 @@ package qlearning
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/mat"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/policy"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
+	"gonum.org/v1/gonum/mat"
 )
 
 // QLearning implements the online Q-Learning algorithm. Actions selected by
@@ -34,13 +33,13 @@ type QLearning struct {
 	indexTileCoding bool
 }
 
-// New creates a new QLearning struct. The agent spec agent should be
-// a spec.QLearning. If the agent spec is not a spec.QLearning, New
+// New creates a new QLearning struct. The agent environment agent should be
+// a environment.QLearning. If the agent environment is not a environment.QLearning, New
 // will panic.
 func New(env environment.Environment, config agent.Config,
 	init weights.Initializer, seed uint64) (agent.Agent, error) {
 	// Ensure environment has discrete actions
-	if env.ActionSpec().Cardinality != spec.Discrete {
+	if env.ActionSpec().Cardinality != environment.Discrete {
 		return nil, fmt.Errorf("qlearning: cannot use non-discrete " +
 			"actions")
 	}

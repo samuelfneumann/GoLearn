@@ -8,7 +8,6 @@ import (
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/policy"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
-	"github.com/samuelfneumann/golearn/spec"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
 	"gonum.org/v1/gonum/mat"
@@ -29,13 +28,13 @@ type ESarsa struct {
 	indexTileCoding bool
 }
 
-// New creates a new ESarsa struct. The agent spec agent should be a
-// spec.ESarsa or spec.QLearning. If the agent spec is neither
-// spec.ESarsa or spec.QLearing, New will panic.
+// New creates a new ESarsa struct. The agent environment agent should be a
+// environment.ESarsa or environment.QLearning. If the agent environment is neither
+// environment.ESarsa or environment.QLearing, New will panic.
 func New(env environment.Environment, c agent.Config,
 	init weights.Initializer, seed uint64) (agent.Agent, error) {
 	// Ensure environment has discrete actions
-	if env.ActionSpec().Cardinality != spec.Discrete {
+	if env.ActionSpec().Cardinality != environment.Discrete {
 		return nil, fmt.Errorf("esarsa: cannot use non-discrete actions")
 	}
 	if env.ActionSpec().LowerBound.Len() > 1 {

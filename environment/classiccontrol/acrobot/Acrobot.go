@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math"
 
-	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/spatial/r1"
+	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/spec"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 // dynamicsType determines whether the dynamics of the environment
@@ -220,27 +220,27 @@ func (a *base) Reset() ts.TimeStep {
 	return startStep
 }
 
-// ObservationSpec returns the observation specification of the
+// ObservationSpec returns the observation environmentification of the
 // environment
-func (a *base) ObservationSpec() spec.Environment {
+func (a *base) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(ObservationDims, nil)
 	lowerBound := mat.NewVecDense(ObservationDims, []float64{MinAngle,
 		MinAngle, -MaxVel1, -MaxVel2})
 	upperBound := mat.NewVecDense(ObservationDims, []float64{MaxAngle,
 		MaxAngle, MaxVel1, MaxVel2})
 
-	return spec.NewEnvironment(shape, spec.Observation, lowerBound,
-		upperBound, spec.Continuous)
+	return environment.NewSpec(shape, environment.Observation, lowerBound,
+		upperBound, environment.Continuous)
 }
 
-// DiscountSpec returns the discounting specification of the environment
-func (a *base) DiscountSpec() spec.Environment {
+// DiscountSpec returns the discounting environmentification of the environment
+func (a *base) DiscountSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{a.discount})
 	upperBound := mat.NewVecDense(1, []float64{a.discount})
 
-	return spec.NewEnvironment(shape, spec.Discount, lowerBound,
-		upperBound, spec.Continuous)
+	return environment.NewSpec(shape, environment.Discount, lowerBound,
+		upperBound, environment.Continuous)
 }
 
 // String implements the fmt.Stringer interface
