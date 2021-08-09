@@ -164,7 +164,7 @@ func (e *ESarsaLearner) Step() {
 		actionValues.MulVec(e.weights, nextState)
 
 		// Find the target policy's probability of each action
-		targetProbs := e.policy.ActionProbabilities(nextState)
+		targetProbs := e.target.ActionProbabilities(nextState)
 
 		// Create the update target
 		discount := e.nextStep.Discount

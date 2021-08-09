@@ -104,11 +104,11 @@ func (e *EGreedy) actionValues(obs mat.Vector) *mat.VecDense {
 			index := obs.AtVec(i) // Index of non-zero feature
 			actionValues.AddVec(actionValues, e.weights.ColView(int(index)))
 		}
+		return actionValues
 	} else {
 		actionValues.MulVec(e.weights, obs)
+		return actionValues
 	}
-
-	return actionValues
 }
 
 // Eval sets the policy to evaluation mode
@@ -152,13 +152,13 @@ func (p *EGreedy) SelectAction(t timestep.TimeStep) *mat.VecDense {
 func (e *EGreedy) ActionProbabilities(obs mat.Vector) mat.Vector {
 	actionValues := e.actionValues(obs)
 
-	prob := make([]float64, 0, actionValues.Len())
+	prob := make([]float64, actionValues.Len())
 	numActions, _ := e.weights.Dims()
 	epsProb := e.epsilon / float64(numActions)
 
 	// Calculate the ε probability of taking each action
 	for i := 0; i < actionValues.Len(); i++ {
-		prob = append(prob, epsProb)
+		prob[i] = epsProb
 	}
 
 	// For each maximum valued action, set its probability
