@@ -105,7 +105,6 @@ func (e *EGreedy) actionValues(obs mat.Vector) *mat.VecDense {
 			actionValues.AddVec(actionValues, e.weights.ColView(int(index)))
 		}
 	} else {
-		actionValues := mat.NewVecDense(numActions, nil)
 		actionValues.MulVec(e.weights, obs)
 	}
 

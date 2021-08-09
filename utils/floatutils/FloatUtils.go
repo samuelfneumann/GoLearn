@@ -200,3 +200,14 @@ func Sign(i float64) float64 {
 		return -1.0
 	}
 }
+
+// Where returns the indices in slice that have elements equal to i
+func Where(slice []float64, i float64) []int {
+	var indices []int
+	for index, val := range slice {
+		if val == i {
+			indices = append(indices, index)
+		}
+	}
+	return indices
+}
