@@ -9,7 +9,7 @@ import (
 	"github.com/samuelfneumann/golearn/experiment/checkpointer"
 	"github.com/samuelfneumann/golearn/experiment/tracker"
 	ts "github.com/samuelfneumann/golearn/timestep"
-	"github.com/samuelfneumann/golearn/utils/progressbar"
+	"github.com/samuelfneumann/progressbar"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -49,7 +49,7 @@ func NewOnline(e env.Environment, a ag.Agent, steps uint,
 	}
 
 	// Create a progress bar for watching experiment progress
-	progBar := progressbar.NewProgressBar(50, int(steps), time.Second, true)
+	progBar := progressbar.New(50, int(steps), time.Second, true)
 	progBar.Display()
 
 	return &Online{e, a, steps, 0, trackers, checkpointers, progBar}

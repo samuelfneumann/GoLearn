@@ -438,5 +438,3 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 - [ ] Multi dimensional gaussian tree mlp is broken
 
 - [ ] For many linear agents, action/state values are computed more than once. The Policy computes the action/state values at each timestep, and the Learner computes the same state/action values for the timestep when learning.
-
-- [ ] `spec` package should be combined with `environment` package.
