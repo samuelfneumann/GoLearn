@@ -438,3 +438,8 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 - [ ] Multi dimensional gaussian tree mlp is broken
 
 - [ ] For many linear agents, action/state values are computed more than once. The Policy computes the action/state values at each timestep, and the Learner computes the same state/action values for the timestep when learning.
+
+URGENT
+- [ ] `TdError` method needs to be updated for each algorithm that uses indexTileCoding
+- [ ] Accidentally changed specific, special -> environmentific in a bunch of files
+- [ ] Linear actor critic and Esarsa provide different results if index or regular tile coding is used

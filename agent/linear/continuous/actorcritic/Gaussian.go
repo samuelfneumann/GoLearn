@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"time"
 
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/continuous/policy"
@@ -51,16 +52,17 @@ type LinearGaussian struct {
 	scaleActorLR bool
 	features     int
 	actionDims   int
+
+	// Whether the environment uses tile coding and returns the indices
+	// of non-zero elements of the tile-coded state observation vector
+	// as the state feature vector. In such as case, we can make
+	// significant improvements for computational efficiency.
+	useIndexTileCoding bool
 }
 
 // NewLinearGaussian returns a new LinearGaussian
 func NewLinearGaussian(env environment.Environment, c agent.Config,
 	init weights.Initializer, seed uint64) (agent.Agent, error) {
-	_, ok := env.(*wrappers.IndexTileCoding)
-	if ok {
-		panic("newLinearGaussian: index tile coding not yet implemented")
-	}
-
 	// Error checking
 	actionSpec := env.ActionSpec()
 	if actionSpec.Cardinality != environment.Continuous {
@@ -115,6 +117,7 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 	)
 
 	rows, cols := meanWeights.Dims()
+	_, useIndexTileCoding := env.(*wrappers.IndexTileCoding)
 	agent := LinearGaussian{
 		Gaussian: gaussianPolicy,
 		seed:     seed,
@@ -134,6 +137,8 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 		scaleActorLR: config.ScaleActorLR,
 		features:     features,
 		actionDims:   actionDims,
+
+		useIndexTileCoding: useIndexTileCoding,
 	}
 
 	return &agent, nil
@@ -152,10 +157,115 @@ func (l *LinearGaussian) TdError(t ts.Transition) float64 {
 	return r + ℽ*nextStateValue - stateValue
 }
 
+// stepIndex updates the weights of the Agent's Learner and Policy
+// assuming that the last seen feature vector was of the form returned
+// by environment/wrappers.IndexTileCoding, that is, the feature vector
+// records the indices of non-zero components of a tile-coded state
+// observation vector.
+func (l *LinearGaussian) stepIndex() {
+	state := l.step.Observation
+	nextState := l.nextStep.Observation
+
+	// Calculate TD error δ
+	r := l.nextStep.Reward
+	ℽ := l.nextStep.Discount
+	stateValue := 0.0
+	nextStateValue := 0.0
+	var index int
+	for i := 0; i < state.Len(); i++ {
+		index = int(state.AtVec(i))
+		stateValue += l.criticWeights.AtVec(index)
+
+		index = int(nextState.AtVec(i))
+		nextStateValue += l.criticWeights.AtVec(index)
+	}
+	δ := r + ℽ*nextStateValue - stateValue
+	fmt.Println("\n", δ)
+	time.Sleep(100000000)
+
+	// Get random values needed for calculating actor gradients
+	mean := l.Gaussian.Mean(state)
+	std := l.Gaussian.Std(state)
+	action := l.action
+
+	// Compute the gradient of the mean
+	meanGradScale := mat.NewVecDense(l.actionDims, nil)
+	meanGradScale.SubVec(action, mean)
+	meanGradDiv := mat.NewVecDense(l.actionDims, nil)
+	meanGradDiv.MulElemVec(std, std)
+	meanGradScale.DivElemVec(meanGradScale, meanGradDiv)
+
+	// Compute the gradient of the standard deviation
+	stdGradScale := mat.NewVecDense(l.actionDims, nil)
+	stdGradScale.SubVec(action, mean)
+	stdGradScale.MulElemVec(stdGradScale, stdGradScale)
+	stdGradDiv := mat.NewVecDense(l.actionDims, nil)
+	stdGradDiv.MulElemVec(std, std)
+	stdGradScale.DivElemVec(stdGradScale, stdGradDiv)
+	ones := mat.NewVecDense(l.actionDims, floatutils.Ones(l.actionDims))
+	stdGradScale.SubVec(stdGradScale, ones)
+
+	// Adjust actor learning rate
+	actorLR := l.actorLR
+	if l.scaleActorLR && std.Len() == 1 {
+		actorLR *= math.Pow(std.AtVec(0), 2)
+	}
+
+	// Update critic and actor traces and weights
+	for i := 0; i < state.Len(); i++ {
+		index = int(state.AtVec(i))
+
+		// Update Critic
+		newTrace := (l.criticTrace.AtVec(index) * ℽ * l.decay) + 1.0
+		l.criticTrace.SetVec(index, newTrace)
+
+		l.criticWeights.RawVector().Data[index] += (l.criticLR * δ *
+			l.criticTrace.AtVec(index))
+
+		// Update Actor
+		// Mean trace
+		currentMeanTrace := l.meanTrace.ColView(index).(*mat.VecDense)
+		currentMeanTrace.ScaleVec(ℽ*l.decay, currentMeanTrace)
+		currentMeanTrace.AddVec(
+			currentMeanTrace,
+			meanGradScale,
+		)
+
+		// Std trace
+		currentStdTrace := l.stdTrace.ColView(index).(*mat.VecDense)
+		currentStdTrace.ScaleVec(ℽ*l.decay, currentStdTrace)
+		currentStdTrace.AddVec(
+			currentStdTrace,
+			stdGradScale,
+		)
+
+		// Mean Weights
+		currentMeanWeights := l.meanWeights.ColView(index).(*mat.VecDense)
+		currentMeanWeights.AddScaledVec(
+			currentMeanWeights,
+			actorLR*δ,
+			currentMeanTrace,
+		)
+
+		// Std Weights
+		currentStdWeights := l.stdWeights.ColView(index).(*mat.VecDense)
+		currentStdWeights.AddScaledVec(
+			currentStdWeights,
+			actorLR*δ,
+			currentStdTrace,
+		)
+	}
+}
+
 // Step updates the algorithm's weights
 func (l *LinearGaussian) Step() {
 	// If in evaluation mode, do not step
 	if l.IsEval() {
+		return
+	}
+
+	if l.useIndexTileCoding {
+		l.stepIndex()
 		return
 	}
 
@@ -168,6 +278,8 @@ func (l *LinearGaussian) Step() {
 	stateValue := mat.Dot(l.criticWeights, state)
 	nextStateValue := mat.Dot(l.criticWeights, nextState)
 	δ := r + ℽ*nextStateValue - stateValue
+	fmt.Println("\n", δ)
+	time.Sleep(100000000)
 
 	// Update the critic trace
 	l.criticTrace.AddScaledVec(state, ℽ*l.decay, l.criticTrace)

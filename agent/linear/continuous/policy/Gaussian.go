@@ -7,12 +7,13 @@ import (
 
 	"golang.org/x/exp/rand"
 
-	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/stat/distmv"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/wrappers"
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
+	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/stat/distmv"
 )
 
 // StdOffset is added to the standard deviation for numerical stability
@@ -36,6 +37,12 @@ type Gaussian struct {
 	eval bool
 
 	stdNormal *distmv.Normal
+
+	// Whether the environment uses tile coding and returns the indices
+	// of non-zero elements of the tile-coded state observation vector
+	// as the state feature vector. In such as case, we can make
+	// significant improvements for computational efficiency.
+	useIndexTileCoding bool
 }
 
 // NewGaussian creates a new Gaussian policy
@@ -59,12 +66,30 @@ func NewGaussian(seed uint64, env environment.Environment) agent.Policy {
 			"for action selection")
 	}
 
-	return &Gaussian{meanWeights, stdWeights, actionDims, false, stdNormal}
+	_, useIndexTileCoding := env.(*wrappers.IndexTileCoding)
+	return &Gaussian{meanWeights, stdWeights, actionDims, false, stdNormal,
+		useIndexTileCoding}
 }
 
 // Std gets the standard deviation of the policy given some state
 // observation obs
 func (g *Gaussian) Std(obs mat.Vector) *mat.VecDense {
+	if g.useIndexTileCoding {
+		stdVec := mat.NewVecDense(g.actionDims, nil)
+
+		for i := 0; i < obs.Len(); i++ {
+			index := int(obs.AtVec(i))
+			stdVec.AddVec(stdVec, g.stdWeights.ColView(index))
+		}
+
+		for i := 0; i < stdVec.Len(); i++ {
+			std := math.Exp(stdVec.AtVec(i))
+			stdVec.SetVec(i, std+StdOffset)
+		}
+		return stdVec
+
+	}
+
 	stdVec := mat.NewVecDense(g.actionDims, nil)
 	stdVec.MulVec(g.stdWeights, obs)
 	for i := 0; i < stdVec.Len(); i++ {
@@ -76,6 +101,15 @@ func (g *Gaussian) Std(obs mat.Vector) *mat.VecDense {
 
 // Mean gets the mean of the policy given some state observation obs
 func (g *Gaussian) Mean(obs mat.Vector) *mat.VecDense {
+	if g.useIndexTileCoding {
+		mean := mat.NewVecDense(g.actionDims, nil)
+		for i := 0; i < obs.Len(); i++ {
+			index := int(obs.AtVec(i))
+			mean.AddVec(mean, g.meanWeights.ColView(index))
+		}
+		return mean
+	}
+
 	mean := mat.NewVecDense(g.actionDims, nil)
 	mean.MulVec(g.meanWeights, obs)
 	return mean

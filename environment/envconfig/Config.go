@@ -61,7 +61,9 @@ type Config struct {
 	ContinuousActions bool
 	EpisodeCutoff     uint
 	Discount          float64
-	Gym               bool
+
+	// Whether to use the OpenAI Gym or GoLearn environment implementation
+	Gym bool
 
 	// TileCoding indicates if tile coding should be used and if so,
 	// what bins should be used
@@ -126,7 +128,6 @@ func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
 			e, step = wrappers.NewIndexTileCoding(e, c.TileCoding.Bins, seed)
 		} else {
 			e, step = wrappers.NewTileCoding(e, c.TileCoding.Bins, seed)
-
 		}
 	}
 
@@ -322,6 +323,15 @@ func CreateLunarLander(continuousActions bool, taskName TaskName,
 // used to make the JSON file look prettier.
 type tileCodingConfig struct {
 	UseTileCoding bool
-	UseIndices    bool
-	Bins          [][]int
+
+	// UseIndices determines whether the tile-coded feature vector
+	// should be represented as a one-hot vector or as the non-zero
+	// indices of the one-hot vector.
+	UseIndices bool
+
+	// Bins determines the number of tilings and tiles per tiling.
+	// if len(Bins) == m, then m tilings are used.
+	// If Bins[m] = []int{m, n, p}, then there are m bins along the
+	// first dimension, n along the second, and p along the third.
+	Bins [][]int
 }

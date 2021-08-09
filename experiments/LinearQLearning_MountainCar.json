@@ -1,6 +1,6 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 500000,
+	"MaxSteps": 100000,
 	"EnvConf": {
 		"Environment": "MountainCar",
 		"Task": "Goal",
