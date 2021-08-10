@@ -87,7 +87,6 @@ func (g *Gaussian) Std(obs mat.Vector) *mat.VecDense {
 			stdVec.SetVec(i, std+StdOffset)
 		}
 		return stdVec
-
 	}
 
 	stdVec := mat.NewVecDense(g.actionDims, nil)

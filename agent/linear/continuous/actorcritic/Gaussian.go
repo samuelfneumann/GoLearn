@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"time"
 
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/continuous/policy"
@@ -180,8 +179,6 @@ func (l *LinearGaussian) stepIndex() {
 		nextStateValue += l.criticWeights.AtVec(index)
 	}
 	δ := r + ℽ*nextStateValue - stateValue
-	fmt.Println("\n", δ)
-	time.Sleep(100000000)
 
 	// Get random values needed for calculating actor gradients
 	mean := l.Gaussian.Mean(state)
@@ -219,24 +216,25 @@ func (l *LinearGaussian) stepIndex() {
 		newTrace := (l.criticTrace.AtVec(index) * ℽ * l.decay) + 1.0
 		l.criticTrace.SetVec(index, newTrace)
 
-		l.criticWeights.RawVector().Data[index] += (l.criticLR * δ *
-			l.criticTrace.AtVec(index))
+		w := l.criticWeights.AtVec(index)
+		newW := w + ((l.criticLR * δ) * newTrace)
+		l.criticWeights.SetVec(index, newW)
 
 		// Update Actor
 		// Mean trace
 		currentMeanTrace := l.meanTrace.ColView(index).(*mat.VecDense)
-		currentMeanTrace.ScaleVec(ℽ*l.decay, currentMeanTrace)
-		currentMeanTrace.AddVec(
-			currentMeanTrace,
+		currentMeanTrace.AddScaledVec(
 			meanGradScale,
+			ℽ*l.decay,
+			currentMeanTrace,
 		)
 
 		// Std trace
 		currentStdTrace := l.stdTrace.ColView(index).(*mat.VecDense)
-		currentStdTrace.ScaleVec(ℽ*l.decay, currentStdTrace)
-		currentStdTrace.AddVec(
-			currentStdTrace,
+		currentStdTrace.AddScaledVec(
 			stdGradScale,
+			ℽ*l.decay,
+			currentStdTrace,
 		)
 
 		// Mean Weights
@@ -278,8 +276,6 @@ func (l *LinearGaussian) Step() {
 	stateValue := mat.Dot(l.criticWeights, state)
 	nextStateValue := mat.Dot(l.criticWeights, nextState)
 	δ := r + ℽ*nextStateValue - stateValue
-	fmt.Println("\n", δ)
-	time.Sleep(100000000)
 
 	// Update the critic trace
 	l.criticTrace.AddScaledVec(state, ℽ*l.decay, l.criticTrace)

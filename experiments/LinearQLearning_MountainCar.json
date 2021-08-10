@@ -10,7 +10,7 @@
 		"Gym": false,
 		"TileCoding": {
 			"UseTileCoding": true,
-			"UseIndices": true,
+			"UseIndices": false,
 			"Bins": [[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10]]
 		}
 	},

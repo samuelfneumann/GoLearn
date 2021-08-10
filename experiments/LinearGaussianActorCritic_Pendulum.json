@@ -1,17 +1,17 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 50000,
+	"MaxSteps": 250000,
 	"EnvConf": {
-		"Environment": "MountainCar",
-		"Task": "Goal",
+		"Environment": "Pendulum",
+		"Task": "SwingUp",
 		"ContinuousActions": true,
-		"EpisodeCutoff": 250,
+		"EpisodeCutoff": 1000,
 		"Discount": 0.99,
 		"Gym": false,
 		"TileCoding": {
 			"UseTileCoding": true,
 			"UseIndices": true,
-			"Bins": [[10, 10], [10, 10], [10, 10], [10, 10], [10, 10]]
+			"Bins": [[10, 10], [10, 10], [10, 10], [10, 10], [10, 10],[10, 10], [10, 10], [10, 10], [10, 10], [10, 10]]
 		}
 	},
 	"AgentConf": {
