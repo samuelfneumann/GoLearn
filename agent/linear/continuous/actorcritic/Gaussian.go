@@ -208,12 +208,17 @@ func (l *LinearGaussian) stepIndex() {
 		actorLR *= math.Pow(std.AtVec(0), 2)
 	}
 
+	// Scale the traces
+	l.criticTrace.ScaleVec(ℽ*l.decay, l.criticTrace)
+	l.meanTrace.Scale(ℽ*l.decay, l.meanTrace)
+	l.stdTrace.Scale(ℽ*l.decay, l.stdTrace)
+
 	// Update critic and actor traces and weights
 	for i := 0; i < state.Len(); i++ {
 		index = int(state.AtVec(i))
 
 		// Update Critic
-		newTrace := (l.criticTrace.AtVec(index) * ℽ * l.decay) + 1.0
+		newTrace := l.criticTrace.AtVec(index) + 1.0
 		l.criticTrace.SetVec(index, newTrace)
 
 		w := l.criticWeights.AtVec(index)
@@ -223,17 +228,15 @@ func (l *LinearGaussian) stepIndex() {
 		// Update Actor
 		// Mean trace
 		currentMeanTrace := l.meanTrace.ColView(index).(*mat.VecDense)
-		currentMeanTrace.AddScaledVec(
+		currentMeanTrace.AddVec(
 			meanGradScale,
-			ℽ*l.decay,
 			currentMeanTrace,
 		)
 
 		// Std trace
 		currentStdTrace := l.stdTrace.ColView(index).(*mat.VecDense)
-		currentStdTrace.AddScaledVec(
+		currentStdTrace.AddVec(
 			stdGradScale,
-			ℽ*l.decay,
 			currentStdTrace,
 		)
 
