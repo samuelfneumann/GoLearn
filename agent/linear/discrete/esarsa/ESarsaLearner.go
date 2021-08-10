@@ -100,7 +100,17 @@ func (e *ESarsaLearner) TdError(t timestep.Transition) float64 {
 	// Find the next action values
 	numActions, _ := e.weights.Dims()
 	nextActionValues := mat.NewVecDense(numActions, nil)
-	nextActionValues.MulVec(e.weights, t.NextState)
+
+	if e.indexTileCoding {
+		for _, i := range t.NextState.RawVector().Data {
+			nextActionValues.AddVec(
+				nextActionValues,
+				e.weights.ColView(int(i)),
+			)
+		}
+	} else {
+		nextActionValues.MulVec(e.weights, t.NextState)
+	}
 
 	// Calculate the probability of taking each action under the target
 	// policy

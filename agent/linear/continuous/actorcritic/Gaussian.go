@@ -137,8 +137,23 @@ func (l *LinearGaussian) TdError(t ts.Transition) float64 {
 
 	r := l.nextStep.Reward
 	ℽ := l.nextStep.Discount
-	stateValue := mat.Dot(l.criticWeights, state)
-	nextStateValue := mat.Dot(l.criticWeights, nextState)
+	var stateValue, nextStateValue float64
+
+	if l.useIndexTileCoding {
+		stateValue := 0.0
+		nextStateValue := 0.0
+		var index int
+		for i := 0; i < state.Len(); i++ {
+			index = int(state.AtVec(i))
+			stateValue += l.criticWeights.AtVec(index)
+
+			index = int(nextState.AtVec(i))
+			nextStateValue += l.criticWeights.AtVec(index)
+		}
+	} else {
+		stateValue = mat.Dot(l.criticWeights, state)
+		nextStateValue = mat.Dot(l.criticWeights, nextState)
+	}
 
 	return r + ℽ*nextStateValue - stateValue
 }

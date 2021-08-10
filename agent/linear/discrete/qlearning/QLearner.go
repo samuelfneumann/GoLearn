@@ -75,13 +75,23 @@ func (q *QLearner) TdError(t timestep.Transition) float64 {
 	if t.Action.Len() > 1 || t.NextAction.Len() > 1 {
 		panic("actions should be 1-dimensional")
 	}
+
 	action := int(t.Action.AtVec(0))
 	actionVal := mat.Dot(q.weights.RowView(action), t.State)
 
 	// Find the max next action value
 	numActions, _ := q.weights.Dims()
 	nextActionValues := mat.NewVecDense(numActions, nil)
-	nextActionValues.MulVec(q.weights, t.NextState)
+	if q.indexTileCoding {
+		for _, i := range t.NextState.RawVector().Data {
+			nextActionValues.AddVec(
+				nextActionValues,
+				q.weights.ColView(int(i)),
+			)
+		}
+	} else {
+		nextActionValues.MulVec(q.weights, t.NextState)
+	}
 	nextActionVal := mat.Max(nextActionValues)
 
 	tdError := t.Reward + t.Discount*nextActionVal - actionVal
