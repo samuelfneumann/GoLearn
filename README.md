@@ -435,10 +435,7 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 - [ ] Gridworld wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
 - [ ] Task AtGoal() -> argument should be Vector or *VecDense
 
-- [ ] Multi dimensional gaussian tree mlp is broken
-
 - [ ] For many linear agents, action/state values are computed more than once. The Policy computes the action/state values at each timestep, and the Learner computes the same state/action values for the timestep when learning.
 
 URGENT
-- [ ] `TdError` method needs to be updated for each algorithm that uses indexTileCoding
 - [ ] Accidentally changed specific, special -> environmentific in a bunch of files
