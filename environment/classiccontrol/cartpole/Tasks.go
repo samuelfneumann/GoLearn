@@ -3,9 +3,7 @@ package cartpole
 import (
 	"math"
 
-	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/timestep"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
@@ -41,7 +39,7 @@ func NewBalance(s env.Starter, episodeSteps int, failAngle float64) *Balance {
 	angleFeatureIndex := []int{2}
 
 	angleLimiter := env.NewIntervalLimit(legalAngles, angleFeatureIndex,
-		timestep.TerminalStateReached)
+		ts.TerminalStateReached)
 
 	return &Balance{s, stepLimiter, angleLimiter, failAngle}
 }
@@ -90,12 +88,12 @@ func (b *Balance) Max() float64 {
 	return 1.0
 }
 
-// RewardSpec returns the reward environmentification for the environment
-func (b *Balance) RewardSpec() environment.Spec {
+// RewardSpec returns the reward specification for the environment
+func (b *Balance) RewardSpec() env.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{b.Min()})
 	upperBound := mat.NewVecDense(1, []float64{b.Max()})
 
-	return environment.NewSpec(shape, environment.Reward, lowerBound, upperBound,
-		environment.Continuous)
+	return env.NewSpec(shape, env.Reward, lowerBound, upperBound,
+		env.Continuous)
 }

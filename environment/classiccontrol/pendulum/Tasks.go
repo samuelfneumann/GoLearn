@@ -52,7 +52,7 @@ func (s *SwingUp) Max() float64 {
 	return 1.0
 }
 
-// RewardSpec returns the reward environmentification of the Task
+// RewardSpec returns the reward specification of the Task
 func (s *SwingUp) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 

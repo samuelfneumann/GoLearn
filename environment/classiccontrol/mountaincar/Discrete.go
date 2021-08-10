@@ -5,7 +5,6 @@ package mountaincar
 import (
 	"fmt"
 
-	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
@@ -54,14 +53,14 @@ func NewDiscrete(t env.Task, discount float64) (*Discrete, ts.TimeStep) {
 
 }
 
-// ActionSpec returns the action environmentification of the environment
-func (m *Discrete) ActionSpec() environment.Spec {
+// ActionSpec returns the action specification of the environment
+func (m *Discrete) ActionSpec() env.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 	lowerBound := mat.NewVecDense(ActionDims, []float64{float64(MinDiscreteAction)})
 	upperBound := mat.NewVecDense(ActionDims, []float64{float64(MaxDiscreteAction)})
 
-	return environment.NewSpec(shape, environment.Action, lowerBound,
-		upperBound, environment.Discrete)
+	return env.NewSpec(shape, env.Action, lowerBound,
+		upperBound, env.Discrete)
 
 }
 

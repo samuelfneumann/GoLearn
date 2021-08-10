@@ -51,7 +51,7 @@ func NewContinuous(t env.Task, discount float64) (env.Environment, ts.TimeStep) 
 	return &Continuous{acrobot}, firstStep
 }
 
-// ActionSpec returns the action environmentification of the environment
+// ActionSpec returns the action specification of the environment
 func (d *Continuous) ActionSpec() environment.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 	lowerBound := mat.NewVecDense(ActionDims, []float64{float64(MinContinuousAction)})

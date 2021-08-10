@@ -22,7 +22,7 @@ type Goal struct {
 
 // NewGoal creates and returns a new goal at position (x, y), given that
 // the gridworld has r rows and c columns. The parameters tr and gr
-// determine the timestep rewards and goal rewards reenvironmenttively
+// determine the timestep rewards and goal rewards respectively
 func NewGoal(s environment.Starter, x, y []int, r, c int,
 	tr, gr float64, stepLimit int) (*Goal, error) {
 	if len(x) != len(y) {
@@ -97,7 +97,7 @@ func (g *Goal) AtGoal(state mat.Matrix) bool {
 	return false
 }
 
-// RewardSpec generates the reward environmentification for the GridWorld
+// RewardSpec generates the reward specification for the GridWorld
 func (g *Goal) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
@@ -120,9 +119,9 @@ func (c *base) Reset() ts.TimeStep {
 
 }
 
-// ObservationSpec returns the observation environmentification of the
+// ObservationSpec returns the observation specification of the
 // environment
-func (c *base) ObservationSpec() environment.Spec {
+func (c *base) ObservationSpec() env.Spec {
 	shape := mat.NewVecDense(ObservationDims, nil)
 
 	lower := []float64{c.positionBounds.Min, c.speedBounds.Min,
@@ -133,18 +132,18 @@ func (c *base) ObservationSpec() environment.Spec {
 		c.angleBounds.Max, c.angularVelocityBounds.Max}
 	upperBound := mat.NewVecDense(ObservationDims, upper)
 
-	return environment.NewSpec(shape, environment.Observation, lowerBound,
-		upperBound, environment.Continuous)
+	return env.NewSpec(shape, env.Observation, lowerBound,
+		upperBound, env.Continuous)
 }
 
-// DiscountSpec returns the discounting environmentification of the environment
-func (c *base) DiscountSpec() environment.Spec {
+// DiscountSpec returns the discounting specification of the environment
+func (c *base) DiscountSpec() env.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{c.discount})
 	upperBound := mat.NewVecDense(1, []float64{c.discount})
 
-	return environment.NewSpec(shape, environment.Discount, lowerBound,
-		upperBound, environment.Continuous)
+	return env.NewSpec(shape, env.Discount, lowerBound,
+		upperBound, env.Continuous)
 }
 
 // nextState calculates the next state of the environment given a force

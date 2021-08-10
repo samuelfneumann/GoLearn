@@ -71,7 +71,7 @@ func (g *Goal) Min() float64 { return -1.0 }
 // Max returns the maximum attainable reward over all timesteps
 func (g *Goal) Max() float64 { return 0.0 }
 
-// RewardSpec returns the reward environmentification of the Task
+// RewardSpec returns the reward specification of the Task
 func (g *Goal) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{g.Min()})

@@ -4,7 +4,6 @@ package cartpole
 import (
 	"fmt"
 
-	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
@@ -49,14 +48,14 @@ func NewDiscrete(t env.Task, discount float64) (*Discrete, ts.TimeStep) {
 	return &cartpole, firstStep
 }
 
-// ActionSpec returns the action environmentification of the environment
-func (c *Discrete) ActionSpec() environment.Spec {
+// ActionSpec returns the action specification of the environment
+func (c *Discrete) ActionSpec() env.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 	lowerBound := mat.NewVecDense(ActionDims, []float64{float64(MinDiscreteAction)})
 	upperBound := mat.NewVecDense(ActionDims, []float64{float64(MaxDiscreteAction)})
 
-	return environment.NewSpec(shape, environment.Action, lowerBound,
-		upperBound, environment.Discrete)
+	return env.NewSpec(shape, env.Action, lowerBound,
+		upperBound, env.Discrete)
 }
 
 // Step takes one environmental step given action a and returns the next

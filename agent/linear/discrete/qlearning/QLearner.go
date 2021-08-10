@@ -19,7 +19,7 @@ type QLearner struct {
 
 	// Store the latest transition as multiple TimeSteps instead of
 	// timestep.Transition for efficiency. This way, a Transition
-	// doens't need to be constructed on each Step(), but instead
+	// doesn't need to be constructed on each Step(), but instead
 	// pointers can be reassigned quickly
 	step     timestep.TimeStep
 	action   int

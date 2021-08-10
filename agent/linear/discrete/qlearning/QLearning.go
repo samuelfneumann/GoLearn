@@ -1,6 +1,6 @@
 // Package qlearning implements the Q-Learning algorithm.
 //
-// The Q-Learning algorithm is a environmential case of the Expected Sarsa
+// The Q-Learning algorithm is a special case of the Expected Sarsa
 // algorithm. This package implements the same functionality as the
 // esarsa package, but with some minor performance improvements due to
 // the nature of the Q-Learning target policy being known before-hand.

@@ -138,7 +138,7 @@ func (p *base) update(action, newState *mat.VecDense) (timestep.TimeStep,
 	return nextStep, nextStep.Last()
 }
 
-// DiscountSpec returns the discount environmentification of the environment
+// DiscountSpec returns the discount specification of the environment
 func (p *base) DiscountSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
@@ -151,7 +151,7 @@ func (p *base) DiscountSpec() environment.Spec {
 
 }
 
-// ObservationSpec returns the observation environmentification of the environment
+// ObservationSpec returns the observation specification of the environment
 func (p *base) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(ObservationDims, nil)
 

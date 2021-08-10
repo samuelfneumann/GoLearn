@@ -26,7 +26,7 @@ type TileCoding struct {
 // is reset when wrapped by the TileCoding environment by calling
 // the wrapped environment's Reset() method.
 //
-// The bins parameter environmentifies both how many tilings to use as well
+// The bins parameter specifies both how many tilings to use as well
 // as the number of tiles per tiling. The length of the outer-slice is
 // the number of tilings. The lengths of the inner-slices are the
 // number of bins per dimension for that tiling.
@@ -73,7 +73,7 @@ func (t *TileCoding) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	return step, last
 }
 
-// ObservationSpec returns the observation environmentification of the
+// ObservationSpec returns the observation specification of the
 // environment
 func (t *TileCoding) ObservationSpec() environment.Spec {
 	length := t.coder.VecLength()

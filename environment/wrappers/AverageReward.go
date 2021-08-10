@@ -160,7 +160,7 @@ func (a *AverageReward) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	return step, step.Last()
 }
 
-// RewardSpec returns the reward environmentification for the environment
+// RewardSpec returns the reward specification for the environment
 func (a *AverageReward) RewardSpec() environment.Spec {
 	rewardSpec := a.Environment.RewardSpec()
 
@@ -173,7 +173,7 @@ func (a *AverageReward) RewardSpec() environment.Spec {
 	return rewardSpec
 }
 
-// DiscountSpec returns the discount environmentification for the environment
+// DiscountSpec returns the discount specification for the environment
 // Average reward setting does not use discounting, so the discount
 // value is always set to 1.0.
 func (a *AverageReward) DiscountSpec() environment.Spec {

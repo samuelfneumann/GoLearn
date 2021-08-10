@@ -73,7 +73,7 @@ func (p *Continuous) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	return nextStep, last
 }
 
-// ActionSpec returns the action environmentification of the environment
+// ActionSpec returns the action specification of the environment
 func (p *Continuous) ActionSpec() environment.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 

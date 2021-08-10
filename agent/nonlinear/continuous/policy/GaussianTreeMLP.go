@@ -172,7 +172,7 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 
 // LogPdfOf sets the state and action inputs of the policy's
 // computational graph to the argument state and actions (s and a
-// reenvironmenttively) so that when a VM of the policy is run, the log
+// respectively) so that when a VM of the policy is run, the log
 // probabliity of actions a taken in states s will be computed and
 // stored in the policy's associate log PDF node, which is returned.
 //

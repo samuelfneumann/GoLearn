@@ -55,7 +55,7 @@ type CategoricalMLP struct {
 	logProbInputActions    *G.Node
 	logProbInputActionsVal G.Value
 
-	// Matrix of one-hot rows, where each row environmentifies which action
+	// Matrix of one-hot rows, where each row specifies which action
 	// to calculate the log prob of. These actions are input to the
 	// policy, they may or may not have been selected by the policy
 	// previously and are provided by an external source using the

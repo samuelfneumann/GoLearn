@@ -211,7 +211,7 @@ func (g *GridWorld) getCoordinates(v int) mat.Matrix {
 	return coords
 }
 
-// DiscountSpec generates the discount environmentification for the GridWorld
+// DiscountSpec generates the discount specification for the GridWorld
 func (g *GridWorld) DiscountSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
@@ -222,7 +222,7 @@ func (g *GridWorld) DiscountSpec() environment.Spec {
 
 }
 
-// ObservationSpec generates the observation environmentification for the
+// ObservationSpec generates the observation specification for the
 // GridWorld
 func (g *GridWorld) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(g.r*g.c, nil)
@@ -238,7 +238,7 @@ func (g *GridWorld) ObservationSpec() environment.Spec {
 		environment.Discrete)
 }
 
-// ActionSpec generates the action environmentification for the GridWorld
+// ActionSpec generates the action specification for the GridWorld
 func (g *GridWorld) ActionSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 

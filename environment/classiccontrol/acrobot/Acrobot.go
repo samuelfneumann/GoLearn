@@ -220,7 +220,7 @@ func (a *base) Reset() ts.TimeStep {
 	return startStep
 }
 
-// ObservationSpec returns the observation environmentification of the
+// ObservationSpec returns the observation specification of the
 // environment
 func (a *base) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(ObservationDims, nil)
@@ -233,7 +233,7 @@ func (a *base) ObservationSpec() environment.Spec {
 		upperBound, environment.Continuous)
 }
 
-// DiscountSpec returns the discounting environmentification of the environment
+// DiscountSpec returns the discounting specification of the environment
 func (a *base) DiscountSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{a.discount})

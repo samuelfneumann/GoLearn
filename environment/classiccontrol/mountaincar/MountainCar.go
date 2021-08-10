@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
@@ -87,27 +86,27 @@ func (b *base) CurrentTimeStep() ts.TimeStep {
 	return b.lastStep
 }
 
-// ObservationSpec returns the observation environmentification of the
+// ObservationSpec returns the observation specification of the
 // environment
-func (m *base) ObservationSpec() environment.Spec {
+func (m *base) ObservationSpec() env.Spec {
 	shape := mat.NewVecDense(ObservationDims, nil)
 	lowerBound := mat.NewVecDense(ObservationDims, []float64{m.positionBounds.Min,
 		m.speedBounds.Min})
 	upperBound := mat.NewVecDense(ObservationDims, []float64{m.positionBounds.Max,
 		m.speedBounds.Max})
 
-	return environment.NewSpec(shape, environment.Observation, lowerBound,
-		upperBound, environment.Continuous)
+	return env.NewSpec(shape, env.Observation, lowerBound,
+		upperBound, env.Continuous)
 }
 
-// DiscountSpec returns the discounting environmentification of the environment
-func (m *base) DiscountSpec() environment.Spec {
+// DiscountSpec returns the discounting specification of the environment
+func (m *base) DiscountSpec() env.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{m.discount})
 	upperBound := mat.NewVecDense(1, []float64{m.discount})
 
-	return environment.NewSpec(shape, environment.Discount, lowerBound,
-		upperBound, environment.Continuous)
+	return env.NewSpec(shape, env.Discount, lowerBound,
+		upperBound, env.Continuous)
 }
 
 // Reset resets the environment and returns a starting state drawn from

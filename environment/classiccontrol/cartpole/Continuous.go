@@ -2,7 +2,6 @@
 package cartpole
 
 import (
-	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
@@ -44,14 +43,14 @@ func NewContinuous(t env.Task, discount float64) (*Continuous, ts.TimeStep) {
 	return &cartpole, firstStep
 }
 
-// ActionSpec returns the action environmentification of the environment
-func (c *Continuous) ActionSpec() environment.Spec {
+// ActionSpec returns the action specification of the environment
+func (c *Continuous) ActionSpec() env.Spec {
 	shape := mat.NewVecDense(ActionDims, nil)
 	lowerBound := mat.NewVecDense(ActionDims, []float64{float64(MinContinuousAction)})
 	upperBound := mat.NewVecDense(ActionDims, []float64{float64(MaxContinuousAction)})
 
-	return environment.NewSpec(shape, environment.Action, lowerBound,
-		upperBound, environment.Continuous)
+	return env.NewSpec(shape, env.Action, lowerBound,
+		upperBound, env.Continuous)
 }
 
 // Step takes one environmental step given action a and returns the next

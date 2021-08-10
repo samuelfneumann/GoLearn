@@ -132,7 +132,7 @@ func (l *Land) Min() float64 {
 	return math.Inf(-1)
 }
 
-// RewardSpec returns the reward environmentification for the environment
+// RewardSpec returns the reward specification for the environment
 func (l *Land) RewardSpec() environment.Spec {
 	shape := mat.NewVecDense(1, nil)
 
