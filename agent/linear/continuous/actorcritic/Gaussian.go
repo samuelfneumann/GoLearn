@@ -15,6 +15,8 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
+// TODO: Figure out why meanTrace and stdTrace are not equal when using index vs regular tile coding
+
 // LinearGaussian implements the Linear-Gaussian Actor-Critic algorithm:
 //
 // https://hal.inria.fr/hal-00764281/PDF/DegrisACC2012.pdf
@@ -208,54 +210,47 @@ func (l *LinearGaussian) stepIndex() {
 		actorLR *= math.Pow(std.AtVec(0), 2)
 	}
 
-	// Scale the traces
+	// Scale the traces by the decay and discount
 	l.criticTrace.ScaleVec(ℽ*l.decay, l.criticTrace)
 	l.meanTrace.Scale(ℽ*l.decay, l.meanTrace)
 	l.stdTrace.Scale(ℽ*l.decay, l.stdTrace)
 
-	// Update critic and actor traces and weights
+	// Update critic and actor traces
 	for i := 0; i < state.Len(); i++ {
 		index = int(state.AtVec(i))
 
-		// Update Critic
+		// Update critic trace
 		newTrace := l.criticTrace.AtVec(index) + 1.0
 		l.criticTrace.SetVec(index, newTrace)
 
-		w := l.criticWeights.AtVec(index)
-		newW := w + ((l.criticLR * δ) * newTrace)
-		l.criticWeights.SetVec(index, newW)
-
-		// Update Actor
-		// Mean trace
+		// Update actor mean trace
 		currentMeanTrace := l.meanTrace.ColView(index).(*mat.VecDense)
 		currentMeanTrace.AddVec(
 			meanGradScale,
 			currentMeanTrace,
 		)
 
-		// Std trace
+		// Update actor std trace
 		currentStdTrace := l.stdTrace.ColView(index).(*mat.VecDense)
 		currentStdTrace.AddVec(
 			stdGradScale,
 			currentStdTrace,
 		)
-
-		// Mean Weights
-		currentMeanWeights := l.meanWeights.ColView(index).(*mat.VecDense)
-		currentMeanWeights.AddScaledVec(
-			currentMeanWeights,
-			actorLR*δ,
-			currentMeanTrace,
-		)
-
-		// Std Weights
-		currentStdWeights := l.stdWeights.ColView(index).(*mat.VecDense)
-		currentStdWeights.AddScaledVec(
-			currentStdWeights,
-			actorLR*δ,
-			currentStdTrace,
-		)
 	}
+
+	// Update critic weights
+	l.criticWeights.AddScaledVec(l.criticWeights, l.criticLR*δ, l.criticTrace)
+
+	// Update actor mean weights
+	row, col := l.meanTrace.Dims()
+	addMean := mat.NewDense(row, col, nil)
+	addMean.Scale(actorLR*δ, l.meanTrace)
+	l.meanWeights.Add(l.meanWeights, addMean)
+
+	// Update actor std weights
+	addStd := mat.NewDense(row, col, nil)
+	addStd.Scale(actorLR*δ, l.stdTrace)
+	l.stdWeights.Add(l.stdWeights, addStd)
 }
 
 // Step updates the algorithm's weights
