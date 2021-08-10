@@ -1,17 +1,17 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 100000,
+	"MaxSteps": 500000,
 	"EnvConf": {
-		"Environment": "MountainCar",
-		"Task": "Goal",
+		"Environment": "LunarLander",
+		"Task": "Land",
 		"ContinuousActions": true,
 		"EpisodeCutoff": 250,
 		"Discount": 0.99,
 		"Gym": false,
 		"TileCoding": {
 			"UseTileCoding": true,
-			"UseIndices": false,
-			"Bins": [[10, 10], [10, 10], [10, 10], [10, 10], [10, 10], [10, 10]]
+			"UseIndices": true,
+			"Bins": [[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4]]
 		}
 	},
 	"AgentConf": {

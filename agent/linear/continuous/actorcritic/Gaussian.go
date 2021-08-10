@@ -15,8 +15,6 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-// TODO: Figure out why meanTrace and stdTrace are not equal when using index vs regular tile coding
-
 // LinearGaussian implements the Linear-Gaussian Actor-Critic algorithm:
 //
 // https://hal.inria.fr/hal-00764281/PDF/DegrisACC2012.pdf
@@ -69,10 +67,6 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 	if actionSpec.Cardinality != environment.Continuous {
 		return nil, fmt.Errorf("newLinearGaussian: actions must be continuous")
 	}
-	if actionSpec.Shape.Len() != 1 {
-		return nil, fmt.Errorf("newLinearGaussian: LinearGaussian does not " +
-			"yet support multi-dimensional actions")
-	}
 	if !c.ValidAgent(&LinearGaussian{}) {
 		return nil, fmt.Errorf("newLinearGaussian: invalid agent for "+
 			"configuration type %T", c)
@@ -90,15 +84,6 @@ func NewLinearGaussian(env environment.Environment, c agent.Config,
 	// Create the Gaussian policy
 	pol := policy.NewGaussian(seed, env)
 	gaussianPolicy := pol.(*policy.Gaussian)
-	weights := gaussianPolicy.Weights()
-	if r, _ := weights[policy.MeanWeightsKey].Dims(); r != 1 {
-		return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
-			"actions not yet supported")
-	}
-	if r, _ := weights[policy.StdWeightsKey].Dims(); r != 1 {
-		return nil, fmt.Errorf("newLinearGaussian: multi-dimensional " +
-			"actions not yet supported")
-	}
 
 	// Store features and actions dimensions
 	features := env.ObservationSpec().Shape.Len()
@@ -210,47 +195,82 @@ func (l *LinearGaussian) stepIndex() {
 		actorLR *= math.Pow(std.AtVec(0), 2)
 	}
 
-	// Scale the traces by the decay and discount
-	l.criticTrace.ScaleVec(ℽ*l.decay, l.criticTrace)
-	l.meanTrace.Scale(ℽ*l.decay, l.meanTrace)
-	l.stdTrace.Scale(ℽ*l.decay, l.stdTrace)
+	// Deal with two separate cases: decay != 0 and decay == 0. When
+	// decay == 0, significant speed-ups can be implemented
+	if l.decay != 0 {
+		// Scale the traces by the decay and discount
+		l.criticTrace.ScaleVec(ℽ*l.decay, l.criticTrace)
+		l.meanTrace.Scale(ℽ*l.decay, l.meanTrace)
+		l.stdTrace.Scale(ℽ*l.decay, l.stdTrace)
 
-	// Update critic and actor traces
-	for i := 0; i < state.Len(); i++ {
-		index = int(state.AtVec(i))
+		// Update critic and actor traces
+		for i := 0; i < state.Len(); i++ {
+			index = int(state.AtVec(i))
 
-		// Update critic trace
-		newTrace := l.criticTrace.AtVec(index) + 1.0
-		l.criticTrace.SetVec(index, newTrace)
+			// Update critic trace
+			newTrace := l.criticTrace.AtVec(index) + 1.0
+			l.criticTrace.SetVec(index, newTrace)
 
-		// Update actor mean trace
-		currentMeanTrace := l.meanTrace.ColView(index).(*mat.VecDense)
-		currentMeanTrace.AddVec(
-			meanGradScale,
-			currentMeanTrace,
-		)
+			// Update actor mean trace
+			currentMeanTrace := l.meanTrace.ColView(index).(*mat.VecDense)
+			currentMeanTrace.AddVec(
+				meanGradScale,
+				currentMeanTrace,
+			)
 
-		// Update actor std trace
-		currentStdTrace := l.stdTrace.ColView(index).(*mat.VecDense)
-		currentStdTrace.AddVec(
-			stdGradScale,
-			currentStdTrace,
-		)
+			// Update actor std trace
+			currentStdTrace := l.stdTrace.ColView(index).(*mat.VecDense)
+			currentStdTrace.AddVec(
+				stdGradScale,
+				currentStdTrace,
+			)
+		}
+
+		// Update critic weights
+		l.criticWeights.AddScaledVec(l.criticWeights, l.criticLR*δ,
+			l.criticTrace)
+
+		// Update actor mean weights
+		row, col := l.meanTrace.Dims()
+		addMean := mat.NewDense(row, col, nil)
+		addMean.Scale(actorLR*δ, l.meanTrace)
+		l.meanWeights.Add(l.meanWeights, addMean)
+
+		// Update actor std weights
+		addStd := mat.NewDense(row, col, nil)
+		addStd.Scale(actorLR*δ, l.stdTrace)
+		l.stdWeights.Add(l.stdWeights, addStd)
+
+	} else {
+		// When decay == 0, this is equivalent to not using any traces.
+		// In such a case, we can simply update the weights at each
+		// index of the non-zero tile-coded vector components, ignoring
+		// the traces.
+		for i := 0; i < state.Len(); i++ {
+			index = int(state.AtVec(i))
+
+			// Update critic weights
+			w := l.criticWeights.AtVec(index)
+			newW := w + (l.criticLR * δ)
+			l.criticWeights.SetVec(index, newW)
+
+			// Mean Weights
+			currentMeanWeights := l.meanWeights.ColView(index).(*mat.VecDense)
+			currentMeanWeights.AddScaledVec(
+				currentMeanWeights,
+				actorLR*δ,
+				meanGradScale,
+			)
+
+			// Std Weights
+			currentStdWeights := l.stdWeights.ColView(index).(*mat.VecDense)
+			currentStdWeights.AddScaledVec(
+				currentStdWeights,
+				actorLR*δ,
+				stdGradScale,
+			)
+		}
 	}
-
-	// Update critic weights
-	l.criticWeights.AddScaledVec(l.criticWeights, l.criticLR*δ, l.criticTrace)
-
-	// Update actor mean weights
-	row, col := l.meanTrace.Dims()
-	addMean := mat.NewDense(row, col, nil)
-	addMean.Scale(actorLR*δ, l.meanTrace)
-	l.meanWeights.Add(l.meanWeights, addMean)
-
-	// Update actor std weights
-	addStd := mat.NewDense(row, col, nil)
-	addStd.Scale(actorLR*δ, l.stdTrace)
-	l.stdWeights.Add(l.stdWeights, addStd)
 }
 
 // Step updates the algorithm's weights
@@ -351,7 +371,9 @@ func (l *LinearGaussian) ObserveFirst(t ts.TimeStep) {
 
 // EndEpisode adjusts variables after an episode has completed
 func (l *LinearGaussian) EndEpisode() {
-	l.criticTrace.Zero()
-	l.stdTrace.Zero()
-	l.meanTrace.Zero()
+	if l.decay != 0.0 {
+		l.criticTrace.Zero()
+		l.stdTrace.Zero()
+		l.meanTrace.Zero()
+	}
 }
