@@ -310,6 +310,30 @@ func (t *TileCoder) EncodeIndices(v mat.Vector) []float64 {
 	return indices
 }
 
+// ToVector converts a vector of non-zero indices to a tile-coded
+// vector
+func (t *TileCoder) ToVector(v mat.Vector) *mat.VecDense {
+	tileCoded := mat.NewVecDense(t.VecLength(), nil)
+	for i := 0; i < v.Len(); i++ {
+		tileCoded.SetVec(int(v.AtVec(i)), 1.0)
+	}
+	return tileCoded
+}
+
+// ToIndices converts a tile-coded vector to a vector of non-zero
+// indices
+func (t *TileCoder) ToIndices(v mat.Vector) *mat.VecDense {
+	indices := make([]float64, 0, t.NumTilings())
+	for i := 0; i < v.Len(); i++ {
+		if v.AtVec(i) != 0.0 {
+			indices = append(indices, float64(i))
+		} else if v.AtVec(i) != 1.0 {
+			panic("toIndices: vector is not a tile-coded vector")
+		}
+	}
+	return mat.NewVecDense(t.NumTilings(), indices)
+}
+
 // Encode encodes a single vector as a tile-coded vector
 func (t *TileCoder) Encode(v mat.Vector) *mat.VecDense {
 	tileCoded := mat.NewVecDense(t.VecLength(), nil)
