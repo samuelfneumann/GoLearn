@@ -66,10 +66,10 @@ func DeepQCartpole() {
 
 	// Create the experiment configuration
 	exp := experiment.Config{
-		Type:      experiment.OnlineExp,
-		MaxSteps:  25_000,
-		EnvConf:   envConf,
-		AgentConf: agentConf,
+		Type:        experiment.OnlineExp,
+		MaxSteps:    25_000,
+		EnvConfig:   envConf,
+		AgentConfig: agentConf,
 	}
 
 	// Experiment
@@ -132,10 +132,10 @@ func DeepQMountainCar() {
 
 	// Create the experiment configuration
 	exp := experiment.Config{
-		Type:      experiment.OnlineExp,
-		MaxSteps:  25_000,
-		EnvConf:   envConf,
-		AgentConf: agentConf,
+		Type:        experiment.OnlineExp,
+		MaxSteps:    25_000,
+		EnvConfig:   envConf,
+		AgentConfig: agentConf,
 	}
 
 	// Experiment
@@ -196,10 +196,10 @@ func QLearningMountainCarWithConfigs() {
 
 	// Create the experiment configuration
 	exp := experiment.Config{
-		Type:      experiment.OnlineExp,
-		MaxSteps:  25_000,
-		EnvConf:   envConf,
-		AgentConf: agentConf,
+		Type:        experiment.OnlineExp,
+		MaxSteps:    25_000,
+		EnvConfig:   envConf,
+		AgentConfig: agentConf,
 	}
 
 	// Experiment

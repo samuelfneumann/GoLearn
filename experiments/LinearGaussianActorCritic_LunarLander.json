@@ -1,7 +1,7 @@
 {
 	"Type": "OnlineExperiment",
 	"MaxSteps": 500000,
-	"EnvConf": {
+	"EnvConfig": {
 		"Environment": "LunarLander",
 		"Task": "Land",
 		"ContinuousActions": true,
@@ -14,7 +14,7 @@
 			"Bins": [[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4],[4, 4, 4, 4, 4, 4, 4, 4]]
 		}
 	},
-	"AgentConf": {
+	"AgentConfig": {
 		"Type": "GaussianActorCritic-Linear",
 		"ConfigList": {
 			"ActorLearningRate": [

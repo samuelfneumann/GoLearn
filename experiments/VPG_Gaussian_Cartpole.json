@@ -1,7 +1,7 @@
 {
 	"Type": "OnlineExperiment",
 	"MaxSteps": 1000000,
-	"EnvConf": {
+	"EnvConfig": {
 		"Environment": "Cartpole",
 		"Task": "Balance",
 		"ContinuousActions": true,
@@ -14,7 +14,7 @@
 			"Bins": null
 		}
 	},
-	"AgentConf": {
+	"AgentConfig": {
 		"Type": "GaussianVanillaPG-TreeMLP",
 		"ConfigList": {
 			"RootLayers": [

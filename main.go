@@ -42,7 +42,7 @@ func main() {
 	}
 	expFile.Close()
 
-	numSettings := int64(expConf.AgentConf.Len())
+	numSettings := int64(expConf.AgentConfig.Len())
 	hpIndex, err := strconv.ParseInt(os.Args[2], 0, 0)
 	if err != nil {
 		panic(err)
@@ -57,25 +57,25 @@ func main() {
 	fmt.Printf("\t Run: \t\t\t\t%v\n", run)
 	fmt.Printf("\t Configuration Index: \t\t%v\n", hpIndex%numSettings)
 	fmt.Println()
-	fmt.Printf("\t Environment: \t\t\t%v\n", expConf.EnvConf.Environment)
-	fmt.Printf("\t Environment Configuration: \t%v\n", expConf.EnvConf)
+	fmt.Printf("\t Environment: \t\t\t%v\n", expConf.EnvConfig.Environment)
+	fmt.Printf("\t Environment Configuration: \t%v\n", expConf.EnvConfig)
 	fmt.Println()
-	fmt.Printf("\t Agent: \t\t\t%v\n", expConf.AgentConf.Type)
+	fmt.Printf("\t Agent: \t\t\t%v\n", expConf.AgentConfig.Type)
 	fmt.Printf("\t Agent Configuration: \t\t%v\n",
-		expConf.AgentConf.At(int(hpIndex)))
+		expConf.AgentConfig.At(int(hpIndex)))
 	fmt.Println()
 
 	// Filenames of data to save
 	returnFilename := fmt.Sprintf(
 		"return_%v_%v_run%v.bin",
-		expConf.AgentConf.Type,
-		expConf.EnvConf.Environment,
+		expConf.AgentConfig.Type,
+		expConf.EnvConfig.Environment,
 		run,
 	)
 	epLengthFilename := fmt.Sprintf(
 		"epLength_%v_%v_run%v.bin",
-		expConf.AgentConf.Type,
-		expConf.EnvConf.Environment,
+		expConf.AgentConfig.Type,
+		expConf.EnvConfig.Environment,
 		run,
 	)
 

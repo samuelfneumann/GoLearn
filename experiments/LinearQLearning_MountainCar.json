@@ -1,7 +1,7 @@
 {
 	"Type": "OnlineExperiment",
 	"MaxSteps": 100000,
-	"EnvConf": {
+	"EnvConfig": {
 		"Environment": "MountainCar",
 		"Task": "Goal",
 		"ContinuousActions": false,
@@ -14,7 +14,7 @@
 			"Bins": [[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10],[10, 10]]
 		}
 	},
-	"AgentConf": {
+	"AgentConfig": {
 		"Type": "EGreedyQLearning-Linear",
 		"ConfigList": {
 			"Epsilon": [

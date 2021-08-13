@@ -1,7 +1,7 @@
 {
 	"Type": "OnlineExperiment",
 	"MaxSteps": 3000000,
-	"EnvConf": {
+	"EnvConfig": {
 		"Environment": "LunarLander",
 		"Task": "Land",
 		"ContinuousActions": true,
@@ -14,7 +14,7 @@
 			"Bins": null
 		}
 	},
-	"AgentConf": {
+	"AgentConfig": {
 		"Type": "GaussianVanillaPG-TreeMLP",
 		"ConfigList": {
 			"RootLayers": [

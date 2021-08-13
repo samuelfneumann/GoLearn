@@ -49,6 +49,8 @@ type Experiment interface {
 	Agent() agent.Agent
 }
 
+// Type describes a specific experiment type. It is used in Experiment
+// configurations to create a specific type of experiment.
 type Type string
 
 const (
@@ -58,15 +60,15 @@ const (
 // Config represents a configuration of an experiment.
 type Config struct {
 	Type
-	MaxSteps  uint
-	EnvConf   envconfig.Config
-	AgentConf agent.TypedConfigList
+	MaxSteps    uint
+	EnvConfig   envconfig.Config
+	AgentConfig agent.TypedConfigList
 }
 
 func (c Config) CreateExp(i int, seed uint64, t []tracker.Tracker,
 	check []checkpointer.Checkpointer) Experiment {
-	env, _ := c.EnvConf.CreateEnv(seed)
-	agent, err := c.AgentConf.At(i).CreateAgent(env, seed)
+	env, _ := c.EnvConfig.CreateEnv(seed)
+	agent, err := c.AgentConfig.At(i).CreateAgent(env, seed)
 	if err != nil {
 		panic(fmt.Sprintf("createExp: could not create agent: %v", err))
 	}

@@ -1,7 +1,7 @@
 {
 	"Type": "OnlineExperiment",
 	"MaxSteps": 200000,
-	"EnvConf": {
+	"EnvConfig": {
 		"Environment": "LunarLander",
 		"Task": "Land",
 		"ContinuousActions": false,
@@ -14,7 +14,7 @@
 			"Bins": [[8, 8, 8, 8, 8, 8, 8, 8],[8, 8, 8, 8, 8, 8, 8, 8],[8, 8, 8, 8, 8, 8, 8, 8],[8, 8, 8, 8, 8, 8, 8, 8],[8, 8, 8, 8, 8, 8, 8, 8]]
 		}
 	},
-	"AgentConf": {
+	"AgentConfig": {
 		"Type": "EGreedyQLearning-Linear",
 		"ConfigList": {
 			"Epsilon": [

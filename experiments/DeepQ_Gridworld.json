@@ -1,7 +1,7 @@
 {
 	"Type": "OnlineExperiment",
 	"MaxSteps": 5000,
-	"EnvConf": {
+	"EnvConfig": {
 		"Environment": "Gridworld",
 		"Task": "Goal",
 		"ContinuousActions": false,
@@ -14,7 +14,7 @@
 			"Bins": []
 		}
 	},
-	"AgentConf": {
+	"AgentConfig": {
 		"Type": "EGreedyDeepQ-MLP",
 		"ConfigList": {
 			"Layers": [

@@ -1,7 +1,7 @@
 {
 	"Type": "OnlineExperiment",
 	"MaxSteps": 250000,
-	"EnvConf": {
+	"EnvConfig": {
 		"Environment": "Pendulum",
 		"Task": "SwingUp",
 		"ContinuousActions": true,
@@ -14,7 +14,7 @@
 			"Bins": [[10, 10], [10, 10], [10, 10], [10, 10], [10, 10],[10, 10], [10, 10], [10, 10], [10, 10], [10, 10]]
 		}
 	},
-	"AgentConf": {
+	"AgentConfig": {
 		"Type": "GaussianActorCritic-Linear",
 		"ConfigList": {
 			"ActorLearningRate": [
