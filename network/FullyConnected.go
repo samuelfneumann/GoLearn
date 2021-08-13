@@ -174,10 +174,10 @@ func (f *fcLayer) GobDecode(in []byte) error {
 // not perform the forward pass or outline any relationships between
 // nodes. To generate the forward pass given the the returned slice R,
 // simply call:
-//		input = new matrix input
-//		prediction, _ = R[0].Fwd(input)
+//		input := new matrix input
+//		prediction, _ := R[0].fwd(input)
 //		for layer, _ := range R[1:] {
-// 			prediction = layer.Fwd(prediction)
+// 			prediction = layer.fwd(prediction)
 // 		}
 //		return prediction
 func addfcLayers(g *G.ExprGraph, hiddenSizes []int, biases []bool,

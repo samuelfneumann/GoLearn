@@ -38,7 +38,8 @@ func ConfigAt(i int, configs ConfigList) Config {
 func configAt(i int, configs ConfigList) Config {
 	config := configs.Config()
 	reflectConfigList := reflect.ValueOf(configs)
-	reflectConfig := reflect.New(reflect.Indirect(reflect.ValueOf(config)).Type()).Elem() // reflect.ValueOf(config)
+	reflectConfig := reflect.New(reflect.Indirect(
+		reflect.ValueOf(config)).Type()).Elem() // Settable config
 
 	accum := 1
 	for field := 0; field < configs.NumFields(); field++ {
@@ -47,6 +48,12 @@ func configAt(i int, configs ConfigList) Config {
 
 		switch settings.Kind() {
 		case reflect.String:
+			reflectConfig.FieldByName(fieldName).Set(settings)
+
+		case reflect.Float64, reflect.Float32, reflect.Int, reflect.Int8,
+			reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint,
+			reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+			reflect.Complex64, reflect.Complex128:
 			reflectConfig.FieldByName(fieldName).Set(settings)
 
 		case reflect.Slice:
@@ -71,11 +78,11 @@ type Config interface {
 	// ValidAgent returns whether the argument Agent is valid for the
 	// Config. This differs from the Type() method in that an actual
 	// Agent struct is used here, whereas the Type() method returns
-	// a Type (string) describing the Agent's type. For example an
-	// Agent of *vanillapg.VPG{} may be valid for a Config, but
-	// the Config's Type may be "CategoricalVanillaPG" or "Gaussian
-	// VanillaPG", both of which have the same underlying structs,
-	// but are different Config types.
+	// a Type (string) describing the Agent's type. For example a
+	// Config's Type may be "CategoricalVanillaPG-MLP" or "Gaussian
+	// VanillaPG-TreeMLP", which are different Config types, but each of
+	// which have *vanillapg.VanillaPG as a valid Agent since that
+	// is the Agent the Configs describe.
 	ValidAgent(Agent) bool
 
 	// Validate returns an error describing whether or not the

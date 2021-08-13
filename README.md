@@ -38,6 +38,162 @@ packages:
 |   `Vanilla Policy Gradient`    | `agent/nonlinear/continuous/vanillapg` |
 
 ## Agent `Config`s and `ConfigList`s
+Agents must be created with a configuration struct satisfying the `Config`
+interface:
+```
+// Config represents a configuration for creating an agent
+type Config interface {
+	// CreateAgent creates the agent that the config describes
+	CreateAgent(env environment.Environment, seed uint64) (Agent, error)
+
+	// ValidAgent returns whether the argument Agent is valid for the
+	// Config. This differs from the Type() method in that an actual
+	// Agent struct is used here, whereas the Type() method returns
+	// a Type (string) describing the Agent's type. For example a
+	// Config's Type may be "CategoricalVanillaPG-MLP" or "Gaussian
+	// VanillaPG-TreeMLP", which are different Config types, but each of
+	// which have *vanillapg.VanillaPG as a valid Agent since that
+	// is the Agent the Configs describe.
+	ValidAgent(Agent) bool
+
+	// Validate returns an error describing whether or not the
+	// configuration is valid.
+	Validate() error
+
+	// Type returns the type of agent which can be constructed from
+	// the Config.
+	Type() Type
+}
+```
+Each `Config` struct uniquely determines the set of hyperparameters and
+options of a specific agent. If you try to create an `Agent` for which
+the `ValidAgent()` `Config` method would return `false`, the `Agent`
+constructor will panic.
+
+How can we create an agent? Imagine we have agent `X` defined in
+package `xagent`. In package `xagent` then, there will be a Configuration
+struct, for example imagine it is called `xConfig`. Then, if agent `X`
+has the hyperparameters `learningRate`, `epsilon`, and `exploration`,
+then `xConfig` might look something like:
+```
+type xConfig struct {
+	LearningRate float64
+	Epsilon 	 float64
+	Exploration  string
+}
+```
+This configuration uniquely defines an `X` agent with specific hyperparameters.
+There are then two ways of creating the agent `X`. The easiest way is to
+call the `CreateAgent()` method on the `xConfig`:
+```
+config := xagent.xConfig{
+	LearningRate: 0.1,
+	Epsilon: 0.01,
+	Exploration: "Gaussian",
+}
+
+env := ... // Create some environment to train the agent in
+seed := uint64(time.Now().UnixNano())
+
+agent := config.CreateAgent(env, seed)
+
+// Train the agent here
+```
+The other way is through the agent constructor:
+```
+config := xagent.xConfig{
+	LearningRate: 0.1,
+	Epsilon: 0.01,
+	Exploration: "Gaussian",
+}
+
+env := ... // Create some environment to train the agent in
+seed := uint64(time.Now().UnixNano())
+
+agent := xagent.New(config, env, seed)
+
+// Train the agent here
+```
+
+Once the agent has been constructed, it is ready to train. Remember,
+you must use a valid `Config` to construct a specific `Agent`.
+
+A very common case we find in reinforcement learning is to sweep over
+a bunch of different hyperparameter settings for a single agent type.
+To do this, instead of creating a `[]Config`, we can create a `ConfigList`.
+`ConfigList`s efficiently represent a set of all combinations of
+hyperparameters. For example, a `ConfigList` for agent `X` might be:
+```
+type xConfigList struct {
+	LearningRate []float64
+	Epsilon 	 []float64
+	Exploration  []string
+}
+```
+This `ConfigList` stores a list of all combinations of values found in the
+fields `LearningRate`, `Epsilon`, and `Exploration`. For example, assume
+a specific instantiation of an `xConfigList` looks like this:
+```
+config := xConfigList{
+	LearningRate []float64{0.1, 0.5},
+	Epsilon 	 []float64{0.01, 0.001},
+	Exploration  []string{"Gaussian},
+}
+```
+Then, this list basically stores a slice of 5 `xConfig`s, each taking on
+a different combination of `LearningRate`s, `Epsilon`s, and `Exploration`s.
+On a `ConfigList`, you can then call an `ConfigAt(i int, c ConfigList)`
+function, defined in the `agent` package, which will
+return the `Config` at (0-indexed) position `i` in the list. The `ConfigAt()`
+function *wraps around* the end of the list, so if the `ConfigList` has
+`n` `Config`s in it, indices `nk + i, k ϵ Z, i < n ϵ Z`, all refer
+to the same `Config` at index `i < n ϵ Z` in the `ConfigList`.
+
+**Important**: A `ConfigList` **must** have its fields having the same name
+as the corresponding ``Config`` of which it stores a list of. Otherwise,
+the `At()` method will panic.
+
+An `Experiment` can be `JSON` serialized (more on that later). In the
+`Experiment` `JSON` file, the `Agent` configuration will be a specific
+concrete type, the `TypedConfigList`, which provides a privitive way
+of typing `ConfigList`s.
+
+
+## `TypedConfigList`
+A `TypedConfigList` provides a primitive typing mechanism of `ConfigList`s.
+A `TypedConfigList` consists of a type descriptor and a concrete `ConfigList`
+value. This might seem similar to how `interface` values are constructed
+in `Go`, and that's because it is!
+
+```
+TypedConfigList = | agent.Type | ConfigList |
+```
+
+Given a `JSON` serialization of a `TypedConfigList`, we can easily
+`JSON` unmarshall this `TypedConfigList`, which will return the stored
+`ConfigList` as its underlying concrete type. This is required because
+we cannot easily unmarshall a concrete `ConfigList` into a
+`ConfigList` (interface) value. For example, the following code will panic:
+```
+var a ConfigList // ConfigList is an interface
+
+err := json.Unmarshall(data, a) // Data holds a concrete type
+if a == nil {
+	panic(err)
+}
+```
+A (possibly `JSON` marshalled) `Experiment` (more on this later) must store
+an agent `ConfigList` describing which hyperparameters of a specific agent
+should be run in the experiment. A problem is that the marshalled
+`Experiment` will not know before runtime what kind of `Agent` is being
+used in the experiment and therefore cannot know the concrete type
+of the `ConfigList` of the `Agent`. The best the `Experiment` can do
+is unmarshall the `ConfigList` into an interface value. But this will
+result in the problem shown in the code block above.
+
+The `JSON` marhsalled `TypedConfigList` will perform `ConfigList` typing
+for the `Experiment`. The `Experiment` will then simply call `CreateAgent()`
+and run.
 
 # Environments
 This library makes a separation between an `Environment` and a `Task`. An
@@ -395,7 +551,67 @@ Currently, the only implemented `Checkpointer` is an `nStep` `Checkpointer`
 which checkpoints an `Agent` every `n` steps of an agent-environment
 interaction. For more information, see the `checkpointer` package.
 
-## Running the program
+## Experiment Configs
+An `experiment.Config` outlines what kind of `Experiment` should be run
+and with which `Environment` and which `Agent` with which hyperparameters
+(defined by the `Agent`'s `ConfigList`). The `Experiment` `Config` holds
+an `Environment` `Config` and an `Agent` `ConfigList` (actually, it
+holds a `TypedConfigList` so that it knows how to `JSON` unmarshall the
+`ConfigList`). The `Experiment` `Config` also has a `Type` which outlines
+what `Type` of experiment we are running (e.g. an `OnlineExp` is a
+`Type` of `Experiment` that runs the `Agent` online and performs online
+evaluation only):
+```
+// Config represents a configuration of an experiment.
+type Config struct {
+	Type
+	MaxSteps  uint
+	EnvConf   envconfig.Config
+	AgentConf agent.TypedConfigList
+}
+```
+
+To create and run an `Experiment`, you can use the specific `Experiment`'s
+constructor. For example, if we wanted an `Online` experiment:
+```
+agent := ...         // Create agent
+env := ...           // Create environment
+maxSteps := ...      // Maximum number of steps for the experiment
+trackers := ...      // Create trackers for the experiment
+checkpointers := ... // Create checkpointers for the experiment
+
+exp := NewOnline(env, agent, maxSteps, trackers, checkpointers)
+exp.Run()  // Run the experiment
+exp.Save() // Save the data generated
+```
+Or you can use an `Experiment` `Config` (these can be `JSON` serialized
+to store and run later):
+```
+agentConfig := ...         // Create agent configuration list
+envConfig := ...           // Create environment configuration
+maxSteps := ...      // Maximum number of steps for the experiment
+trackers := ...      // Create trackers for the experiment
+checkpointers := ... // Create checkpointers for the experiment
+
+expConfig := experiment.Config{
+	Type: experiment.OnlineExp,
+	MaxSteps: 1_000_000,
+	EnvConf: envConfig,
+	AgentConf: agentConfig,
+}
+
+// JSON marshall the expConfig so that we can run in as many times as we
+// want to later
+
+var agentConfig int = ... // The index of the agent in the ConfigList to run
+var seed uint64 = ...     // Seed for the agent and environment
+
+exp := expConfig.CreateExperiment(agentConfig, seed, trackers, checkpointers)
+exp.Run()  // Run the experiment
+exp.Save() // Save the data generated
+```
+
+# Running the program
 To run the program, simply run the `main.go` file. The program takes two
 commandline arguments: a `JSON` configuration file for an `Experiment` and
 a hyperparameter setting index for the `Agent` defined in the configuration
@@ -437,5 +653,6 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 - [ ] For many linear agents, action/state values are computed more than once. The Policy computes the action/state values at each timestep, and the Learner computes the same state/action values for the timestep when learning.
 
-URGENT
-- [ ] Accidentally changed specific, special -> environmentific in a bunch of files
+- [ ] Might be nice to make JSON files more JSON-like, e.g. the names should be changed "AgentConf" -> "agent_config".
+- [ ] Config structs could have better field names
+- [ ] Might be nice if `ConfigList`s had an `At()` method like `TypedConfigList`s do.

@@ -19,6 +19,15 @@ import (
 	"github.com/samuelfneumann/golearn/experiment/tracker"
 )
 
+// func main() {
+// 	e := gym.New(gym.MountainCarV0, "http://127.0.0.1:5000", 0.99)
+
+// 	fmt.Println(e.Reset())
+
+// 	obs, _ := e.Step(mat.NewVecDense(1, []float64{1}))
+// 	fmt.Println(obs)
+// }
+
 func main() {
 	expFile, err := os.Open(os.Args[1])
 	if err != nil {

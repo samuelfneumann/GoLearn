@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	G "gorgonia.org/gorgonia"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/nonlinear/discrete/policy"
 	env "github.com/samuelfneumann/golearn/environment"
@@ -12,6 +11,7 @@ import (
 	"github.com/samuelfneumann/golearn/initwfn"
 	"github.com/samuelfneumann/golearn/network"
 	"github.com/samuelfneumann/golearn/solver"
+	G "gorgonia.org/gorgonia"
 )
 
 func init() {

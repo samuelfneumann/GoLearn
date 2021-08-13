@@ -7,10 +7,10 @@ import (
 	"github.com/samuelfneumann/golearn/solver"
 )
 
-// Config implements an interface for any VanillaPG configuration.
+// config implements an interface for any VanillaPG configuration.
 // This is needed so that the VanillaPG constructor can take in
 // either a Gaussian or Categorical (or any other distribution)
-// Config struct.
+// configuration struct.
 type config interface {
 	agent.Config
 
