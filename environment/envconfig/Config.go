@@ -13,6 +13,7 @@ import (
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/mountaincar"
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/pendulum"
 	"github.com/samuelfneumann/golearn/environment/gridworld"
+	"github.com/samuelfneumann/golearn/environment/mujoco/hopper"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/spatial/r1"
@@ -30,6 +31,7 @@ const (
 	Acrobot     EnvName = "Acrobot"
 	Gridworld   EnvName = "Gridworld"
 	LunarLander EnvName = "LunarLander"
+	Hopper      EnvName = "Hopper"
 )
 
 // TaskName stores the tasks that can be configured with this package.
@@ -51,6 +53,7 @@ const (
 	SwingUp TaskName = "SwingUp"
 	Balance TaskName = "Balance"
 	Land    TaskName = "Land"
+	Hop     TaskName = "Hop"
 )
 
 // Config implements a specific configuration of a specific environment
@@ -116,6 +119,13 @@ func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
 
 	case LunarLander:
 		e, step = CreateLunarLander(c.ContinuousActions, c.Task,
+			int(c.EpisodeCutoff), seed, c.Discount)
+
+	case Hopper:
+		if !c.ContinuousActions {
+			panic("createEnv: hopper must have continuous actions")
+		}
+		e, step = CreateHopper(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	default:
@@ -316,6 +326,27 @@ func CreateLunarLander(continuousActions bool, taskName TaskName,
 		return lunarlander.NewContinuous(task, discount, seed)
 	}
 	return lunarlander.NewDiscrete(task, discount, seed)
+}
+
+func CreateHopper(continuousActions bool, taskName TaskName,
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	var task env.Task
+	switch taskName {
+	case Hop:
+		task = hopper.NewHop(seed, cutoff)
+
+	default:
+		panic(fmt.Sprintf("createHopper: Hopper environment has "+
+			"no task %v", taskName))
+	}
+
+	env, firstStep, err := hopper.New(task, 1, seed, discount)
+	if err != nil {
+		panic(fmt.Sprintf("createHopper: could not create environment: %v",
+			err))
+	}
+
+	return env, firstStep
 }
 
 // tileCodingConfig implements configuration settings for tile coding

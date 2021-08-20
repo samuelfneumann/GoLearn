@@ -118,11 +118,12 @@ func (h *Hop) Start() *mat.VecDense {
 	velStart := mat.NewVecDense(len(velRand), velRand)
 	velStart.AddVec(velStart, h.env.InitQVel)
 
+	backing := make([]float64, posStart.Len()+velStart.Len())
+	copy(backing[:posStart.Len()], posStart.RawVector().Data)
+	copy(backing[posStart.Len():], velStart.RawVector().Data)
+
 	// Gets the starting state, not the starting observation
-	return mat.NewVecDense(
-		h.env.Nq+h.env.Nv,
-		append(posStart.RawVector().Data, velStart.RawVector().Data...),
-	)
+	return mat.NewVecDense(h.env.Nq+h.env.Nv, backing)
 }
 
 func (h *Hop) registerHopper(env *Hopper) {

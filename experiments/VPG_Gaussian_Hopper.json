@@ -19,42 +19,35 @@
 		"ConfigList": {
 			"RootLayers": [
 				[
-					64,
-					64
+					6
 				]
 			],
 			"RootBiases": [
 				[
-					true,
 					true
 				]
 			],
 			"RootActivations": [
 				[
-					"relu",
 					"relu"
 				]
 			],
 			"LeafLayers": [
 				[
 					[
-						64,
-						64
+						6
 					],
 					[
-						64,
-						64
+						6
 					]
 				]
 			],
 			"LeafBiases": [
 				[
 					[
-						true,
 						true
 					],
 					[
-						true,
 						true
 					]
 				]
@@ -62,33 +55,25 @@
 			"LeafActivations": [
 				[
 					[
-						"relu",
 						"relu"
 					],
 					[
-						"relu",
 						"relu"
 					]
 				]
 			],
 			"ValueFnLayers": [
 				[
-					100,
-					50,
-					25
+					5
 				]
 			],
 			"ValueFnBiases": [
 				[
-					true,
-					true,
 					true
 				]
 			],
 			"ValueFnActivations": [
 				[
-					"relu",
-					"relu",
 					"relu"
 				]
 			],

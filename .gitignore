@@ -7,5 +7,6 @@
 **.out
 **.test
 .vscode
+**/MUJOCO_LOG.TXT
 
 DocumentationGuidelines.txt

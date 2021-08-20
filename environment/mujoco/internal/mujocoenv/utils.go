@@ -52,11 +52,9 @@ func F64SliceC2Go(array *C.double, len int) []float64 {
 }
 
 func StateVector(data *C.mjData, nq, nv int) *mat.VecDense {
-	return mat.NewVecDense(
-		nq+nv,
-		append(
-			F64SliceC2Go(data.qpos, nq),
-			F64SliceC2Go(data.qvel, nv)...,
-		),
-	)
+	backing := make([]float64, nq+nv)
+	copy(backing[:nq], F64SliceC2Go(data.qpos, nq))
+	copy(backing[nq:], F64SliceC2Go(data.qvel, nv))
+
+	return mat.NewVecDense(nq+nv, backing)
 }

@@ -1,15 +1,15 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 200000,
+	"MaxSteps": 100000,
 	"EnvConfig": {
-		"Environment": "MountainCar",
-		"Task": "Goal",
+		"Environment": "Hopper",
+		"Task": "Hop",
 		"ContinuousActions": true,
 		"EpisodeCutoff": 250,
 		"Discount": 0.99,
 		"Gym": false,
 		"TileCoding": {
-			"UseTileCoding": true,
+			"UseTileCoding": false,
 			"UseIndices": false,
 			"Bins": [[10, 10], [10, 10], [10, 10], [10, 10], [10, 10], [10, 10]]
 		}

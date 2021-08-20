@@ -78,10 +78,6 @@ func (h *Hopper) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 	last := h.End(&t)
 	h.currentTimeStep = t
 
-	fmt.Println("State", state)
-	fmt.Println("Next:", nextState)
-	fmt.Println()
-
 	return t, last
 }
 

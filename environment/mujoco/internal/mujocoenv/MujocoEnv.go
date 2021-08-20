@@ -8,13 +8,19 @@ package mujocoenv
 //
 // void setQPos(mjData* data, double* positions, int len) {
 // for (int i = 0; i < len; i++) {
-// 		data->qpos[i] = positions[i];
+// 		*((*data).qpos + i) = *(positions + i);
 // 	}
 // }
 //
 // void setQVel(mjData* data, double* velocities, int len) {
 // 	for (int i = 0; i < len; i++){
-// 		data->qvel[i] = velocities[i];
+// 		*((*data).qvel + i) = *(velocities + i);
+// 	}
+// }
+//
+// void setControl(mjData* data, double* control, int len) {
+// 	for (int i = 0; i < len; i++){
+// 		*((*data).ctrl + i) = *(control + i);
 // 	}
 // }
 import "C"
@@ -141,7 +147,7 @@ func (m *MujocoEnv) DoSimulation(control *mat.VecDense, nFrames int) error {
 
 	action := make([]float64, control.Len())
 	copy(action, control.RawVector().Data)
-	m.Data.ctrl = (*C.mjtNum)(unsafe.Pointer(&action[0]))
+	C.setControl(m.Data, (*C.double)(unsafe.Pointer(&action[0])), C.int(len(action)))
 
 	for i := 0; i < nFrames; i++ {
 		C.mj_step(m.Model, m.Data)
@@ -178,19 +184,3 @@ func (m *MujocoEnv) Close() {
 	C.mj_deleteModel(m.Model)
 	C.mj_deleteData(m.Data)
 }
-
-// goroutine 1 [runnable]:
-// github.com/samuelfneumann/golearn/environment/mujoco/internal/mujocoEnv._Cfunc_mj_forward(0x1ddbad0, 0x1dfbe00)
-// 	_cgo_gotypes.go:855 +0x3c
-// github.com/samuelfneumann/golearn/environment/mujoco/internal/mujocoEnv.(*MujocoEnv).SetState.func1(0xc000280d80)
-// 	/home/samuel/Documents/GoRL/src/github.com/samuelfneumann/golearn/environment/mujoco/internal/mujocoEnv/MujocoEnv.go:116 +0x8f
-// github.com/samuelfneumann/golearn/environment/mujoco/internal/mujocoEnv.(*MujocoEnv).SetState(0xc000280d80, 0xc0000a6000, 0x6, 0xc, 0xc0000a6030, 0x6, 0x6, 0x7fc505844108, 0x477265)
-// 	/home/samuel/Documents/GoRL/src/github.com/samuelfneumann/golearn/environment/mujoco/internal/mujocoEnv/MujocoEnv.go:116 +0x9e
-// github.com/samuelfneumann/golearn/environment/mujoco/hopper.(*Hopper).Reset(0xc000280de0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0)
-// 	/home/samuel/Documents/GoRL/src/github.com/samuelfneumann/golearn/environment/mujoco/hopper/Hopper.go:99 +0x150
-// github.com/samuelfneumann/golearn/experiment.(*Online).RunEpisode(0xc0000b13b0, 0xc0002aa300)
-// 	/home/samuel/Documents/GoRL/src/github.com/samuelfneumann/golearn/experiment/Online.go:66 +0x48
-// github.com/samuelfneumann/golearn/experiment.(*Online).Run(0xc0000b13b0)
-// 	/home/samuel/Documents/GoRL/src/github.com/samuelfneumann/golearn/experiment/Online.go:107 +0x46
-// main.main()
-// 	/home/samuel/Documents/GoRL/src/github.com/samuelfneumann/golearn/main.go:92 +0xc45
