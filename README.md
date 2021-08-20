@@ -203,16 +203,10 @@ can be taken in an `Environment` that affect the `Environment`'s state, but
 no rewards are given for any actions in an `Environment`. The currently
 implemented environments are in the following packages:
 
-* `gridworld`: Implements gridworld environments and their tasks
-* `classiccontrol/pendulum`: Implements the classic control problem
-Pendulum and its tasks
-* `classiccontrol/mountaincar`: Implements the classic control problem
-Mountain Car and its tasks
-* `classiccontrol/cartpole`: Implements the classic control problem
-Cartpole and its tasks
-* `classiccontrol/acrobot`: Implements the classic control problem
-Acrobot and its tasks
-* `box2d/lunarlander`: Implements the Lunar Lander environment
+* `gridworld`: Implements gridworld environments
+* `classiccontrol`: Implements the classic control environmebts: Mountain Car, Pendulum, Cartpole, and Acrobot
+* `box2d`: Implements environments using the `Box2D` physics simulator
+* `mujoco`: Implements environments using the `MuJoCo` physics simulator
 
 Each package also defines public constants that determine the physical
 parameters of the `Environment`. For example, `mountaincar.Gravity` is
