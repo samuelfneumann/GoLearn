@@ -204,7 +204,7 @@ no rewards are given for any actions in an `Environment`. The currently
 implemented environments are in the following packages:
 
 * `gridworld`: Implements gridworld environments
-* `classiccontrol`: Implements the classic control environmebts: Mountain Car, Pendulum, Cartpole, and Acrobot
+* `classiccontrol`: Implements the classic control environments: Mountain Car, Pendulum, Cartpole, and Acrobot
 * `box2d`: Implements environments using the `Box2D` physics simulator
 * `mujoco`: Implements environments using the `MuJoCo` physics simulator
 
