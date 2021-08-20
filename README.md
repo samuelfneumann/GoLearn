@@ -652,7 +652,3 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 - [ ] Task AtGoal() -> argument should be Vector or *VecDense
 
 - [ ] For many linear agents, action/state values are computed more than once. The Policy computes the action/state values at each timestep, and the Learner computes the same state/action values for the timestep when learning.
-
-- [ ] Might be nice to make JSON files more JSON-like, e.g. the names should be changed "AgentConf" -> "agent_config".
-- [ ] Config structs could have better field names
-- [ ] Might be nice if `ConfigList`s had an `At()` method like `TypedConfigList`s do.

@@ -1,0 +1,144 @@
+{
+	"Type": "OnlineExperiment",
+	"MaxSteps": 1000000,
+	"EnvConfig": {
+		"Environment": "Hopper",
+		"Task": "Hop",
+		"ContinuousActions": true,
+		"EpisodeCutoff": 1000,
+		"Discount": 0.99,
+		"Gym": false,
+		"TileCoding": {
+			"UseTileCoding": false,
+			"UseIndices": true,
+			"Bins": null
+		}
+	},
+	"AgentConfig": {
+		"Type": "GaussianVanillaPG-TreeMLP",
+		"ConfigList": {
+			"RootLayers": [
+				[
+					64,
+					64
+				]
+			],
+			"RootBiases": [
+				[
+					true,
+					true
+				]
+			],
+			"RootActivations": [
+				[
+					"relu",
+					"relu"
+				]
+			],
+			"LeafLayers": [
+				[
+					[
+						64,
+						64
+					],
+					[
+						64,
+						64
+					]
+				]
+			],
+			"LeafBiases": [
+				[
+					[
+						true,
+						true
+					],
+					[
+						true,
+						true
+					]
+				]
+			],
+			"LeafActivations": [
+				[
+					[
+						"relu",
+						"relu"
+					],
+					[
+						"relu",
+						"relu"
+					]
+				]
+			],
+			"ValueFnLayers": [
+				[
+					100,
+					50,
+					25
+				]
+			],
+			"ValueFnBiases": [
+				[
+					true,
+					true,
+					true
+				]
+			],
+			"ValueFnActivations": [
+				[
+					"relu",
+					"relu",
+					"relu"
+				]
+			],
+			"InitWFn": [
+				{
+					"Type": "GlorotN",
+					"Config": {
+						"Gain": 1.4142135623730951
+					}
+				}
+			],
+			"PolicySolver": [
+				{
+					"Type": "Adam",
+					"Config": {
+						"StepSize": 0.0005,
+						"Epsilon": 1e-8,
+						"Beta1": 0.9,
+						"Beta2": 0.999,
+						"Batch": 1
+					}
+				}
+			],
+			"VSolver": [
+				{
+					"Type": "Adam",
+					"Config": {
+						"StepSize": 0.005,
+						"Epsilon": 1e-8,
+						"Beta1": 0.9,
+						"Beta2": 0.999,
+						"Batch": 1
+					}
+				}
+			],
+			"ValueGradSteps": [
+				25
+			],
+			"EpochLength": [
+				1000
+			],
+			"FinishEpisodeOnEpochEnd": [
+				true
+			],
+			"Lambda": [
+				1
+			],
+			"Gamma": [
+				0.99
+			]
+		}
+	}
+}
