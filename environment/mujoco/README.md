@@ -18,3 +18,45 @@ The `XML` files that describe `MuJoCo` environments are found in the `assets` di
 - swimmer.xml
 - thrower.xml
 - walker2d.xml
+
+## How To Use
+The `mujoco` packge uses `cgo` to interface with [MuJoCo](http://www.mujoco.org/). You must
+first have all the required files for [MuJoCo](http://www.mujoco.org/) on your system and
+a valid [MuJoCo](http://www.mujoco.org/) license key. The license key should
+be named `mjkey.txt` and should be placed in `~/.mujoco`. This package
+assumes you will be using [MuJoCo](http://www.mujoco.org/) 2.0.
+
+This pacakge needs to know where the [MuJoCo](http://www.mujoco.org/) shared library
+is and where the [MuJoCo](http://www.mujoco.org/) header files are. There are two ways
+to do this:
+
+First, you can set the paths to the
+[MuJoCo](http://www.mujoco.org/) shared library and the [MuJoCo](http://www.mujoco.org/)
+`C` header files using the `LDFLAGS` and `CFLAGS` `cgo` directives in all respective files
+in this package. For a *usual* [MuJoCo](http://www.mujoco.org/) install with all files in
+`/home/$USER/.mujoco`, these should be set as:
+
+```
+// #cgo CFLAGS:  -I/home/$USER/.mujoco/mujoco200_linux/include
+// #cgo LDFLAGS: -L/home/$USER/.mujoco/mujoco200_linux/bin
+```
+
+where `mujoco200_linux` should be replaced with the respective *type* of
+[MuJoCo](http://www.mujoco.org/) version on your system.
+
+The second way is to add the following lines to you `.bashrc` file or
+the `.zshrc` file:
+```
+export CGO_CFLAGS="-I/home/$USER/.mujoco/mujoco200_linux/include"
+export CGO_LDFLAGS="-L/home/$USER/.mujoco/mujoco200_linux/bin"
+```
+assuming that your version of [MuJoCo](http://www.mujoco.org/) is
+`mujoco200_linux`. If it is not, replace that portion of the code above
+with your respective version of [MuJoCo](http://www.mujoco.org/).
+
+Note that while this package is in active development, all development `cgo`
+directives have been left in the files in this package. These should be removed
+or altered to suit your system before you run code from this package. In
+particular, the `-I` option for `CFLAGS` and the `-L` option for `LDFLAGS`
+should be removed or altered, depending on if you used option 1 or 2 above to
+set up the package.

@@ -1,5 +1,9 @@
+// Package mujocoenv implements environments that use the MuJoCo
+// physics simulator
 package mujocoenv
 
+// * Leaving the cgo directives in so VSCode doesn't complain, even though
+// * CGO_CFLAGS and CGO_LDFLAGS have been set.
 // #cgo CFLAGS: -O2 -I/home/samuel/.mujoco/mujoco200_linux/include -mavx -pthread
 // #cgo LDFLAGS: -L/home/samuel/.mujoco/mujoco200_linux/bin -lmujoco200nogl
 // #include "mujoco.h"
@@ -37,7 +41,11 @@ import (
 
 func init() {
 	// Activate MuJoCo
-	mjKey := C.CString("/home/samuel/.mujoco/mjkey.txt")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic(fmt.Sprintf("could not find user home directory: %v", err))
+	}
+	mjKey := C.CString(fmt.Sprintf("%v/.mujoco/mjkey.txt", home))
 	defer C.free(unsafe.Pointer(mjKey))
 	C.mj_activate(mjKey)
 }

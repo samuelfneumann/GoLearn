@@ -205,8 +205,8 @@ implemented environments are in the following packages:
 
 * `gridworld`: Implements gridworld environments
 * `classiccontrol`: Implements the classic control environments: Mountain Car, Pendulum, Cartpole, and Acrobot
-* `box2d`: Implements environments using the `Box2D` physics simulator
-* `mujoco`: Implements environments using the `MuJoCo` physics simulator
+* `box2d`: Implements environments using the [Box2D](https://box2d.org/) physics simulator [Go port](https://github.com/ByteArena/box2d)
+* `mujoco`: Implements environments using the [MuJoCo](http://www.mujoco.org/) physics simulator
 
 Each package also defines public constants that determine the physical
 parameters of the `Environment`. For example, `mountaincar.Gravity` is
