@@ -4,6 +4,7 @@ package mujocoenv
 
 // * Leaving the cgo directives in so VSCode doesn't complain, even though
 // * CGO_CFLAGS and CGO_LDFLAGS have been set.
+
 // #cgo CFLAGS: -O2 -I/home/samuel/.mujoco/mujoco200_linux/include -mavx -pthread
 // #cgo LDFLAGS: -L/home/samuel/.mujoco/mujoco200_linux/bin -lmujoco200nogl
 // #include "mujoco.h"
