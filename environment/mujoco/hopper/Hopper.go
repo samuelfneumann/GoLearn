@@ -1,17 +1,5 @@
 package hopper
 
-// TODO: Remove C and unsafe from public API
-
-// * Leaving the cgo directives in so VSCode doesn't complain, even though
-// * CGO_CFLAGS and CGO_LDFLAGS have been set.
-
-// #cgo CFLAGS: -O2 -I/home/samuel/.mujoco/mujoco200_linux/include -mavx -pthread
-// #cgo LDFLAGS: -L/home/samuel/.mujoco/mujoco200_linux/bin -lmujoco200nogl
-// #include "mujoco.h"
-// #include <stdio.h>
-// #include <stdlib.h>
-import "C"
-
 import (
 	"fmt"
 	"math"
@@ -45,6 +33,7 @@ import (
 // ]
 // where +/-Y denotes rotation about the positive or negative Y axis
 // respectively. All features of the state space are unbounded.
+// Velocities are clipped within [-10, 10]
 //
 // Action are continuous and consist of the torque to apply at each of
 // the three movable joints and are bounded between [-1, -1, -1] and
@@ -68,6 +57,7 @@ type Hopper struct {
 	currentTimeStep ts.TimeStep
 }
 
+// New returns a new Hopper environment
 func New(t environment.Task, frameSkip int, seed uint64,
 	discount float64) (environment.Environment, ts.TimeStep, error) {
 	if frameSkip < 0 {
@@ -85,20 +75,23 @@ func New(t environment.Task, frameSkip int, seed uint64,
 		Task:      t,
 		obsLen:    m.Nq - 1 + m.Nv,
 	}
+
+	// Register task with Hopper environment if appropriate
 	_, ok := h.Task.(*Hop)
 	if ok {
 		h.Task.(*Hop).registerHopper(h)
 	}
 
 	firstStep := h.Reset()
-
 	return h, firstStep, nil
 }
 
+// CurrentTimeStep returns the current time step
 func (h *Hopper) CurrentTimeStep() ts.TimeStep {
 	return h.currentTimeStep
 }
 
+// Step takes one environmental step given some action control
 func (h *Hopper) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 	state := mujocoenv.StateVector(h.Data, h.Nq, h.Nv)
 
@@ -121,6 +114,7 @@ func (h *Hopper) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 	return t, last
 }
 
+// getObs returns the current state observation of the environment
 func (h *Hopper) getObs() *mat.VecDense {
 	pos := h.QPos()
 	vel := floatutils.ClipSlice(h.QVel(), -10.0, 10.0)
@@ -128,19 +122,26 @@ func (h *Hopper) getObs() *mat.VecDense {
 	return mat.NewVecDense(h.obsLen, append(pos[1:], vel...))
 }
 
+// Reset resets the environment to some starting state
 func (h *Hopper) Reset() ts.TimeStep {
+	// Reset the embedded base MujocoEnv
 	h.MujocoEnv.Reset()
+
+	// Get and set the starting state for the next episode
 	startVec := h.Start()
 	posStart := startVec.RawVector().Data[:h.Nq]
 	velStart := startVec.RawVector().Data[h.Nq:]
-
 	h.SetState(posStart, velStart)
 
+	// Save the current timestep
 	firstStep := ts.New(ts.First, 0, h.Discount, h.getObs(), 0)
 	h.currentTimeStep = firstStep
+
 	return firstStep
 }
 
+// ObservationSpec returns the observation specification for the
+// Hopper environment
 func (h *Hopper) ObservationSpec() environment.Spec {
 	shape := mat.NewVecDense(h.obsLen, nil)
 	low := make([]float64, h.obsLen)
