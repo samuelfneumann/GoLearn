@@ -212,3 +212,21 @@ func Where(slice []float64, f func(float64) bool) []int {
 	}
 	return indices
 }
+
+// Apply applies f to each element of slice in place
+func Apply(slice []float64, f func(float64) float64) []float64 {
+	for i := range slice {
+		slice[i] = f(slice[i])
+	}
+	return slice
+}
+
+// PreserveApply applies f to each element of a copy of slice; slice
+// itself is not modified.
+func PreserveApply(slice []float64, f func(float64) float64) []float64 {
+	copySlice := make([]float64, len(slice))
+	for i := range slice {
+		copySlice[i] = f(slice[i])
+	}
+	return copySlice
+}

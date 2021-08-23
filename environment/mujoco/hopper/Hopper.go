@@ -51,9 +51,7 @@ import (
 type Hopper struct {
 	*mujocoenv.MujocoEnv
 	environment.Task
-
-	obsLen int
-
+	obsLen          int
 	currentTimeStep ts.TimeStep
 }
 

@@ -60,6 +60,16 @@ package mujocoenv
 //  }
 // return data;
 // }
+//
+// // getBoundingSphereRadius returns the bounding sphere radius for
+// // the body with ID id. If the returned value is not positive, then
+// // an error occurred.
+// double getBoundingSphereRadius(int id, mjModel *mjBodyData) {
+//  if (id > mjBodyData->ngeom) {
+// 	 return -1.0;
+// }
+//  return mjBodyData->geom_rbound[id];
+// }
 import "C"
 
 import (
@@ -283,22 +293,56 @@ func (m *MujocoEnv) Close() {
 	C.mj_deleteData(m.Data)
 }
 
+// ID returns the ID of body with name bodyName
+func (m *MujocoEnv) ID(bodyName string) (int, error) {
+	// Get the body id
+	cBodyName := C.CString(bodyName)
+	defer C.free(unsafe.Pointer(cBodyName))
+	id := int(C.mj_name2id(m.Model, C.mjOBJ_BODY, cBodyName))
+	if id < 0 {
+		return -1, fmt.Errorf("id: could not find body %v",
+			bodyName)
+	}
+
+	return id, nil
+}
+
+// GetBoundingSphereRadius gets the radius of the bounding sphere of
+// the body with name bodyName.
+func (m *MujocoEnv) GetBoundingSphereRadius(bodyName string) (float64,
+	error) {
+	id, err := m.ID(bodyName)
+	if err != nil {
+		return -1, fmt.Errorf("getBoundingSphereRadius: could not find id of "+
+			"body %v", bodyName)
+	}
+
+	radius := float64(C.getBoundingSphereRadius(C.int(id), m.Model))
+	if radius <= 0 {
+		return radius, fmt.Errorf("getBoundingSphereRadius: could not get "+
+			"radius: is there a body named %v?", bodyName)
+	}
+
+	return radius, nil
+}
+
 // GetBodyCentreOfMass returns the cetnre of mass of the body with
 // name bodyName
 func (m *MujocoEnv) GetBodyCentreOfMass(bodyName string) (*mat.VecDense,
 	error) {
-	cBodyName := C.CString(bodyName)
-	defer C.free(unsafe.Pointer(cBodyName))
-	id := C.mj_name2id(m.Model, C.mjOBJ_BODY, cBodyName)
-
-	if id < 0 {
-		return nil, fmt.Errorf("getBodyCentreOfMass: could not find body %v",
-			bodyName)
+	// Get the body id
+	id, err := m.ID(bodyName)
+	if err != nil {
+		return nil, fmt.Errorf("getBodyCentreOfMass: %v", err)
+	} else if id < 0 {
+		return nil, fmt.Errorf("getBodyCentreOfMass: could not find body %v "+
+			"id", bodyName)
 	}
 
-	// here, use a C function to get only the 3 coords then F64SliceC2Go
+	// Convert the coordinates of the body from C to Go
 	var data [3]C.double
-	com := F64SliceC2Go(C.getCentreOfMass(id, m.Data, &data[0]), len(data))
+	com := F64SliceC2Go(C.getCentreOfMass(C.int(id), m.Data, &data[0]),
+		len(data))
 
 	return mat.NewVecDense(len(com), com), nil
 }
