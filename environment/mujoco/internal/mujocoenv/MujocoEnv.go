@@ -7,26 +7,58 @@ package mujocoenv
 
 // #cgo CFLAGS: -O2 -I/home/samuel/.mujoco/mujoco200_linux/include -mavx -pthread
 // #cgo LDFLAGS: -L/home/samuel/.mujoco/mujoco200_linux/bin -lmujoco200nogl
+// #define DIMS 3
 // #include "mujoco.h"
 // #include <stdio.h>
 // #include <stdlib.h>
 //
-// void setQPos(mjData* data, double* positions, int len) {
+// // setQPos sets the position of the simulation body to position,
+// // which has length len. If the returned value is less than 0,
+// // an error occurred.
+// int setQPos(mjData* data, mjModel* model, double* position, int len) {
+// if (len != model->nq) {
+// 	return -1;
+// }
 // for (int i = 0; i < len; i++) {
-// 		*((*data).qpos + i) = *(positions + i);
+// 		*((*data).qpos + i) = *(position + i);
 // 	}
+//  return 1;
 // }
 //
-// void setQVel(mjData* data, double* velocities, int len) {
+// // setQVel sets the velocity of the simulation body to velocity,
+// // which has length len. If the returned value is less than 0,
+// // an error occurred.
+// int setQVel(mjData* data, mjModel *model, double* velocity, int len) {
+// if (len != model->nv) {
+// 	return -1;
+// }
 // 	for (int i = 0; i < len; i++){
-// 		*((*data).qvel + i) = *(velocities + i);
+// 		*((*data).qvel + i) = *(velocity + i);
 // 	}
+// return 1;
 // }
 //
-// void setControl(mjData* data, double* control, int len) {
+// // setControl sets the control of the simulation to control which
+// // has length len. If the returned value is less than 0,
+// // an error occurred.
+// int setControl(mjData* data, mjModel *model, double* control, int len) {
+// if (len != model->nu) {
+// 	return -1;
+// }
 // 	for (int i = 0; i < len; i++){
 // 		*((*data).ctrl + i) = *(control + i);
 // 	}
+// return 1;
+// }
+//
+// // getCentreOfMass gets the centre of mass of the body with ID id
+// // and places the centre of mass coordinates (x, y, z) in data.
+// // mjBodyData is the mjData of the simulation.
+// double* getCentreOfMass(int id, mjData *mjBodyData, double *data) {
+//  for (int i = 0; i < DIMS; i++) {
+// 		*(data + i) = *(mjBodyData->xpos + id + i);
+//  }
+// return data;
 // }
 import "C"
 
@@ -160,8 +192,27 @@ func (m *MujocoEnv) SetState(qpos, qvel []float64) error {
 	}
 
 	// Set the state
-	C.setQPos(m.Data, (*C.double)(unsafe.Pointer(&qpos[0])), C.int(len(qpos)))
-	C.setQVel(m.Data, (*C.double)(unsafe.Pointer(&qvel[0])), C.int(len(qvel)))
+	errCode := C.setQPos(
+		m.Data,
+		m.Model,
+		(*C.double)(unsafe.Pointer(&qpos[0])),
+		C.int(len(qpos)),
+	)
+	if errCode < 0 {
+		return fmt.Errorf("setState: invalid qpos length \n\thave(%v) "+
+			"\n\twant(%v)", len(qpos), m.Nq)
+	}
+
+	errCode = C.setQVel(
+		m.Data,
+		m.Model,
+		(*C.double)(unsafe.Pointer(&qvel[0])),
+		C.int(len(qvel)),
+	)
+	if errCode < 0 {
+		return fmt.Errorf("setState: invalid qvel length \n\thave(%v) "+
+			"\n\twant(%v)", len(qvel), m.Nv)
+	}
 
 	C.mj_forward(m.Model, m.Data)
 	return nil
@@ -180,11 +231,16 @@ func (m *MujocoEnv) DoSimulation(control *mat.VecDense, nFrames int) error {
 	}
 
 	// Set the action
-	// ? Copying the data can be removed, since setControl automatically
-	// ? copies the data itself.
-	action := make([]float64, control.Len())
-	copy(action, control.RawVector().Data)
-	C.setControl(m.Data, (*C.double)(unsafe.Pointer(&action[0])), C.int(len(action)))
+	errCode := C.setControl(
+		m.Data,
+		m.Model,
+		(*C.double)(unsafe.Pointer(&control.RawVector().Data[0])),
+		C.int(control.Len()),
+	)
+	if errCode < 0 {
+		return fmt.Errorf("doSimulation: invalid control length "+
+			"\n\thave(%v) \n\twant(%v)", control.Len(), m.Nu)
+	}
 
 	// Take nFrames simulator steps
 	for i := 0; i < nFrames; i++ {
@@ -225,4 +281,24 @@ func (m *MujocoEnv) ActionSpec() environment.Spec {
 func (m *MujocoEnv) Close() {
 	C.mj_deleteModel(m.Model)
 	C.mj_deleteData(m.Data)
+}
+
+// GetBodyCentreOfMass returns the cetnre of mass of the body with
+// name bodyName
+func (m *MujocoEnv) GetBodyCentreOfMass(bodyName string) (*mat.VecDense,
+	error) {
+	cBodyName := C.CString(bodyName)
+	defer C.free(unsafe.Pointer(cBodyName))
+	id := C.mj_name2id(m.Model, C.mjOBJ_BODY, cBodyName)
+
+	if id < 0 {
+		return nil, fmt.Errorf("getBodyCentreOfMass: could not find body %v",
+			bodyName)
+	}
+
+	// here, use a C function to get only the 3 coords then F64SliceC2Go
+	var data [3]C.double
+	com := F64SliceC2Go(C.getCentreOfMass(id, m.Data, &data[0]), len(data))
+
+	return mat.NewVecDense(len(com), com), nil
 }
