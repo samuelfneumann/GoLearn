@@ -24,6 +24,41 @@ import (
 	"github.com/samuelfneumann/golearn/utils/floatutils"
 )
 
+// Hopper implements the Hopper environment. In this environment, an
+// agent control a "hopper": a creature composed of a single leg. The
+// agent can control three of its joints to hop or move around. The
+// movable joints are the thigh joint, leg join, and foot joint.
+//
+// The state observation space is a vector of 11 components:
+// [
+// 		torso Z position
+//		torso Y orientation
+//		thigh -Y orientation
+//		leg -Y orientation
+//		foot -Y orientation
+//		torso X linear velocity
+//		torso Z linear velocity
+//		torso Y anglular velocity
+//		thigh Y angular velocity
+//		leg Y angular velocity
+//		foot Y angular velocity
+// ]
+// where +/-Y denotes rotation about the positive or negative Y axis
+// respectively. All features of the state space are unbounded.
+//
+// Action are continuous and consist of the torque to apply at each of
+// the three movable joints and are bounded between [-1, -1, -1] and
+// [1, 1, 1] element-wise. Actions outside of this range are dealt with
+// by the MuJoCo physics engine.
+//
+// Hopper satisfies the environment.Environment interface.
+//
+// One major difference between this implementation and the OpenAI Gym
+// implementation is that this implementation allows the user to set
+// the number of frames to skip, whereas OpenAI Gym sets this value to
+// 4 always.
+//
+// See https://gym.openai.com/envs/Hopper-v2/
 type Hopper struct {
 	*mujocoenv.MujocoEnv
 	environment.Task
