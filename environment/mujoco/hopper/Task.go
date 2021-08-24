@@ -173,10 +173,10 @@ func (h *Hop) Start() *mat.VecDense {
 	return mat.NewVecDense(h.env.Nq+h.env.Nv, backing)
 }
 
-// registerHopper registers the Hop task with a Hopper environment.
+// register registers the Hop task with a Hopper environment.
 // This is required since the Hop task needs access to some of the
 // Hopper methods to correctly compute starting and ending states.
-func (h *Hop) registerHopper(env *Hopper) {
+func (h *Hop) register(env *Hopper) {
 	// Track the Hopper environment
 	h.env = env
 

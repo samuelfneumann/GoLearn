@@ -3,10 +3,10 @@
 package mujocoenv
 
 // * Leaving the cgo directives in so VSCode doesn't complain, even though
-// * CGO_CFLAGS and CGO_LDFLAGS have been set.
+// * CGOCFLAGS and CGOLDFLAGS have been set.
 
-// #cgo CFLAGS: -O2 -I/home/samuel/.mujoco/mujoco200_linux/include -mavx -pthread
-// #cgo LDFLAGS: -L/home/samuel/.mujoco/mujoco200_linux/bin -lmujoco200nogl
+// #cgo CFLAGS: -O2 -I/home/samuel/.mujoco/mujoco200linux/include -mavx -pthread
+// #cgo LDFLAGS: -L/home/samuel/.mujoco/mujoco200linux/bin -lmujoco200nogl
 // #define DIMS 3
 // #include "mujoco.h"
 // #include <stdio.h>
@@ -51,24 +51,44 @@ package mujocoenv
 // return 1;
 // }
 //
-// // getCentreOfMass gets the centre of mass of the body with ID id
+// // getBodyXPos gets the centre of mass of the body with ID id
 // // and places the centre of mass coordinates (x, y, z) in data.
 // // mjBodyData is the mjData of the simulation.
-// double* getCentreOfMass(int id, mjData *mjBodyData, double *data) {
+// double* getBodyXPos(int id, mjData *mjBodyData, double *data) {
 //  for (int i = 0; i < DIMS; i++) {
-// 		*(data + i) = *(mjBodyData->xpos + id + i);
+// 		*(data + i) = mjBodyData->xpos[id * DIMS + i];
 //  }
 // return data;
 // }
 //
 // // getBoundingSphereRadius returns the bounding sphere radius for
-// // the body with ID id. If the returned value is not positive, then
+// // the geom with ID id. If the returned value is not positive, then
 // // an error occurred.
 // double getBoundingSphereRadius(int id, mjModel *mjBodyData) {
 //  if (id > mjBodyData->ngeom) {
 // 	 return -1.0;
 // }
 //  return mjBodyData->geom_rbound[id];
+// }
+//
+// int getGeomSize(int id, mjModel *model, double *data, int len) {
+//  if (id > model->ngeom || len != DIMS) {
+// 	 return -1;
+//  }
+//  for (int i = 0; i < DIMS; i++) {
+//		*(data + i) = *(model->geom_size + (id * DIMS + i));
+//  }
+//  return 1;
+// }
+//
+// int getGeomXPos(int id, mjModel *model, mjData *data, double *pos, int len) {
+//  if (id > model->ngeom || len != DIMS) {
+// 	 return -1;
+//  }
+//  for (int i = 0; i < DIMS; i++) {
+//		*(pos + i) = *(data->geom_xpos + (id * DIMS + i));
+//  }
+//  return 1;
 // }
 import "C"
 
@@ -80,6 +100,35 @@ import (
 
 	"github.com/samuelfneumann/golearn/environment"
 	"gonum.org/v1/gonum/mat"
+)
+
+type MjObjType int
+
+const (
+	MjObjUnknown  MjObjType = iota // unknown object type
+	MjObjBody                      // body
+	MjObjXBody                     // body, used to access regular frame instead of i-frame
+	MjObjJoint                     // joint
+	MjObjDof                       // dof
+	MjObjGeom                      // geom
+	MjObjSite                      // site
+	MjObjCamera                    // camera
+	MjObjLight                     // light
+	MjObjMesh                      // mesh
+	MjObjSkin                      // skin
+	MjObjHField                    // heightfield
+	MjObjTexture                   // texture
+	MjObjMaterial                  // material for rendering
+	MjObjPait                      // geom pair to include
+	MjObjExclude                   // body pair to exclude
+	MjObjEquality                  // equality constraint
+	MjObjTendon                    // tendon
+	MjObjActuator                  // actuator
+	MjObjSensor                    // sensor
+	MjObjNumeric                   // numeric
+	MjObjText                      // text
+	MjObjTuple                     // tuple
+	MjObjKey                       // keyframe
 )
 
 // init performs setup before the package can be run by initialziing
@@ -293,56 +342,102 @@ func (m *MujocoEnv) Close() {
 	C.mj_deleteData(m.Data)
 }
 
-// ID returns the ID of body with name bodyName
-func (m *MujocoEnv) ID(bodyName string) (int, error) {
+// ID returns the ID of object with name name
+func (m *MujocoEnv) ID(name string, objType MjObjType) (int, error) {
 	// Get the body id
-	cBodyName := C.CString(bodyName)
-	defer C.free(unsafe.Pointer(cBodyName))
-	id := int(C.mj_name2id(m.Model, C.mjOBJ_BODY, cBodyName))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	id := int(C.mj_name2id(m.Model, C.int(objType), cName))
 	if id < 0 {
 		return -1, fmt.Errorf("id: could not find body %v",
-			bodyName)
+			name)
 	}
 
 	return id, nil
 }
 
-// GetBoundingSphereRadius gets the radius of the bounding sphere of
-// the body with name bodyName.
-func (m *MujocoEnv) GetBoundingSphereRadius(bodyName string) (float64,
-	error) {
-	id, err := m.ID(bodyName)
+// GeomBoundingSphereRadius gets the radius of the bounding sphere of
+// the geom with argument name
+func (m *MujocoEnv) GeomBoundingSphereRadius(name string) (float64, error) {
+	id, err := m.ID(name, MjObjGeom)
 	if err != nil {
-		return -1, fmt.Errorf("getBoundingSphereRadius: could not find id of "+
-			"body %v", bodyName)
+		return -1.0, fmt.Errorf("getBoundingSphereRadius: could not find id of "+
+			"body %v", name)
 	}
 
 	radius := float64(C.getBoundingSphereRadius(C.int(id), m.Model))
 	if radius <= 0 {
 		return radius, fmt.Errorf("getBoundingSphereRadius: could not get "+
-			"radius: is there a body named %v?", bodyName)
+			"radius: is there a body named %v?", name)
 	}
 
 	return radius, nil
 }
 
-// GetBodyCentreOfMass returns the cetnre of mass of the body with
+// GeomXPos returns the global position of the geom with the argument
+// name
+func (m *MujocoEnv) GeomXPos(name string) (*mat.VecDense, error) {
+	id, err := m.ID(name, MjObjGeom)
+	if err != nil {
+		return nil, fmt.Errorf("getBoundingSphereRadius: could not find id of "+
+			"geom %v", name)
+	}
+
+	data := make([]float64, 3)
+	errCode := int(C.getGeomXPos(C.int(id), m.Model, m.Data,
+		(*C.double)(&data[0]), C.int(len(data))))
+	if errCode < 0 {
+		return nil, fmt.Errorf("geomXPos: could not compute position for "+
+			"geom %v - does a geom with that name exist?", name)
+	}
+
+	if len(data) != 3 {
+		return nil, fmt.Errorf("geomXPos: position should be 3-dimensional, "+
+			"got (%v)", len(data))
+	}
+
+	fmt.Println(name, data)
+	return mat.NewVecDense(len(data), data), nil
+}
+
+// GeomSize returns the size of the geom with the argument name in
+// 3-dimensional coordinates
+func (m *MujocoEnv) GeomSize(name string) ([]float64, error) {
+	id, err := m.ID(name, MjObjGeom)
+	if err != nil {
+		return nil, fmt.Errorf("getBoundingSphereRadius: could not find id of "+
+			"geom %v", name)
+	}
+
+	data := make([]float64, 3)
+	// ! May need to F64SliceC2Go this?
+	errCode := int(C.getGeomSize(C.int(id), m.Model, (*C.double)(&data[0]),
+		C.int(len(data))))
+	if errCode < 0 {
+		return data, fmt.Errorf("size: could not compute size for geom %v - "+
+			"does a geom with that name exist?", name)
+	}
+
+	return data, nil
+}
+
+// BodyCentreOfMass returns the global position of the body with
 // name bodyName
-func (m *MujocoEnv) GetBodyCentreOfMass(bodyName string) (*mat.VecDense,
+func (m *MujocoEnv) BodyXPos(bodyName string) (*mat.VecDense,
 	error) {
 	// Get the body id
-	id, err := m.ID(bodyName)
+	id, err := m.ID(bodyName, MjObjBody)
 	if err != nil {
-		return nil, fmt.Errorf("getBodyCentreOfMass: %v", err)
+		return nil, fmt.Errorf("bodyCentreOfMass: %v", err)
 	} else if id < 0 {
-		return nil, fmt.Errorf("getBodyCentreOfMass: could not find body %v "+
+		return nil, fmt.Errorf("bodyCentreOfMass: could not find body %v "+
 			"id", bodyName)
 	}
 
 	// Convert the coordinates of the body from C to Go
 	var data [3]C.double
-	com := F64SliceC2Go(C.getCentreOfMass(C.int(id), m.Data, &data[0]),
+	pos := F64SliceC2Go(C.getBodyXPos(C.int(id), m.Data, &data[0]),
 		len(data))
 
-	return mat.NewVecDense(len(com), com), nil
+	return mat.NewVecDense(len(pos), pos), nil
 }

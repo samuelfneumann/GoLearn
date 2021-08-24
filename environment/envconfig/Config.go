@@ -14,6 +14,7 @@ import (
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/pendulum"
 	"github.com/samuelfneumann/golearn/environment/gridworld"
 	"github.com/samuelfneumann/golearn/environment/mujoco/hopper"
+	"github.com/samuelfneumann/golearn/environment/mujoco/reacher"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/spatial/r1"
@@ -32,6 +33,7 @@ const (
 	Gridworld   EnvName = "Gridworld"
 	LunarLander EnvName = "LunarLander"
 	Hopper      EnvName = "Hopper"
+	Reacher     EnvName = "Reacher"
 )
 
 // TaskName stores the tasks that can be configured with this package.
@@ -54,6 +56,7 @@ const (
 	Balance TaskName = "Balance"
 	Land    TaskName = "Land"
 	Hop     TaskName = "Hop"
+	Reach   TaskName = "Reach"
 )
 
 // Config implements a specific configuration of a specific environment
@@ -126,6 +129,13 @@ func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
 			panic("createEnv: hopper must have continuous actions")
 		}
 		e, step = CreateHopper(c.ContinuousActions, c.Task,
+			int(c.EpisodeCutoff), seed, c.Discount)
+
+	case Reacher:
+		if !c.ContinuousActions {
+			panic("createEnv: reacher must have continuous actions")
+		}
+		e, step = CreateReacher(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	default:
@@ -328,6 +338,9 @@ func CreateLunarLander(continuousActions bool, taskName TaskName,
 	return lunarlander.NewDiscrete(task, discount, seed)
 }
 
+// CreateHopper is a factory for creating the Hopper
+// environment with default physical parameters and default task
+// parameters.
 func CreateHopper(continuousActions bool, taskName TaskName,
 	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
 	var task env.Task
@@ -343,6 +356,30 @@ func CreateHopper(continuousActions bool, taskName TaskName,
 	env, firstStep, err := hopper.New(task, 1, seed, discount)
 	if err != nil {
 		panic(fmt.Sprintf("createHopper: could not create environment: %v",
+			err))
+	}
+
+	return env, firstStep
+}
+
+// CreateReacher is a factory for creating the Reacher
+// environment with default physical parameters and default task
+// parameters.
+func CreateReacher(continuousActions bool, taskName TaskName,
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	var task env.Task
+	switch taskName {
+	case Reach:
+		task = reacher.NewReach(seed, cutoff)
+
+	default:
+		panic(fmt.Sprintf("createReacher: Reacher environment has "+
+			"no task %v", taskName))
+	}
+
+	env, firstStep, err := reacher.New(task, 2, seed, discount)
+	if err != nil {
+		panic(fmt.Sprintf("createReacher: could not create environment: %v",
 			err))
 	}
 

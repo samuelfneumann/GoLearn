@@ -77,7 +77,7 @@ func New(t environment.Task, frameSkip int, seed uint64,
 	// Register task with Hopper environment if appropriate
 	_, ok := h.Task.(*Hop)
 	if ok {
-		h.Task.(*Hop).registerHopper(h)
+		h.Task.(*Hop).register(h)
 	}
 
 	firstStep := h.Reset()

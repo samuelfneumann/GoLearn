@@ -17,6 +17,12 @@ import (
 // * For the tuples (S A R S'), R is calculated based on the distance of
 // * S from the target. This codebase computes the reward based on the
 // * distance between S' and the target, which is the correct implementation.
+// *
+// * Another thing: actions are clipped to stay within their legal bounds
+// * before being sent to the simulator, but rewards are constructed based
+// * on the unclipped actions. Otherwise, the simulator's internal state
+// * could contain NaN values. This "glitch" is also present in OpenAI gym,
+// * but they leave it up to the agent to perform the clipping instead.
 type Reacher struct {
 	*mujocoenv.MujocoEnv
 	environment.Task
@@ -28,12 +34,12 @@ func New(t environment.Task, frameSkip int, seed uint64,
 	discount float64) (environment.Environment, ts.TimeStep, error) {
 	if frameSkip < 0 {
 		return nil, ts.TimeStep{},
-			fmt.Errorf("newHopper: frameSkip should be positive")
+			fmt.Errorf("newReacher: frameSkip should be positive")
 	}
-	m, err := mujocoenv.NewMujocoEnv("hopper.xml", frameSkip, seed,
+	m, err := mujocoenv.NewMujocoEnv("reacher.xml", frameSkip, seed,
 		discount)
 	if err != nil {
-		return nil, ts.TimeStep{}, fmt.Errorf("newHopper: %v", err)
+		return nil, ts.TimeStep{}, fmt.Errorf("newReacher: %v", err)
 	}
 
 	r := &Reacher{
@@ -42,19 +48,19 @@ func New(t environment.Task, frameSkip int, seed uint64,
 		obsLen:    m.Nq + 7,
 	}
 
+	reach, ok := t.(*Reach)
+	if ok {
+		reach.register(r)
+	}
+
 	firstStep := r.Reset()
 	return r, firstStep, nil
 }
 
-// Argument action is modified!
+// ! Clipping action causes it to no longer produce warning...
 func (r *Reacher) Step(action *mat.VecDense) (ts.TimeStep, bool) {
-	// distance, err := r.fingerToTargetDistance()
-	// if err != nil {
-	// 	panic(fmt.Sprintf("step: could not get distance to target: %v", err))
-	// }
-
 	// Get the state
-	state, err := r.GetBodyCentreOfMass("fingertip")
+	state, err := r.BodyXPos("fingertip")
 	if err != nil {
 		panic(fmt.Sprintf("step: could not get fingertip centre of mass "+
 			"for state calculation: %v",
@@ -62,8 +68,9 @@ func (r *Reacher) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 	}
 
 	// Run simulation, then get the next state
-	r.DoSimulation(action, r.FrameSkip)
-	nextState, err := r.GetBodyCentreOfMass("fingertip")
+	newAction := r.clipAction(action)
+	r.DoSimulation(newAction, r.FrameSkip)
+	nextState, err := r.BodyXPos("fingertip")
 	if err != nil {
 		panic(fmt.Sprintf("step: could not get fingertip centre of mass "+
 			"for next state calculation: %v",
@@ -77,13 +84,32 @@ func (r *Reacher) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 			err))
 	}
 
-	t := ts.New(ts.Mid, reward, r.Discount, obs, r.currentTimeStep.Number+1)
+	t := ts.New(ts.Mid, reward, r.Discount, obs, r.CurrentTimeStep().Number+1)
+	r.currentTimeStep = t
 	done := r.End(&t)
 
 	return t, done
 
 }
 
+// clipAction returns a copy of the argument action which is clipped to
+// be within the action bounds of the environment.
+func (r *Reacher) clipAction(action *mat.VecDense) *mat.VecDense {
+	spec := r.ActionSpec()
+	min := spec.LowerBound
+	max := spec.UpperBound
+
+	clipped := mat.VecDenseCopyOf(action)
+
+	for i := 0; i < clipped.Len(); i++ {
+		clipped.SetVec(i, floatutils.Clip(clipped.AtVec(i), min.AtVec(i),
+			max.AtVec(i)))
+	}
+
+	return clipped
+}
+
+// ! WARNING: Unknown warining type Time = X.XXXX is from resetting!
 // Reset resets the environment to some starting state
 func (r *Reacher) Reset() ts.TimeStep {
 	// Reset the embedded base MujocoEnv
@@ -91,12 +117,8 @@ func (r *Reacher) Reset() ts.TimeStep {
 
 	// Get and set the starting state for the next episode
 	startVec := r.Start()
-	posStart := startVec.RawVector().Data[:r.Nq] // ! This should have last two elements being the goal state position
-	velStart := startVec.RawVector().Data[r.Nq:] // ! This should have last two elements being the goal state velocity
-
-	// Goal should not be moving
-	velStart[len(velStart)-1] = 0.0
-	velStart[len(velStart)-2] = 0.0
+	posStart := startVec.RawVector().Data[:r.Nq]
+	velStart := startVec.RawVector().Data[r.Nq:]
 
 	r.SetState(posStart, velStart)
 
@@ -108,6 +130,9 @@ func (r *Reacher) Reset() ts.TimeStep {
 	firstStep := ts.New(ts.First, 0, r.Discount, obs, 0)
 	r.currentTimeStep = firstStep
 
+	// fmt.Println("\n", posStart, velStart)
+	// fmt.Println()
+
 	return firstStep
 }
 
@@ -116,13 +141,13 @@ func (r *Reacher) CurrentTimeStep() ts.TimeStep {
 	return r.currentTimeStep
 }
 
-func (r *Reacher) fingerToTargetDistance() ([]float64, error) {
-	centreOfMassFinger, err := r.GetBodyCentreOfMass("fingertip")
+func (r *Reacher) fingerToTargetVector() ([]float64, error) {
+	centreOfMassFinger, err := r.BodyXPos("fingertip")
 	if err != nil {
 		return nil, fmt.Errorf("fingerToTargetDistance: could not get "+
 			"fingertip centre of mass: %v", err)
 	}
-	centreOfMassTarget, err := r.GetBodyCentreOfMass("target")
+	centreOfMassTarget, err := r.BodyXPos("target")
 	if err != nil {
 		return nil, fmt.Errorf("fingerToTargetDistance: could not get "+
 			"target centre of mass: %v", err)
@@ -139,7 +164,7 @@ func (r *Reacher) getObs() (*mat.VecDense, error) {
 	pos := r.QPos()
 	vel := r.QVel()
 
-	distance, err := r.fingerToTargetDistance()
+	distance, err := r.fingerToTargetVector()
 	if err != nil {
 		return nil, fmt.Errorf("getObs: %v", err)
 	}
