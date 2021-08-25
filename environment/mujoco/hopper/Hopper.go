@@ -1,3 +1,9 @@
+// Package hopper implements the Hopper environment. This environment
+// is conceptually similar to the Hopper-v2 environment of OpenAI Gym,
+// which can be found at https://gym.openai.com/envs/Hopper-v2/.
+// Major differences between this implementation and the OpenAI Gym
+// implementation can be found in the documentation comment for
+// the Hopper struct.
 package hopper
 
 import (
