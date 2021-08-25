@@ -6,6 +6,7 @@ import (
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/timestep"
+	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -67,9 +68,13 @@ type AverageReward struct {
 // registered learner as the update target or not. If false, then the
 // environmental reward is used as the average reward update target.
 func NewAverageReward(env environment.Environment, init, learningRate float64,
-	useTDError bool) (*AverageReward, timestep.TimeStep) {
+	useTDError bool) (*AverageReward, timestep.TimeStep, error) {
 	// Get the first step from the embedded environment
-	step := env.Reset()
+	step, err := env.Reset()
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newAverageReward: could not "+
+			"reset wrapped environment: %v", err)
+	}
 
 	// AverageReward does not use discounting
 	step.Discount = 1.0
@@ -82,20 +87,23 @@ func NewAverageReward(env environment.Environment, init, learningRate float64,
 	averageR := &AverageReward{env, init, learningRate, useTDError, nil, step,
 		secondLastStep, nil}
 
-	return averageR, step
+	return averageR, step, nil
 }
 
 // Reset resets the environment and returns a starting state drawn from
 // the environment Starter
-func (a *AverageReward) Reset() timestep.TimeStep {
-	step := a.Environment.Reset()
+func (a *AverageReward) Reset() (timestep.TimeStep, error) {
+	step, err := a.Environment.Reset()
+	if err != nil {
+		return ts.TimeStep{}, err
+	}
 	step.Discount = 1.0
 
 	a.lastStep = step
 	a.secondLastStep = timestep.TimeStep{}
 	a.lastAction = nil
 
-	return step
+	return step, nil
 
 }
 
@@ -115,17 +123,22 @@ func (a *AverageReward) Register(l agent.Learner) {
 // Step takes one environmental step given action a and returns the next
 // timestep as a timestep.TimeStep and a bool indicating whether or not
 // the episode has ended.
-func (a *AverageReward) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
+func (a *AverageReward) Step(action *mat.VecDense) (timestep.TimeStep, bool,
+	error) {
 	// If using the TD error to update the average reward estimate, then
 	// Register() must have been called first.
 	if a.learner == nil && a.useTDError {
-		panic("when using the TD error to update the average reward, " +
-			"a learner must first be registered using the Register() method.")
+		return ts.TimeStep{}, true, fmt.Errorf("step: when using the TD " +
+			"error to update the average reward, a learner must first be " +
+			"registered using the Register() method.")
 	}
 
 	// Take a step in the embedded environment
 	// step will be the TimeStep with S_{t+1} and R_{t} for action A_{t}
-	step, _ := a.Environment.Step(action)
+	step, _, err := a.Environment.Step(action)
+	if err != nil {
+		return ts.TimeStep{}, true, err
+	}
 
 	// Update avgReward_{t-1} -> avgReward_{t}
 	if a.useTDError && !a.lastStep.First() {
@@ -157,7 +170,7 @@ func (a *AverageReward) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 
 	// Return the next state S_{t+1} and Reward R_{t} for taking Action A_{t}
 	// in state S_{t}
-	return step, step.Last()
+	return step, step.Last(), nil
 }
 
 // DiscountSpec returns the discount specification for the environment

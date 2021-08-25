@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/mountaincar"
@@ -12,6 +11,7 @@ import (
 	"github.com/samuelfneumann/golearn/experiment"
 	"github.com/samuelfneumann/golearn/experiment/tracker"
 	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 func QlearningMountainCar() {
@@ -33,7 +33,10 @@ func QlearningMountainCar() {
 
 	// Create the Mountain Car environment
 	discount := 1.0
-	env, _ := mountaincar.NewDiscrete(task, discount)
+	env, _, err := mountaincar.NewDiscrete(task, discount)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println(env)
 
 	// To use Linear Q-learning, we need to tile code the environment
@@ -51,7 +54,10 @@ func QlearningMountainCar() {
 	for i := len(tilings) / 2; i < len(tilings); i++ {
 		tilings[i] = []int{3, 3}
 	}
-	tm, _ := wrappers.NewTileCoding(env, tilings, seed)
+	tm, _, err := wrappers.NewTileCoding(env, tilings, seed)
+	if err != nil {
+		panic(err)
+	}
 
 	// Create the Q-learning algorithm. First, we defined an initialization
 	// method for the Linear Q-learning algorithm's weights.

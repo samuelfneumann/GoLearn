@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/box2d/lunarlander"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
 	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 func BenchmarkIndexTileCoderLunarLanderAgentStep(b *testing.B) {
@@ -21,7 +21,10 @@ func BenchmarkIndexTileCoderLunarLanderAgentStep(b *testing.B) {
 	}, seed)
 	task := lunarlander.NewLand(s, 250)
 	discount := 1.0
-	env, _ := lunarlander.NewDiscrete(task, discount, seed)
+	env, _, err := lunarlander.NewDiscrete(task, discount, seed)
+	if err != nil {
+		b.Error(err)
+	}
 
 	// Set up the index tile coding environment
 	numTilings := 5
@@ -29,7 +32,10 @@ func BenchmarkIndexTileCoderLunarLanderAgentStep(b *testing.B) {
 	for i := 0; i < len(tilings); i++ {
 		tilings[i] = []int{4, 4, 4, 4, 4, 4, 4, 4}
 	}
-	tm, step := wrappers.NewIndexTileCoding(env, tilings, seed)
+	tm, step, err := wrappers.NewIndexTileCoding(env, tilings, seed)
+	if err != nil {
+		b.Error(err)
+	}
 
 	// Create the QLearning agent
 	args := Config{Epsilon: 0.25, LearningRate: 0.01}
@@ -43,7 +49,10 @@ func BenchmarkIndexTileCoderLunarLanderAgentStep(b *testing.B) {
 	// Observe the first environment transition
 	q.ObserveFirst(step)
 	a := q.SelectAction(step)
-	step, _ = tm.Step(a)
+	step, _, err = tm.Step(a)
+	if err != nil {
+		b.Error(err)
+	}
 	q.Observe(a, step)
 
 	// Evaluate the stepping time of the agent

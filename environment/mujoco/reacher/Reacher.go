@@ -97,18 +97,20 @@ func New(t environment.Task, frameSkip int, seed uint64,
 		reach.register(r)
 	}
 
-	firstStep := r.Reset()
+	firstStep, err := r.Reset()
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newReacher: %v", err)
+	}
 	return r, firstStep, nil
 }
 
 // Step takes one environmental step given some action
-func (r *Reacher) Step(action *mat.VecDense) (ts.TimeStep, bool) {
+func (r *Reacher) Step(action *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Get the state
 	state, err := r.BodyXPos("fingertip")
 	if err != nil {
-		panic(fmt.Sprintf("step: could not get fingertip centre of mass "+
-			"for state calculation: %v",
-			err))
+		return ts.TimeStep{}, true, fmt.Errorf("step: could not get "+
+			"fingertip centre of mass for state calculation: %v", err)
 	}
 
 	// Run simulation, then get the next state
@@ -116,23 +118,22 @@ func (r *Reacher) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 	r.DoSimulation(newAction, r.FrameSkip)
 	nextState, err := r.BodyXPos("fingertip")
 	if err != nil {
-		panic(fmt.Sprintf("step: could not get fingertip centre of mass "+
-			"for next state calculation: %v",
-			err))
+		return ts.TimeStep{}, true, fmt.Errorf("step: could not get "+
+			"fingertip centre of mass for next state calculation: %v", err)
 	}
 	reward := r.GetReward(state, action, nextState)
 
 	obs, err := r.getObs()
 	if err != nil {
-		panic(fmt.Sprintf("step: could not get next state observation: %v",
-			err))
+		return ts.TimeStep{}, true, fmt.Errorf("step: could not get next "+
+			"state observation: %v", err)
 	}
 
 	t := ts.New(ts.Mid, reward, r.Discount, obs, r.CurrentTimeStep().Number+1)
 	r.currentTimeStep = t
 	done := r.End(&t)
 
-	return t, done
+	return t, done, nil
 
 }
 
@@ -154,7 +155,7 @@ func (r *Reacher) clipAction(action *mat.VecDense) *mat.VecDense {
 }
 
 // Reset resets the environment to begin a new episode
-func (r *Reacher) Reset() ts.TimeStep {
+func (r *Reacher) Reset() (ts.TimeStep, error) {
 	// Reset the embedded base MujocoEnv
 	r.MujocoEnv.Reset()
 
@@ -163,17 +164,21 @@ func (r *Reacher) Reset() ts.TimeStep {
 	posStart := startVec.RawVector().Data[:r.Nq]
 	velStart := startVec.RawVector().Data[r.Nq:]
 
-	r.SetState(posStart, velStart)
+	err := r.SetState(posStart, velStart)
+	if err != nil {
+		return ts.TimeStep{}, fmt.Errorf("reset: %v", err)
+	}
 
 	// Save the current timestep
 	obs, err := r.getObs()
 	if err != nil {
-		panic(fmt.Sprintf("reset: could not get state observation: %v", err))
+		return ts.TimeStep{}, fmt.Errorf("reset: could not get starting "+
+			"state observation: %v", err)
 	}
 	firstStep := ts.New(ts.First, 0, r.Discount, obs, 0)
 	r.currentTimeStep = firstStep
 
-	return firstStep
+	return firstStep, nil
 }
 
 // CurrentTimeStep returns the current time step

@@ -86,7 +86,10 @@ func New(t environment.Task, frameSkip int, seed uint64,
 		h.Task.(*Hop).register(h)
 	}
 
-	firstStep := h.Reset()
+	firstStep, err := h.Reset()
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newHopper: %v", err)
+	}
 	return h, firstStep, nil
 }
 
@@ -96,13 +99,13 @@ func (h *Hopper) CurrentTimeStep() ts.TimeStep {
 }
 
 // Step takes one environmental step given some action control
-func (h *Hopper) Step(action *mat.VecDense) (ts.TimeStep, bool) {
+func (h *Hopper) Step(action *mat.VecDense) (ts.TimeStep, bool, error) {
 	state := mujocoenv.StateVector(h.Data, h.Nq, h.Nv)
 
 	// Set the action
 	if action.Len() != h.Nu {
-		panic(fmt.Sprintf("step: invalid number of action dimensions \n\t"+
-			"have(%v) \n\twant(%v)", action.Len(), h.Nu))
+		return ts.TimeStep{}, true, fmt.Errorf("step: invalid number of "+
+			"action dimensions \n\thave(%v) \n\twant(%v)", action.Len(), h.Nu)
 	}
 
 	h.DoSimulation(action, h.FrameSkip)
@@ -115,7 +118,7 @@ func (h *Hopper) Step(action *mat.VecDense) (ts.TimeStep, bool) {
 	last := h.End(&t)
 	h.currentTimeStep = t
 
-	return t, last
+	return t, last, nil
 }
 
 // getObs returns the current state observation of the environment
@@ -127,7 +130,7 @@ func (h *Hopper) getObs() *mat.VecDense {
 }
 
 // Reset resets the environment to some starting state
-func (h *Hopper) Reset() ts.TimeStep {
+func (h *Hopper) Reset() (ts.TimeStep, error) {
 	// Reset the embedded base MujocoEnv
 	h.MujocoEnv.Reset()
 
@@ -135,13 +138,16 @@ func (h *Hopper) Reset() ts.TimeStep {
 	startVec := h.Start()
 	posStart := startVec.RawVector().Data[:h.Nq]
 	velStart := startVec.RawVector().Data[h.Nq:]
-	h.SetState(posStart, velStart)
+	err := h.SetState(posStart, velStart)
+	if err != nil {
+		return ts.TimeStep{}, fmt.Errorf("reset: %v", err)
+	}
 
 	// Save the current timestep
 	firstStep := ts.New(ts.First, 0, h.Discount, h.getObs(), 0)
 	h.currentTimeStep = firstStep
 
-	return firstStep
+	return firstStep, nil
 }
 
 // ObservationSpec returns the observation specification for the

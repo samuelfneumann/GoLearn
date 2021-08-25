@@ -1,6 +1,8 @@
 package acrobot
 
 import (
+	"fmt"
+
 	"github.com/samuelfneumann/golearn/environment"
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
@@ -45,10 +47,14 @@ type Continuous struct {
 }
 
 // NewDiscrete returns a new Acrobot environment with continuous actions
-func NewContinuous(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
-	acrobot, firstStep := newBase(t, discount)
+func NewContinuous(t env.Task, discount float64) (env.Environment, ts.TimeStep,
+	error) {
+	acrobot, firstStep, err := newBase(t, discount)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newContinuous: %v", err)
+	}
 
-	return &Continuous{acrobot}, firstStep
+	return &Continuous{acrobot}, firstStep, nil
 }
 
 // ActionSpec returns the action specification of the environment
@@ -67,10 +73,11 @@ func (d *Continuous) ActionSpec() environment.Spec {
 // torque applied to the acrobot's fixed base. Action are bounded
 // by [MinContinuousAction, MaxContinuousAction]. Actions outside
 // this range will cause the environment to panic.
-func (d *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+func (d *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
+		return ts.TimeStep{}, true, fmt.Errorf("Actions should be " +
+			"1-dimensional")
 	}
 
 	// Calculate the torque applied
@@ -78,8 +85,13 @@ func (d *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 		MaxContinuousAction)
 
 	// Calculate the next state given the force/action
-	newState := d.nextState(torque)
+	newState, err := d.nextState(torque)
+	if err != nil {
+		return ts.TimeStep{}, true, fmt.Errorf("step: could not calculate "+
+			"next state: %v", err)
+	}
 
 	// Update embedded base Acrobot environment
-	return d.update(a, newState)
+	nextStep, done := d.update(a, newState)
+	return nextStep, done, nil
 }

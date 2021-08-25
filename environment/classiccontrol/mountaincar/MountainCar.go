@@ -64,19 +64,22 @@ type base struct {
 }
 
 // newBase creates a new base environment with the argument task
-func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
+func newBase(t env.Task, discount float64) (*base, ts.TimeStep, error) {
 	positionBounds := r1.Interval{Min: MinPosition, Max: MaxPosition}
 	speedBounds := r1.Interval{Min: -MaxSpeed, Max: MaxSpeed}
 
 	state := t.Start()
-	validateState(state, positionBounds, speedBounds)
+	err := validateState(state, positionBounds, speedBounds)
+	if err != nil {
+		return nil, ts.TimeStep{}, err
+	}
 
 	firstStep := ts.New(ts.First, 0.0, discount, state, 0)
 
 	mountainCar := base{t, positionBounds, speedBounds, firstStep,
 		discount, Power, Gravity}
 
-	return &mountainCar, firstStep
+	return &mountainCar, firstStep, nil
 
 }
 
@@ -111,13 +114,16 @@ func (m *base) DiscountSpec() env.Spec {
 
 // Reset resets the environment and returns a starting state drawn from
 // the environment Starter
-func (m *base) Reset() ts.TimeStep {
+func (m *base) Reset() (ts.TimeStep, error) {
 	state := m.Start()
-	validateState(state, m.positionBounds, m.speedBounds)
+	err := validateState(state, m.positionBounds, m.speedBounds)
+	if err != nil {
+		return ts.TimeStep{}, fmt.Errorf("reset: %v", err)
+	}
 	startStep := ts.New(ts.First, 0, m.discount, state, 0)
 	m.lastStep = startStep
 
-	return startStep
+	return startStep, nil
 }
 
 // NextState calculates the next state in the environment given action a
@@ -241,16 +247,17 @@ func calculateRow(xIndices, width int) string {
 // validateState validates the state to ensure the position and speed
 // are within the environmental limits
 func validateState(s mat.Vector, positionBounds,
-	speedBounds r1.Interval) {
+	speedBounds r1.Interval) error {
 	position := s.AtVec(0)
 	if position < positionBounds.Min || position > positionBounds.Max {
-		panic(fmt.Sprintf("illegal position %v \u2209 [%v, %v]", position,
-			positionBounds.Min, positionBounds.Max))
+		return fmt.Errorf("illegal position %v \u2209 [%v, %v]", position,
+			positionBounds.Min, positionBounds.Max)
 	}
 
 	speed := s.AtVec(1)
 	if speed < speedBounds.Min || speed > speedBounds.Max {
-		panic(fmt.Sprintf("illegal speed %v \u2209 [%v, %v]", speed,
-			speedBounds.Min, speedBounds.Max))
+		return fmt.Errorf("illegal speed %v \u2209 [%v, %v]", speed,
+			speedBounds.Min, speedBounds.Max)
 	}
+	return nil
 }

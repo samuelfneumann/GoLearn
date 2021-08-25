@@ -77,7 +77,7 @@ type base struct {
 }
 
 // New constructs a new base Cartpole environment
-func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
+func newBase(t env.Task, discount float64) (*base, ts.TimeStep, error) {
 	positionBounds := r1.Interval{Min: -PositionBounds, Max: PositionBounds}
 	speedBounds := r1.Interval{Min: -SpeedBounds, Max: SpeedBounds}
 	angleBounds := r1.Interval{Min: -AngleBounds, Max: AngleBounds}
@@ -86,8 +86,11 @@ func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 
 	// Get the first state
 	state := t.Start()
-	validateState(state, positionBounds, speedBounds, angleBounds,
+	err := validateState(state, positionBounds, speedBounds, angleBounds,
 		angularVelocityBounds)
+	if err != nil {
+		return nil, ts.TimeStep{}, err
+	}
 
 	// Construct first timestep
 	firstStep := ts.New(ts.First, 0.0, discount, state, 0)
@@ -96,7 +99,7 @@ func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 		HalfPoleLength, CartMass, Dt, positionBounds, speedBounds, angleBounds,
 		angularVelocityBounds}
 
-	return &cartpole, firstStep
+	return &cartpole, firstStep, nil
 }
 
 // CurrentTimeStep returns the last TimeStep that occurred in the
@@ -107,15 +110,18 @@ func (b *base) CurrentTimeStep() ts.TimeStep {
 
 // Reset resets the environment and returns a starting state drawn from
 // the environment Starter
-func (c *base) Reset() ts.TimeStep {
+func (c *base) Reset() (ts.TimeStep, error) {
 	state := c.Start()
-	validateState(state, c.positionBounds, c.speedBounds, c.angleBounds,
+	err := validateState(state, c.positionBounds, c.speedBounds, c.angleBounds,
 		c.angularVelocityBounds)
+	if err != nil {
+		return ts.TimeStep{}, fmt.Errorf("reset: %v", err)
+	}
 
 	startStep := ts.New(ts.First, 0, c.discount, state, 0)
 	c.lastStep = startStep
 
-	return startStep
+	return startStep, nil
 
 }
 
@@ -220,37 +226,37 @@ func (c *base) update(a, newState *mat.VecDense) (ts.TimeStep, bool) {
 // validateState ensures that a state observation is valid and between
 // the physical bounds of the Cartpole environment
 func validateState(obs mat.Vector, positionBounds, speedBounds, angleBounds,
-	angularVelocityBounds r1.Interval) {
+	angularVelocityBounds r1.Interval) error {
 	// Che if the angle is within bounds
 	positionWithinBounds := obs.AtVec(0) <= positionBounds.Max &&
 		obs.AtVec(0) >= positionBounds.Min
 	if !positionWithinBounds {
-		panic(fmt.Sprintf("position is not within bounds %v",
-			positionBounds))
+		return fmt.Errorf("position is not within bounds %v",
+			positionBounds)
 	}
 
 	speedWithinBounds := obs.AtVec(1) <= speedBounds.Max &&
 		obs.AtVec(0) >= speedBounds.Min
 	if !speedWithinBounds {
-		panic(fmt.Sprintf("speed is not within bounds %v",
-			speedBounds))
+		return fmt.Errorf("speed is not within bounds %v",
+			speedBounds)
 	}
 
 	angleWithinBounds := obs.AtVec(2) <= angleBounds.Max &&
 		obs.AtVec(0) >= angleBounds.Min
 	if !angleWithinBounds {
-		panic(fmt.Sprintf("angle is not within bounds %v",
-			angleBounds))
+		return fmt.Errorf("angle is not within bounds %v",
+			angleBounds)
 	}
 
 	angularVeloyWithinBounds := obs.AtVec(0) <=
 		angularVelocityBounds.Max && obs.AtVec(0) >=
 		angularVelocityBounds.Min
 	if !angularVeloyWithinBounds {
-		panic(fmt.Sprintf("angular veloty is not within bounds %v",
-			angularVelocityBounds))
+		return fmt.Errorf("angular veloty is not within bounds %v",
+			angularVelocityBounds)
 	}
-
+	return nil
 }
 
 // String returns the string representation of the environment

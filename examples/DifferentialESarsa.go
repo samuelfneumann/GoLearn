@@ -21,7 +21,10 @@ func DifferentialESarsa() {
 
 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, seed)
 	task := mountaincar.NewGoal(s, 250, mountaincar.GoalPosition)
-	m, _ := mountaincar.NewDiscrete(task, 1.0)
+	m, _, err := mountaincar.NewDiscrete(task, 1.0)
+	if err != nil {
+		panic(err)
+	}
 
 	// Create the TileCoding env wrapper
 	numTilings := 10
@@ -30,10 +33,16 @@ func DifferentialESarsa() {
 	for i := 0; i < len(tilings); i++ {
 		tilings[i] = []int{10, 10}
 	}
-	tm, _ := wrappers.NewTileCoding(m, tilings, seed)
+	tm, _, err := wrappers.NewTileCoding(m, tilings, seed)
+	if err != nil {
+		panic(err)
+	}
 
 	// Create the average reward environment wrapper
-	ttm, _ := wrappers.NewAverageReward(tm, 0.0, 0.01, true)
+	ttm, _, err := wrappers.NewAverageReward(tm, 0.0, 0.01, true)
+	if err != nil {
+		panic(err)
+	}
 
 	// Zero RNG
 	weightSize := make([]float64, tm.ObservationSpec().Shape.Len())

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 
@@ -88,8 +89,15 @@ func main() {
 	// Don't checkpoint agents
 	var checkpointers []checkpointer.Checkpointer = nil
 
-	exp := expConf.CreateExp(int(hpIndex), run, trackers, checkpointers)
-	exp.Run()
+	exp, err := expConf.CreateExp(int(hpIndex), run, trackers, checkpointers)
+	if err != nil {
+		log.Printf("Error creating experiment: %v\n", err)
+		log.Println("Terminating...")
+	}
+	if err := exp.Run(); err != nil {
+		log.Printf("Error in running experiment: %v\n", err)
+		log.Println("Terminating...")
+	}
 	exp.Save()
 
 	// LoadData -> should be int or float specified...

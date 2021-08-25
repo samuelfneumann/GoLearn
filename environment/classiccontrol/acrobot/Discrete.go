@@ -53,10 +53,14 @@ type Discrete struct {
 }
 
 // NewDiscrete returns a new Acrobot environment with discrete actions
-func NewDiscrete(t env.Task, discount float64) (env.Environment, ts.TimeStep) {
-	acrobot, firstStep := newBase(t, discount)
+func NewDiscrete(t env.Task, discount float64) (env.Environment, ts.TimeStep,
+	error) {
+	acrobot, firstStep, err := newBase(t, discount)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newDiscrete: %v", err)
+	}
 
-	return &Discrete{acrobot}, firstStep
+	return &Discrete{acrobot}, firstStep, nil
 }
 
 // ActionSpec returns the action specification of the environment
@@ -76,11 +80,12 @@ func (d *Discrete) ActionSpec() environment.Spec {
 // the episode has ended. Actions are discrete, consisting of the
 // torque applied to the acrobot's base and are in the set
 // {MinDiscreteAction, MinDiscreteAction+1, ..., MaxDiscreteAction}.
-// Actions outside this range will cause the environment to panic.
-func (d *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+// Actions outside this range will cause an error to be returned.
+func (d *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
+		return ts.TimeStep{}, true, fmt.Errorf("Actions should be " +
+			"1-dimensional")
 	}
 
 	// Discrete action in {0, 1, 2}
@@ -89,7 +94,8 @@ func (d *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Ensure a legal action was selected
 	intAction := int(action)
 	if intAction > MaxDiscreteAction || intAction < MinDiscreteAction {
-		panic(fmt.Sprintf("illegal action %v \u2209 (0, 1, 2)", intAction))
+		return ts.TimeStep{}, true, fmt.Errorf("step: illegal action %v "+
+			"\u2209 (0, 1, 2)", intAction)
 	}
 
 	// Calculate the torque applied
@@ -101,12 +107,18 @@ func (d *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	} else if intAction == 0 {
 		torque = 0.0
 	} else {
-		panic(fmt.Sprintf("illegal action %v \u2209 (0, 1, 2)", intAction))
+		return ts.TimeStep{}, true, fmt.Errorf("step: illegal action %v "+
+			"\u2209 (0, 1, 2)", intAction)
 	}
 
 	// Calculate the next state given the force/action
-	newState := d.nextState(torque)
+	newState, err := d.nextState(torque)
+	if err != nil {
+		return ts.TimeStep{}, true, fmt.Errorf("step: could not calculate "+
+			"next state: %v", err)
+	}
 
 	// Update embedded base Acrobot environment
-	return d.update(a, newState)
+	nextStep, done := d.update(a, newState)
+	return nextStep, done, nil
 }

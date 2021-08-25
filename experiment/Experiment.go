@@ -28,8 +28,11 @@ import (
 // saves. New Savers can be registered with an Experiment through the
 // consturctor or through an Experiment's Register() function.
 type Experiment interface {
-	Run()
-	RunEpisode() bool // Returns whether or not the current episode finished
+	Run() error
+
+	// RunEpisode runs a single episode and returns in the step limit was
+	// reached as well as if any errors occurred during the run
+	RunEpisode() (bool, error)
 
 	// Tracks current timestep by sending it to Savers
 	track(ts.TimeStep)
@@ -66,17 +69,21 @@ type Config struct {
 }
 
 func (c Config) CreateExp(i int, seed uint64, t []tracker.Tracker,
-	check []checkpointer.Checkpointer) Experiment {
-	env, _ := c.EnvConfig.CreateEnv(seed)
+	check []checkpointer.Checkpointer) (Experiment, error) {
+	env, _, err := c.EnvConfig.CreateEnv(seed)
+	if err != nil {
+		return nil, fmt.Errorf("createExpL could not create environment: %v",
+			err)
+	}
 	agent, err := c.AgentConfig.At(i).CreateAgent(env, seed)
 	if err != nil {
-		panic(fmt.Sprintf("createExp: could not create agent: %v", err))
+		return nil, fmt.Errorf("createExp: could not create agent: %v", err)
 	}
 
 	switch c.Type {
 	case OnlineExp:
-		return NewOnline(env, agent, c.MaxSteps, t, check)
+		return NewOnline(env, agent, c.MaxSteps, t, check), nil
 	}
 
-	panic(fmt.Sprintf("createExp: no such experiment type %v", c.Type))
+	return nil, fmt.Errorf("createExp: no such experiment type %v", c.Type)
 }

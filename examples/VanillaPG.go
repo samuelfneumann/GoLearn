@@ -5,7 +5,6 @@ import (
 	"math"
 	"time"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	"github.com/samuelfneumann/golearn/agent/nonlinear/continuous/vanillapg"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/cartpole"
@@ -16,6 +15,7 @@ import (
 	"github.com/samuelfneumann/golearn/initwfn"
 	"github.com/samuelfneumann/golearn/network"
 	"github.com/samuelfneumann/golearn/solver"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 // VanillaPG provides an example on how to use the vanillapg package.
@@ -31,7 +31,10 @@ func VanillaPG() {
 	}, useed)
 
 	task := cartpole.NewBalance(starter, 500, cartpole.FailAngle)
-	env, _ := cartpole.NewDiscrete(task, 0.99)
+	env, _, err := cartpole.NewDiscrete(task, 0.99)
+	if err != nil {
+		panic(err)
+	}
 
 	policySolver, err := solver.NewDefaultAdam(5e-3, 1)
 	if err != nil {
@@ -112,7 +115,10 @@ func VanillaPgGridWorld() {
 
 	// Create the gridworld
 	discount := 0.99
-	env, t := gridworld.New(r, c, goal, discount)
+	env, t, err := gridworld.New(r, c, goal, discount)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println(t)
 
 	nonlinearity := network.ReLU()
@@ -170,7 +176,10 @@ func ContinuousVanillaPGCartpole() {
 
 	envConf := envconfig.NewConfig(envconfig.Cartpole, envconfig.Balance,
 		true, 500, 0.99, false)
-	env, _ := envConf.CreateEnv(useed)
+	env, _, err := envConf.CreateEnv(useed)
+	if err != nil {
+		panic(err)
+	}
 
 	policySolver, _ := solver.NewDefaultAdam(5e-4, 1)
 	valueSolver, _ := solver.NewDefaultAdam(5e-3, 1)

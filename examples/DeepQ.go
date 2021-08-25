@@ -74,7 +74,10 @@ func DeepQCartpole() {
 
 	// Experiment
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+	e, err := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	start := time.Now()
 	e.Run()
@@ -140,7 +143,10 @@ func DeepQMountainCar() {
 
 	// Experiment
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+	e, err := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	start := time.Now()
 	e.Run()
@@ -204,7 +210,10 @@ func QLearningMountainCarWithConfigs() {
 
 	// Experiment
 	var saver tracker.Tracker = tracker.NewReturn("./data.bin")
-	e := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+	e, err := exp.CreateExp(0, useed, []tracker.Tracker{saver}, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	start := time.Now()
 	e.Run()
@@ -230,7 +239,10 @@ func QLearningMountainCarFromScratch() {
 
 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, useed)
 	task := mountaincar.NewGoal(s, 1000, mountaincar.GoalPosition)
-	m, _ := mountaincar.NewDiscrete(task, 1.0)
+	m, _, err := mountaincar.NewDiscrete(task, 1.0)
+	if err != nil {
+		panic(err)
+	}
 
 	numTilings := 10
 	tilings := make([][]int, numTilings)
@@ -240,7 +252,10 @@ func QLearningMountainCarFromScratch() {
 	for i := len(tilings) / 2; i < len(tilings); i++ {
 		tilings[i] = []int{3, 3}
 	}
-	tm, _ := wrappers.NewTileCoding(m, tilings, useed)
+	tm, _, err := wrappers.NewTileCoding(m, tilings, useed)
+	if err != nil {
+		panic(err)
+	}
 
 	// Create the learning algorithm
 	args := qlearning.Config{

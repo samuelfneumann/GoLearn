@@ -6,11 +6,11 @@ import (
 
 	"golang.org/x/exp/rand"
 
+	"github.com/samuelfneumann/golearn/environment"
+	"github.com/samuelfneumann/golearn/environment/box2d/lunarlander"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r1"
 	"gonum.org/v1/gonum/stat/distuv"
-	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/environment/box2d/lunarlander"
 )
 
 func BenchmarkLunarLander(b *testing.B) {
@@ -24,9 +24,15 @@ func BenchmarkLunarLander(b *testing.B) {
 		{Min: lunarlander.InitialRandom, Max: lunarlander.InitialRandom},
 	}, seed)
 	task := lunarlander.NewLand(s, 500)
-	l, _ := lunarlander.NewDiscrete(task, 0.99, seed)
+	l, _, err := lunarlander.NewDiscrete(task, 0.99, seed)
+	if err != nil {
+		b.Error(err)
+	}
 
-	tc, _ := NewTileCoding(l, [][]int{{8, 8, 8, 8, 8, 8, 8, 8}}, seed)
+	tc, _, err := NewTileCoding(l, [][]int{{8, 8, 8, 8, 8, 8, 8, 8}}, seed)
+	if err != nil {
+		b.Error(err)
+	}
 
 	for i := 0; i < b.N; i++ {
 		tc.Step(mat.NewVecDense(2, []float64{rng.Rand(), rng.Rand()}))

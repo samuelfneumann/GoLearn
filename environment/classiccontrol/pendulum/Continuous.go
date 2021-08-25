@@ -39,12 +39,17 @@ type Continuous struct {
 }
 
 // New creates and returns a new Continuous environment
-func NewContinuous(t environment.Task, discount float64) (*Continuous, timestep.TimeStep) {
-	baseEnv, firstStep := newBase(t, discount)
+func NewContinuous(t environment.Task,
+	discount float64) (environment.Environment, timestep.TimeStep, error) {
+	baseEnv, firstStep, err := newBase(t, discount)
+	if err != nil {
+		return nil, timestep.TimeStep{}, fmt.Errorf("newContinuous: %v",
+			err)
+	}
 
 	pendulum := Continuous{baseEnv}
 
-	return &pendulum, firstStep
+	return &pendulum, firstStep, nil
 }
 
 // Step takes one environmental step given action a and returns the next
@@ -53,10 +58,12 @@ func NewContinuous(t environment.Task, discount float64) (*Continuous, timestep.
 // onsisting of the horizontal force to apply to the cart. Actions
 // outside the legal range of [-1, 1] are clipped to stay within this
 // range.
-func (p *Continuous) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
+func (p *Continuous) Step(action *mat.VecDense) (timestep.TimeStep, bool,
+	error) {
 	// Ensure action is 1-dimensional
 	if action.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
+		return timestep.TimeStep{}, true, fmt.Errorf("step: ctions should be" +
+			" 1-dimensional")
 	}
 
 	// Clip action to ensure that it is in the legal range of continuous
@@ -70,7 +77,7 @@ func (p *Continuous) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	// Update the embedded base environment
 	nextStep, last := p.update(action, nextState)
 
-	return nextStep, last
+	return nextStep, last, nil
 }
 
 // ActionSpec returns the action specification of the environment

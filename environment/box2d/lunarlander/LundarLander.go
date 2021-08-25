@@ -301,7 +301,7 @@ type lunarLander struct {
 
 // newLunarLander creates and returns a new base lunarLander struct
 func newLunarLander(task environment.Task, discount float64,
-	seed uint64) (*lunarLander, ts.TimeStep) {
+	seed uint64) (*lunarLander, ts.TimeStep, error) {
 	l := lunarLander{}
 	l.world = box2d.MakeB2World(box2d.B2Vec2{X: XGravity, Y: YGravity})
 	l.boundaryColour = color.RGBA{R: 255, G: 166, B: 0, A: 255}
@@ -349,8 +349,11 @@ func newLunarLander(task environment.Task, discount float64,
 	}
 
 	// Reset will set l.prevStep automatically
-	step := l.Reset()
-	return &l, step
+	step, err := l.Reset()
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newLunarLander: %v", err)
+	}
+	return &l, step, nil
 }
 
 // destroy performs housekeeping to destroy Box2D objects when the
@@ -377,7 +380,7 @@ func (l *lunarLander) destroy() {
 
 // Reset resets the environment and returns the first timestep of the
 // next episode
-func (l *lunarLander) Reset() ts.TimeStep {
+func (l *lunarLander) Reset() (ts.TimeStep, error) {
 	l.destroy()
 	l.world.SetContactListener(newContactDetector(l))
 	l.gameOver = false
@@ -607,7 +610,15 @@ func (l *lunarLander) Reset() ts.TimeStep {
 
 	// Get the timestep for the beginning of the next episode
 	l.prevStep = ts.TimeStep{StepType: ts.First, Number: 0}
-	step, last := l.Step(mat.NewVecDense(2, []float64{0.0, 0.0}))
+	step, last, err := l.Step(mat.NewVecDense(2, []float64{0.0, 0.0}))
+	if err != nil {
+		return step, fmt.Errorf("reset: %v", err)
+	}
+
+	if last {
+		return ts.TimeStep{}, fmt.Errorf("reset: environment ended as soon " +
+			"as it began")
+	}
 
 	// Adjust the stored current timestep to ensure it is the first
 	// in the episode and its state reflects this (Number = 0,
@@ -615,17 +626,13 @@ func (l *lunarLander) Reset() ts.TimeStep {
 	step.StepType = ts.First
 	step.Number = 0
 	l.prevStep = step
-
-	if last {
-		panic("reset: environment ended as soon as it began")
-	}
-	return step
+	return step, nil
 }
 
 // Step takes one environmental step given some action to apply to
 // the lander. This function returns the next step in the episode and
 // whether this next step was the last in the episode.
-func (l *lunarLander) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+func (l *lunarLander) Step(a *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Clip actions
 	matutils.VecClip(a, l.actionBounds.Min, l.actionBounds.Max)
 
@@ -645,7 +652,8 @@ func (l *lunarLander) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	if a.AtVec(0) > 0.0 {
 		mPower = (floatutils.Clip(a.AtVec(0), 0.0, 1.0) + 1.0) * 0.5
 		if mPower < 0.5 || mPower > 1.0 {
-			panic("step: illegal power for main engines")
+			return ts.TimeStep{}, true, fmt.Errorf("step: illegal power for "+
+				"main engines %v ∉ [0.5, 1.0]", mPower)
 		}
 
 		ox := tip[0]*(4.0/Scale+2.0*dispersion[0]) + side[0]*dispersion[1]
@@ -670,7 +678,8 @@ func (l *lunarLander) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 		direction := floatutils.Sign(a.AtVec(1))
 		sPower = floatutils.Clip(math.Abs(a.AtVec(1)), 0.5, 1.0)
 		if sPower < 0.5 || sPower > 1.0 {
-			panic("step: illegal value for orientation engines")
+			return ts.TimeStep{}, true, fmt.Errorf("step: illegal value for "+
+				"orientation engines %v ∉ [0.5, 1.0]", sPower)
 		}
 
 		ox := tip[0]*dispersion[0] + side[0]*(3.0*dispersion[1]+direction*
@@ -723,7 +732,7 @@ func (l *lunarLander) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	l.End(&t)
 
 	l.prevStep = t
-	return t, t.Last()
+	return t, t.Last(), nil
 }
 
 // DiscountSpec returns the discount specification of the environment
@@ -952,7 +961,7 @@ func Display(n int) {
 		{Min: InitialRandom, Max: InitialRandom},
 	}, uint64(time.Now().UnixNano()))
 	task := NewLand(s, 500)
-	l, _ := newLunarLander(task, 0.99, uint64(time.Now().UnixNano()))
+	l, _, _ := newLunarLander(task, 0.99, uint64(time.Now().UnixNano()))
 
 	src := rand.NewSource(uint64(time.Now().UnixNano()))
 	rng := distuv.Uniform{Min: -1.0, Max: 1.0, Src: src}

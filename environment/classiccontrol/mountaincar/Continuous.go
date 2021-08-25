@@ -1,6 +1,8 @@
 package mountaincar
 
 import (
+	"fmt"
+
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
@@ -34,13 +36,17 @@ type Continuous struct {
 
 // NewContinuous creates a new Continuous action Mountain Car
 // environment with the argument task
-func NewContinuous(t env.Task, discount float64) (*Continuous, ts.TimeStep) {
+func NewContinuous(t env.Task, discount float64) (env.Environment,
+	ts.TimeStep, error) {
 	// Create and store the base Mountain Car environment
-	baseEnv, firstStep := newBase(t, discount)
+	baseEnv, firstStep, err := newBase(t, discount)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newContinuous: %v", err)
+	}
 
 	mountainCar := Continuous{baseEnv}
 
-	return &mountainCar, firstStep
+	return &mountainCar, firstStep, nil
 
 }
 
@@ -61,10 +67,11 @@ func (m *Continuous) ActionSpec() env.Spec {
 // consisting of the horizontal force to apply to the cart. Actions
 // outside the legal range of [-2, 2] are clipped to stay within this
 // range.
-func (m *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+func (m *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
+		return ts.TimeStep{}, true, fmt.Errorf("Actions should be " +
+			"1-dimensional")
 	}
 
 	// Clip action to legal range
@@ -77,5 +84,5 @@ func (m *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Update embedded base Mountain Car environment
 	nextStep, last := m.update(a, newState)
 
-	return nextStep, last
+	return nextStep, last, nil
 }

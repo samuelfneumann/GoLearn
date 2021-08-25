@@ -41,18 +41,20 @@ func (g *GridWorld) At(i, j int) float64 {
 
 // New creates a new gridworld with starting position (x, y), r rows, and c
 // columns, task t, and discount factor discount
-func New(r, c int, t environment.Task, d float64) (*GridWorld,
-	timestep.TimeStep) {
+func New(r, c int, t environment.Task, d float64) (environment.Environment,
+	timestep.TimeStep, error) {
 	// Set the starting position
 	start := t.Start()
 	// startInd := cToInd(x, y, c)
 	startInd := vToInd(start, r, c)
 
-	startStep := timestep.New(timestep.First, 0.0, d, start, 0)
+	g := &GridWorld{t, r, c, startInd, d, timestep.TimeStep{}}
 
-	g := &GridWorld{t, r, c, startInd, d, startStep}
-
-	return g, g.Reset()
+	startStep, err := g.Reset()
+	if err != nil {
+		return nil, timestep.TimeStep{}, fmt.Errorf("new: %v", err)
+	}
+	return g, startStep, nil
 }
 
 // CurrentTimeStep returns the last TimeStep that occurred in the
@@ -63,14 +65,14 @@ func (g *GridWorld) CurrentTimeStep() timestep.TimeStep {
 
 // Reset resets the GridWorld in between episodes. It must explicitly
 // be called between episodes.
-func (g *GridWorld) Reset() timestep.TimeStep {
+func (g *GridWorld) Reset() (timestep.TimeStep, error) {
 	startVec := g.Start()
 	g.position = g.vToInd(startVec)
 	obs := g.getObservation()
 
 	startStep := timestep.New(timestep.First, 0, g.discount, obs, 0)
 	g.currentStep = startStep
-	return startStep
+	return startStep, nil
 }
 
 func (g *GridWorld) NextObs(action *mat.VecDense) *mat.VecDense {
@@ -113,7 +115,8 @@ func (g *GridWorld) NextObs(action *mat.VecDense) *mat.VecDense {
 }
 
 // Step takes an action in the environemnt
-func (g *GridWorld) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
+func (g *GridWorld) Step(action *mat.VecDense) (timestep.TimeStep, bool,
+	error) {
 	newPosition := g.NextObs(action)
 	g.position = g.vToInd(newPosition)
 
@@ -128,7 +131,7 @@ func (g *GridWorld) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 
 	g.currentStep = step
 
-	return step, stepType == timestep.Last
+	return step, step.Last(), nil
 }
 
 // cToV converts coordinates (x, y) to a vector

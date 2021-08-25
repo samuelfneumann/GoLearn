@@ -5,6 +5,7 @@ import (
 
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/timestep"
+	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -130,9 +131,12 @@ type Discrete struct {
 // NewDiscrete returns a new lunar lander environment with discrete
 // actions
 func NewDiscrete(task environment.Task, discount float64,
-	seed uint64) (environment.Environment, timestep.TimeStep) {
-	l, step := newLunarLander(task, discount, seed)
-	return &Discrete{l}, step
+	seed uint64) (environment.Environment, timestep.TimeStep, error) {
+	l, step, err := newLunarLander(task, discount, seed)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newDiscrete: %v", err)
+	}
+	return &Discrete{l}, step, nil
 }
 
 // ActionSpec returns the action specification of the environment
@@ -146,8 +150,10 @@ func (c *Discrete) ActionSpec() environment.Spec {
 }
 
 // Step takes one environmental step and returns the next timestep
-// and whether that timestep is the last in the episode
-func (c *Discrete) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
+// and whether that timestep is the last in the episode. Illegal actions
+// will cause an error to be returned.
+func (c *Discrete) Step(action *mat.VecDense) (timestep.TimeStep, bool,
+	error) {
 	a := int(action.AtVec(0))
 
 	if a == 0 {
@@ -163,6 +169,6 @@ func (c *Discrete) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 		// Fire right engine
 		return c.lunarLander.Step(mat.NewVecDense(2, []float64{0.0, 1.0}))
 	}
-	panic(fmt.Sprintf("step: illegal action selection, expected action ϵ "+
-		"[0, 1, 2, 3], received action = %v", a))
+	return ts.TimeStep{}, true, fmt.Errorf("step: illegal action selection, "+
+		"expected action ϵ [0, 1, 2, 3], received action = %v", a)
 }

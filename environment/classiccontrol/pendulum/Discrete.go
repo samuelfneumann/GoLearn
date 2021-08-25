@@ -46,24 +46,31 @@ type Discrete struct {
 }
 
 // New creates and returns a new Discrete environment
-func NewDiscrete(t environment.Task, discount float64) (*Discrete, timestep.TimeStep) {
-	baseEnv, firstStep := newBase(t, discount)
+func NewDiscrete(t environment.Task,
+	discount float64) (environment.Environment, timestep.TimeStep,
+	error) {
+	baseEnv, firstStep, err := newBase(t, discount)
+	if err != nil {
+		return nil, timestep.TimeStep{}, fmt.Errorf("newDiscrete: %v",
+			err)
+	}
 
 	pendulum := Discrete{baseEnv}
 
-	return &pendulum, firstStep
+	return &pendulum, firstStep, nil
 }
 
 // Step takes one environmental step given action a and returns the next
 // timestep as a timestep.TimeStep and a bool indicating whether or not
-// the episode has ended. Actions are 1-dimensional and continuous, c
-// onsisting of the horizontal force to apply to the cart. Actions
-// outside the legal range of [-1, 1] are clipped to stay within this
-// range.
-func (p *Discrete) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
+// the episode has ended. Actions are 1-dimensional and discrete in
+// (0, 1, 2, 3, 4, 5, 6). Actions outside this set will cause an
+// error to be returned
+func (p *Discrete) Step(action *mat.VecDense) (timestep.TimeStep, bool,
+	error) {
 	// Ensure action is 1-dimensional
 	if action.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
+		return timestep.TimeStep{}, true, fmt.Errorf("step: ctions should be " +
+			"1-dimensional")
 	}
 
 	// Convert discrete action to torque applied to fixed base
@@ -83,7 +90,8 @@ func (p *Discrete) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	} else if action.AtVec(0) == 6.0 {
 		torque = MaxContinuousAction
 	} else {
-		panic(fmt.Sprintf("step: illegal action %v", action.AtVec(0)))
+		return timestep.TimeStep{}, true, fmt.Errorf("step: illegal action %v",
+			action.AtVec(0))
 	}
 
 	// Calculate the next state given the torque/action
@@ -92,7 +100,7 @@ func (p *Discrete) Step(action *mat.VecDense) (timestep.TimeStep, bool) {
 	// Update the embedded base environment
 	nextStep, last := p.update(action, nextState)
 
-	return nextStep, last
+	return nextStep, last, nil
 }
 
 // ActionSpec returns the action specification of the environment

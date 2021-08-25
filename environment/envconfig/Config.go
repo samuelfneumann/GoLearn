@@ -95,63 +95,62 @@ func NewConfig(envName EnvName, taskName TaskName, continuousActions bool,
 
 // CreateEnv returns the environment described by the Config as well as
 // the first timestep of the environment.
-func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
+func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep,
+	error) {
 
 	var e env.Environment
 	var step ts.TimeStep
+	var err error
 	switch c.Environment {
 	case MountainCar:
-		e, step = CreateMountainCar(c.ContinuousActions, c.Task,
+		e, step, err = CreateMountainCar(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Cartpole:
-		e, step = CreateCartpole(c.ContinuousActions, c.Task,
+		e, step, err = CreateCartpole(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Pendulum:
-		e, step = CreatePendulum(c.ContinuousActions, c.Task,
+		e, step, err = CreatePendulum(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Acrobot:
-		e, step = CreateAcrobot(c.ContinuousActions, c.Task,
+		e, step, err = CreateAcrobot(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Gridworld:
-		e, step = CreateGridworld(c.ContinuousActions, c.Task,
+		e, step, err = CreateGridworld(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case LunarLander:
-		e, step = CreateLunarLander(c.ContinuousActions, c.Task,
+		e, step, err = CreateLunarLander(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Hopper:
-		if !c.ContinuousActions {
-			panic("createEnv: hopper must have continuous actions")
-		}
-		e, step = CreateHopper(c.ContinuousActions, c.Task,
+		e, step, err = CreateHopper(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case Reacher:
-		if !c.ContinuousActions {
-			panic("createEnv: reacher must have continuous actions")
-		}
-		e, step = CreateReacher(c.ContinuousActions, c.Task,
+		e, step, err = CreateReacher(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	default:
-		panic(fmt.Sprintf("create: cannot create environment %v, no such "+
-			"environment", c.Environment))
+		return nil, ts.TimeStep{}, fmt.Errorf("createEnv: cannot create "+
+			"environment %v, no such environment", c.Environment)
 	}
 
 	if c.TileCoding.UseTileCoding {
 		if c.TileCoding.UseIndices {
-			e, step = wrappers.NewIndexTileCoding(e, c.TileCoding.Bins, seed)
+			e, step, err = wrappers.NewIndexTileCoding(e, c.TileCoding.Bins, seed)
 		} else {
-			e, step = wrappers.NewTileCoding(e, c.TileCoding.Bins, seed)
+			e, step, err = wrappers.NewTileCoding(e, c.TileCoding.Bins, seed)
 		}
 	}
 
-	return e, step
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("createEnv: %v", err)
+	}
+	return e, step, nil
 
 }
 
@@ -159,7 +158,7 @@ func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep) {
 // environment with default physical parameters and default task
 // parameters.
 func CreateMountainCar(continuousActions bool, taskName TaskName, cutoff int,
-	seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	seed uint64, discount float64) (env.Environment, ts.TimeStep, error) {
 	position := r1.Interval{Min: -0.6, Max: -0.4}
 	velocity := r1.Interval{Min: 0.0, Max: 0.0}
 
@@ -171,8 +170,8 @@ func CreateMountainCar(continuousActions bool, taskName TaskName, cutoff int,
 		task = mountaincar.NewGoal(s, cutoff, mountaincar.GoalPosition)
 
 	default:
-		panic(fmt.Sprintf("createMountainCar: MountainCar environment has "+
-			"no task %v", taskName))
+		return nil, ts.TimeStep{}, fmt.Errorf("createMountainCar: "+
+			"MountainCar environment has no task %v", taskName)
 	}
 
 	if continuousActions {
@@ -184,7 +183,7 @@ func CreateMountainCar(continuousActions bool, taskName TaskName, cutoff int,
 // CreateCartpole is a factory for creating the Cartpole environment
 // with default physical parameters and default task parameters.
 func CreateCartpole(continuousActions bool, taskName TaskName, cutoff int,
-	seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	seed uint64, discount float64) (env.Environment, ts.TimeStep, error) {
 	bounds := r1.Interval{Min: -0.05, Max: 0.05}
 	s := env.NewUniformStarter([]r1.Interval{
 		bounds,
@@ -199,8 +198,8 @@ func CreateCartpole(continuousActions bool, taskName TaskName, cutoff int,
 		task = cartpole.NewBalance(s, cutoff, cartpole.FailAngle)
 
 	default:
-		panic(fmt.Sprintf("createCartpole: Cartpole environment has "+
-			"no task %v", taskName))
+		return nil, ts.TimeStep{}, fmt.Errorf("createCartpole: Cartpole "+
+			"environment has no task %v", taskName)
 	}
 
 	if continuousActions {
@@ -213,7 +212,8 @@ func CreateCartpole(continuousActions bool, taskName TaskName, cutoff int,
 // CreatePendulum is a factory for creating the Pendulum environment
 // with default physical parameters and default task parameters.
 func CreatePendulum(continuousActions bool, taskName TaskName,
-	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep,
+	error) {
 	angle := r1.Interval{Min: -pendulum.AngleBound, Max: pendulum.AngleBound}
 	speed := r1.Interval{Min: -1.0, Max: 1.0}
 
@@ -225,8 +225,8 @@ func CreatePendulum(continuousActions bool, taskName TaskName,
 		task = pendulum.NewSwingUp(s, cutoff)
 
 	default:
-		panic(fmt.Sprintf("createPendulum: Pendulum environment has "+
-			"no task %v", taskName))
+		return nil, ts.TimeStep{}, fmt.Errorf("createPendulum: Pendulum "+
+			"environment has no task %v", taskName)
 	}
 
 	if continuousActions {
@@ -238,7 +238,8 @@ func CreatePendulum(continuousActions bool, taskName TaskName,
 // CreateAcrobot is a factory for creating the Acrobot environment
 // with default physical parameters and default task parameters.
 func CreateAcrobot(continuousActions bool, taskName TaskName,
-	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep,
+	error) {
 	angle := r1.Interval{Min: -0.1, Max: 0.1}
 	speed := r1.Interval{Min: -0.1, Max: 0.1}
 
@@ -250,8 +251,8 @@ func CreateAcrobot(continuousActions bool, taskName TaskName,
 		task = acrobot.NewSwingUp(s, cutoff, acrobot.GoalHeight)
 
 	default:
-		panic(fmt.Sprintf("createAcrobot: Acrobot environment has "+
-			"no task %v", taskName))
+		return nil, ts.TimeStep{}, fmt.Errorf("createAcrobot: Acrobot "+
+			"environment has no task %v", taskName)
 	}
 
 	if continuousActions {
@@ -263,7 +264,11 @@ func CreateAcrobot(continuousActions bool, taskName TaskName,
 // CreateGridworld is a factory for creating a Gridworld environment
 // with default grid size (5 x 5) and default goal task parameters
 func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
-	seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	seed uint64, discount float64) (env.Environment, ts.TimeStep, error) {
+	if continuousActions {
+		return nil, ts.TimeStep{}, fmt.Errorf("createGridworld: gridworlds " +
+			"only support discrete actions")
+	}
 
 	// Environment parameters
 	r, c := 5, 5
@@ -274,7 +279,8 @@ func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
 	// Create the start-state distribution - always at (0, 0)
 	starter, err := gridworld.NewSingleStart(0, 0, r, c)
 	if err != nil {
-		panic("createGridworld: Could not create starter")
+		return nil, ts.TimeStep{}, fmt.Errorf("createGridworld: could " +
+			"not create starter")
 	}
 
 	var task env.Task
@@ -286,15 +292,12 @@ func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
 		task, err = gridworld.NewGoal(starter, goalX, goalY, r, c,
 			timestepReward, goalReward, cutoff)
 		if err != nil {
-			panic("createGridworld: ould not create goal")
+			return nil, ts.TimeStep{}, fmt.Errorf("createGridworld: could " +
+				"not create goal")
 		}
 	default:
-		panic(fmt.Sprintf("createGridworld: Gridworld environment has "+
-			"no task %v", taskName))
-	}
-
-	if continuousActions {
-		panic("createGridworld: gridworlds only support discrete actions")
+		return nil, ts.TimeStep{}, fmt.Errorf("createGridworld: Gridworld "+
+			"environment has no task %v", taskName)
 	}
 
 	// Create the gridworld
@@ -305,7 +308,8 @@ func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
 // environment with default physical parameters and default task
 // parameters.
 func CreateLunarLander(continuousActions bool, taskName TaskName,
-	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep,
+	error) {
 	xPosition := r1.Interval{
 		Min: lunarlander.InitialX,
 		Max: lunarlander.InitialX,
@@ -328,8 +332,8 @@ func CreateLunarLander(continuousActions bool, taskName TaskName,
 		task = lunarlander.NewLand(s, cutoff)
 
 	default:
-		panic(fmt.Sprintf("createLunarLander: LunarLander environment has "+
-			"no task %v", taskName))
+		return nil, ts.TimeStep{}, fmt.Errorf("createLunarLander: "+
+			"LunarLander environment has no task %v", taskName)
 	}
 
 	if continuousActions {
@@ -342,48 +346,59 @@ func CreateLunarLander(continuousActions bool, taskName TaskName,
 // environment with default physical parameters and default task
 // parameters.
 func CreateHopper(continuousActions bool, taskName TaskName,
-	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep,
+	error) {
+	if !continuousActions {
+		return nil, ts.TimeStep{}, fmt.Errorf("createHopper: hopper must " +
+			"have continuous actions")
+	}
+
 	var task env.Task
 	switch taskName {
 	case Hop:
 		task = hopper.NewHop(seed, cutoff)
 
 	default:
-		panic(fmt.Sprintf("createHopper: Hopper environment has "+
-			"no task %v", taskName))
+		return nil, ts.TimeStep{}, fmt.Errorf("createHopper: Hopper "+
+			"environment has no task %v", taskName)
 	}
 
 	env, firstStep, err := hopper.New(task, 1, seed, discount)
 	if err != nil {
-		panic(fmt.Sprintf("createHopper: could not create environment: %v",
-			err))
+		return nil, ts.TimeStep{}, fmt.Errorf("createHopper: could not "+
+			"create environment: %v", err)
 	}
 
-	return env, firstStep
+	return env, firstStep, nil
 }
 
 // CreateReacher is a factory for creating the Reacher
 // environment with default physical parameters and default task
 // parameters.
 func CreateReacher(continuousActions bool, taskName TaskName,
-	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep) {
+	cutoff int, seed uint64, discount float64) (env.Environment, ts.TimeStep,
+	error) {
+	if !continuousActions {
+		return nil, ts.TimeStep{}, fmt.Errorf("createReacher: reacher must " +
+			"have continuous actions")
+	}
 	var task env.Task
 	switch taskName {
 	case Reach:
 		task = reacher.NewReach(seed, cutoff)
 
 	default:
-		panic(fmt.Sprintf("createReacher: Reacher environment has "+
-			"no task %v", taskName))
+		return nil, ts.TimeStep{}, fmt.Errorf("createReacher: Reacher "+
+			"environment has no task %v", taskName)
 	}
 
 	env, firstStep, err := reacher.New(task, 2, seed, discount)
 	if err != nil {
-		panic(fmt.Sprintf("createReacher: could not create environment: %v",
-			err))
+		return nil, ts.TimeStep{}, fmt.Errorf("createReacher: could not "+
+			"create environment: %v", err)
 	}
 
-	return env, firstStep
+	return env, firstStep, nil
 }
 
 // tileCodingConfig implements configuration settings for tile coding

@@ -2,6 +2,8 @@
 package cartpole
 
 import (
+	"fmt"
+
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"
@@ -36,11 +38,15 @@ type Continuous struct {
 
 // NewContinuous constructs a new Cartpole environment with continuous
 // actions
-func NewContinuous(t env.Task, discount float64) (*Continuous, ts.TimeStep) {
-	base, firstStep := newBase(t, discount)
+func NewContinuous(t env.Task, discount float64) (env.Environment,
+	ts.TimeStep, error) {
+	base, firstStep, err := newBase(t, discount)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newContinuous: %v", err)
+	}
 	cartpole := Continuous{base}
 
-	return &cartpole, firstStep
+	return &cartpole, firstStep, nil
 }
 
 // ActionSpec returns the action specification of the environment
@@ -58,10 +64,11 @@ func (c *Continuous) ActionSpec() env.Spec {
 // the episode has ended. Actions are 1-dimensional and continuous,
 // consisting of the horizontal force to apply to the cart. Actions
 // outside the legal range of [-1, 1] are clipped to stay within this range.
-func (c *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+func (c *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
+		return ts.TimeStep{}, true, fmt.Errorf("step: actions should be " +
+			"1-dimensional")
 	}
 
 	// Continuous action in [-1, 1]
@@ -73,5 +80,6 @@ func (c *Continuous) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	nextState := c.nextState(directionMagnitude)
 
 	// Update the embedded base Cartpole environment
-	return c.update(a, nextState)
+	nextStep, done := c.update(a, nextState)
+	return nextStep, done, nil
 }

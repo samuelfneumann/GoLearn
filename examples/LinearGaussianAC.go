@@ -3,7 +3,6 @@ package examples
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/spatial/r1"
 	"github.com/samuelfneumann/golearn/agent/linear/continuous/actorcritic"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/mountaincar"
@@ -11,6 +10,7 @@ import (
 	"github.com/samuelfneumann/golearn/experiment"
 	"github.com/samuelfneumann/golearn/experiment/tracker"
 	"github.com/samuelfneumann/golearn/utils/matutils/initializers/weights"
+	"gonum.org/v1/gonum/spatial/r1"
 )
 
 func LinearGaussianActorCritic() {
@@ -21,7 +21,10 @@ func LinearGaussianActorCritic() {
 
 	s := environment.NewUniformStarter([]r1.Interval{bounds, bounds}, seed)
 	task := mountaincar.NewGoal(s, 1000, mountaincar.GoalPosition)
-	m, _ := mountaincar.NewContinuous(task, 1.0)
+	m, _, err := mountaincar.NewContinuous(task, 1.0)
+	if err != nil {
+		panic(err)
+	}
 
 	// Create the TileCoding env wrapper
 	numTilings := 10
@@ -30,9 +33,15 @@ func LinearGaussianActorCritic() {
 	for i := 0; i < len(tilings); i++ {
 		tilings[i] = []int{10, 10}
 	}
-	tm, _ := wrappers.NewTileCoding(m, tilings, seed)
+	tm, _, err := wrappers.NewTileCoding(m, tilings, seed)
+	if err != nil {
+		panic(err)
+	}
 
-	ttm, _ := wrappers.NewAverageReward(tm, 0.0, 0.01, true)
+	ttm, _, err := wrappers.NewAverageReward(tm, 0.0, 0.01, true)
+	if err != nil {
+		panic(err)
+	}
 
 	// Zero RNG
 	rand := weights.NewZeroUV()

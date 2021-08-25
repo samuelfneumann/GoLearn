@@ -33,8 +33,6 @@ import (
 //	  1		Do nothing
 //	  2		Accelerate right
 //
-// Actions other than 0, 1, or 2 result in a panic
-//
 // Discrete implements the environment.Environment interface
 
 type Discrete struct {
@@ -43,13 +41,17 @@ type Discrete struct {
 
 // New creates a new Discrete action Mountain Car environment with the
 // argument task
-func NewDiscrete(t env.Task, discount float64) (*Discrete, ts.TimeStep) {
+func NewDiscrete(t env.Task, discount float64) (env.Environment, ts.TimeStep,
+	error) {
 	// Create and store the base Mountain Car environment
-	baseEnv, firstStep := newBase(t, discount)
+	baseEnv, firstStep, err := newBase(t, discount)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newDiscrete: %v", err)
+	}
 
 	mountainCar := Discrete{baseEnv}
 
-	return &mountainCar, firstStep
+	return &mountainCar, firstStep, nil
 
 }
 
@@ -69,11 +71,12 @@ func (m *Discrete) ActionSpec() env.Spec {
 // the episode has ended. Actions are discrete, consisting of the
 // direction to accelerate the car or whether to apply no acceleration
 // to the car. Legal actions are in the set {0, 1, 2}. Actions outside
-// this range will cause the environment to panic.
-func (m *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+// this range will cause an error to be returned.
+func (m *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
+		return ts.TimeStep{}, true, fmt.Errorf("step: ctions should be " +
+			"1-dimensional")
 	}
 
 	// Discrete action in {0, 1, 2}
@@ -82,7 +85,8 @@ func (m *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Ensure a legal action was selected
 	intAction := int(action)
 	if intAction > MaxDiscreteAction || intAction < MinDiscreteAction {
-		panic(fmt.Sprintf("illegal action %v \u2209 (0, 1, 2)", intAction))
+		return ts.TimeStep{}, true, fmt.Errorf("step: illegal action %v "+
+			"\u2209 (0, 1, 2)", intAction)
 	}
 
 	// Calculate the force
@@ -92,5 +96,6 @@ func (m *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	newState := m.nextState(force)
 
 	// Update embedded base Mountain Car environment
-	return m.update(a, newState)
+	nextStep, done := m.update(a, newState)
+	return nextStep, done, nil
 }

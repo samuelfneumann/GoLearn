@@ -1,8 +1,11 @@
 package lunarlander
 
 import (
+	"fmt"
+
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/timestep"
+	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -130,9 +133,12 @@ type Continuous struct {
 // NewContinuous returns a new lunar lander environment with continuous
 // actions
 func NewContinuous(task environment.Task, discount float64,
-	seed uint64) (environment.Environment, timestep.TimeStep) {
-	l, step := newLunarLander(task, discount, seed)
-	return &Continuous{l}, step
+	seed uint64) (environment.Environment, timestep.TimeStep, error) {
+	l, step, err := newLunarLander(task, discount, seed)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newContinuous: %v", err)
+	}
+	return &Continuous{l}, step, nil
 }
 
 // ActionSpec returns the action specification of the environment

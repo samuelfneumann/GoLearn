@@ -37,8 +37,8 @@ type Task interface {
 // return both the environment and the first timestep, ready to train on.
 type Environment interface {
 	Task
-	Reset() timestep.TimeStep // Resets between episodes
-	Step(action *mat.VecDense) (timestep.TimeStep, bool)
+	Reset() (timestep.TimeStep, error) // Resets between episodes
+	Step(action *mat.VecDense) (timestep.TimeStep, bool, error)
 	DiscountSpec() Spec
 	ObservationSpec() Spec
 	ActionSpec() Spec

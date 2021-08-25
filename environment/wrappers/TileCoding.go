@@ -34,7 +34,7 @@ type TileCoding struct {
 //
 // See tilecoder.TileCoder for more details.
 func NewTileCoding(env environment.Environment, bins [][]int,
-	seed uint64) (*TileCoding, ts.TimeStep) {
+	seed uint64) (*TileCoding, ts.TimeStep, error) {
 	envSpec := env.ObservationSpec()
 	minDims := envSpec.LowerBound
 	maxDims := envSpec.UpperBound
@@ -42,35 +42,45 @@ func NewTileCoding(env environment.Environment, bins [][]int,
 	coder := tilecoder.New(minDims, maxDims, bins, seed, true)
 
 	// Reset the tile-coded environment
-	step := env.Reset()
+	step, err := env.Reset()
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newTileCoding: could not "+
+			"reset wrapped environment: %v", err)
+	}
 	step.Observation = coder.Encode(step.Observation)
 
-	return &TileCoding{env, coder}, step
+	return &TileCoding{env, coder}, step, nil
 }
 
 // Reset resets the environment to some starting state
-func (t *TileCoding) Reset() ts.TimeStep {
-	step := t.Environment.Reset()
+func (t *TileCoding) Reset() (ts.TimeStep, error) {
+	step, err := t.Environment.Reset()
+	if err != nil {
+		return ts.TimeStep{}, err
+	}
 
 	// Tile code first observation
 	obs := t.coder.Encode(step.Observation)
 	step.Observation = obs
 
-	return step
+	return step, nil
 }
 
 // Step takes one environmental step given action a and returns the next
 // state as a timestep.TimeStep and a bool indicating whether or not the
 // episode has ended
-func (t *TileCoding) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+func (t *TileCoding) Step(a *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Get the next step from the environment
-	step, last := t.Environment.Step(a)
+	step, last, err := t.Environment.Step(a)
+	if err != nil {
+		return ts.TimeStep{}, true, err
+	}
 
 	// Tile code the observation
 	obs := t.coder.Encode(step.Observation)
 	step.Observation = obs
 
-	return step, last
+	return step, last, nil
 }
 
 // ObservationSpec returns the observation specification of the

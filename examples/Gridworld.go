@@ -35,7 +35,10 @@ func Gridworld() {
 
 	// Create the gridworld
 	discount := 0.99
-	g, t := gridworld.New(r, c, goal, discount)
+	g, t, err := gridworld.New(r, c, goal, discount)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println(t)
 	fmt.Println(g)
 

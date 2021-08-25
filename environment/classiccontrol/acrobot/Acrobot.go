@@ -119,7 +119,7 @@ func validateState(state *mat.VecDense, angleBounds, vel1Bounds,
 }
 
 // newBase returns a new base acrobot environment
-func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
+func newBase(t env.Task, discount float64) (*base, ts.TimeStep, error) {
 	state := t.Start()
 
 	firstStep := ts.New(ts.First, 0.0, discount, state, 0)
@@ -137,16 +137,16 @@ func newBase(t env.Task, discount float64) (*base, ts.TimeStep) {
 	err := validateState(state, acrobot.angleBounds, acrobot.velocity1Bounds,
 		acrobot.velocity2Bounds)
 	if err != nil {
-		panic(fmt.Sprintf("new: %v", err))
+		return nil, ts.TimeStep{}, fmt.Errorf("newBase: %v", err)
 	}
 
-	return &acrobot, firstStep
+	return &acrobot, firstStep, nil
 
 }
 
 // nextState returns the next state of the environment given the
 // torque to apply to the fixed base of the acrobot.
-func (a *base) nextState(torque float64) *mat.VecDense {
+func (a *base) nextState(torque float64) (*mat.VecDense, error) {
 	s := a.CurrentTimeStep().Observation
 
 	// Continuous action between [MinTorque, MaxTorque]
@@ -155,14 +155,15 @@ func (a *base) nextState(torque float64) *mat.VecDense {
 	sAugmented := mat.NewVecDense(s.Len()+1, nil)
 	num := sAugmented.CopyVec(s)
 	if num != s.Len() {
-		panic("step: wrong number of state elements copied")
+		return nil, fmt.Errorf("step: wrong number of state elements copied")
 	}
 	sAugmented.SetVec(sAugmented.Len()-1, torque)
 
 	integrated := rk4(dsDt, sAugmented, []float64{0.0, dt})
 	r, c := integrated.Dims()
 	if c != 5 {
-		panic("step: integration returned more than 5 components")
+		return nil, fmt.Errorf("step: integration returned more than 5 " +
+			"components")
 	}
 	ns := integrated.RowView(r-1).(*mat.VecDense).SliceVec(0,
 		c-1).(*mat.VecDense)
@@ -173,7 +174,7 @@ func (a *base) nextState(torque float64) *mat.VecDense {
 	ns.SetVec(2, floatutils.ClipInterval(ns.AtVec(2), a.velocity1Bounds))
 	ns.SetVec(3, floatutils.ClipInterval(ns.AtVec(3), a.velocity2Bounds))
 
-	return ns
+	return ns, nil
 }
 
 // update updates the base environment by constructing a new current
@@ -206,18 +207,18 @@ func (a *base) CurrentTimeStep() ts.TimeStep {
 
 // Reset resets the environment, begins a new episode, and returns
 // the first timestep of the new episode
-func (a *base) Reset() ts.TimeStep {
+func (a *base) Reset() (ts.TimeStep, error) {
 	state := a.Start()
 	err := validateState(state, a.angleBounds, a.velocity1Bounds,
 		a.velocity2Bounds)
 	if err != nil {
-		panic(fmt.Sprintf("reset: %v", err))
+		return ts.TimeStep{}, fmt.Errorf("reset: %v", err)
 	}
 
 	startStep := ts.New(ts.First, 0, a.discount, state, 0)
 	a.lastStep = startStep
 
-	return startStep
+	return startStep, nil
 }
 
 // ObservationSpec returns the observation specification of the

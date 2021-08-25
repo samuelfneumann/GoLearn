@@ -64,20 +64,23 @@ type base struct {
 }
 
 // New creates and returns a new base environment
-func newBase(t environment.Task, d float64) (*base, timestep.TimeStep) {
+func newBase(t environment.Task, d float64) (*base, timestep.TimeStep, error) {
 	angleBounds := r1.Interval{Min: -AngleBound, Max: AngleBound}
 	speedBounds := r1.Interval{Min: -SpeedBound, Max: SpeedBound}
 	torqueBounds := r1.Interval{Min: -TorqueBound, Max: TorqueBound}
 
 	state := t.Start()
-	validateState(state, angleBounds, speedBounds)
+	err := validateState(state, angleBounds, speedBounds)
+	if err != nil {
+		return nil, timestep.TimeStep{}, err
+	}
 
 	firstStep := timestep.New(timestep.First, 0.0, d, state, 0)
 
 	pendulum := base{t, dt, Gravity, Mass, Length, angleBounds,
 		speedBounds, torqueBounds, firstStep, d}
 
-	return &pendulum, firstStep
+	return &pendulum, firstStep, nil
 }
 
 // CurrentTimeStep returns the last TimeStep that occurred in the
@@ -88,13 +91,16 @@ func (p *base) CurrentTimeStep() timestep.TimeStep {
 
 // Reset resets the environment and returns a starting state drawn from the
 // Starter
-func (p *base) Reset() timestep.TimeStep {
+func (p *base) Reset() (timestep.TimeStep, error) {
 	state := p.Start()
-	validateState(state, p.angleBounds, p.speedBounds)
+	err := validateState(state, p.angleBounds, p.speedBounds)
+	if err != nil {
+		return timestep.TimeStep{}, fmt.Errorf("reset: %v", err)
+	}
 	startStep := timestep.New(timestep.First, 0, p.discount, state, 0)
 	p.lastStep = startStep
 
-	return startStep
+	return startStep, nil
 }
 
 // nextState computes the next state of the environment given a timestep and
@@ -223,18 +229,20 @@ func normalizeAngle(th float64, angleBounds r1.Interval) float64 {
 
 // validateState validates the state to ensure that the angle and angular
 // velocity are within the environmental limits
-func validateState(obs mat.Vector, angleBounds, speedBounds r1.Interval) {
+func validateState(obs mat.Vector, angleBounds,
+	speedBounds r1.Interval) error {
 	// Check if the angle is within bounds
 	thWithinBounds := obs.AtVec(0) <= angleBounds.Max &&
 		obs.AtVec(0) >= angleBounds.Min
 	if !thWithinBounds {
-		panic(fmt.Sprintf("theta is not within bounds %v", angleBounds))
+		return fmt.Errorf("theta is not within bounds %v", angleBounds)
 	}
 
 	// Check if the angular velocity is within bounds
 	thdotWithinBounds := obs.AtVec(1) <= speedBounds.Max &&
 		obs.AtVec(1) >= speedBounds.Min
 	if !thdotWithinBounds {
-		panic(fmt.Sprintf("theta dot is not within bounds %v", speedBounds))
+		return fmt.Errorf("theta dot is not within bounds %v", speedBounds)
 	}
+	return nil
 }

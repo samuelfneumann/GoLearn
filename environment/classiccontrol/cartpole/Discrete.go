@@ -32,8 +32,6 @@ import (
 //	  1			Do nothing
 //	  2			Apply force right
 //
-// Illegal actions will cause the environment to panic.
-//
 // Discrete implements the environment.Environment interface
 type Discrete struct {
 	*base
@@ -41,11 +39,15 @@ type Discrete struct {
 
 // NewDiscrete constructs a new Cartpole environment with discrete
 // actions
-func NewDiscrete(t env.Task, discount float64) (*Discrete, ts.TimeStep) {
-	base, firstStep := newBase(t, discount)
+func NewDiscrete(t env.Task, discount float64) (env.Environment,
+	ts.TimeStep, error) {
+	base, firstStep, err := newBase(t, discount)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newDiscrete: %v", err)
+	}
 	cartpole := Discrete{base}
 
-	return &cartpole, firstStep
+	return &cartpole, firstStep, nil
 }
 
 // ActionSpec returns the action specification of the environment
@@ -63,11 +65,12 @@ func (c *Discrete) ActionSpec() env.Spec {
 // the episode has ended. Actions are discrete, consisting of the
 // direction to apply horizontal force to the cart or whether to apply
 // no force to the cart. Legal actions are in the set {0, 1, 2}.
-// Actions outside this range will cause the environment to panic.
-func (c *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+// Actions outside this range will cause an error to be returned.
+func (c *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool, error) {
 	// Ensure action is 1-dimensional
 	if a.Len() > ActionDims {
-		panic("Actions should be 1-dimensional")
+		return ts.TimeStep{}, true, fmt.Errorf("step: actions should be " +
+			"1-dimensional")
 	}
 
 	// Discrete action in {0, 1, 2}
@@ -76,7 +79,8 @@ func (c *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	// Ensure a legal action was selected
 	intAction := int(direction)
 	if intAction < MinDiscreteAction || intAction > MaxDiscreteAction {
-		panic(fmt.Sprintf("illegal action %v \u2209 (0, 1, 2)", intAction))
+		return ts.TimeStep{}, true, fmt.Errorf("step: illegal action %v "+
+			"\u2209 (0, 1, 2)", intAction)
 	}
 
 	// Convert action (0, 1, 2) to a direction (-1, 0, 1)
@@ -86,5 +90,6 @@ func (c *Discrete) Step(a *mat.VecDense) (ts.TimeStep, bool) {
 	nextState := c.nextState(direction)
 
 	// Update the embedded base Cartpole environment
-	return c.update(a, nextState)
+	nextStep, done := c.update(a, nextState)
+	return nextStep, done, nil
 }

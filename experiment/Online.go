@@ -61,9 +61,15 @@ func (o *Online) Register(t tracker.Tracker) {
 	o.savers = append(o.savers, t)
 }
 
-// RunEpisode runs a single episode of the experiment
-func (o *Online) RunEpisode() bool {
-	step := o.environment.Reset()
+// RunEpisode runs a single episode of the experiment and returns whether
+// the step limit has been reached as well as any errors that occurred
+// during the episode
+func (o *Online) RunEpisode() (bool, error) {
+	step, err := o.environment.Reset()
+	if err != nil {
+		return o.currentSteps >= o.maxSteps, fmt.Errorf("runEpisode: could "+
+			"not reset environment: %v", err)
+	}
 	o.agent.ObserveFirst(step)
 	o.track(step)
 
@@ -79,7 +85,11 @@ func (o *Online) RunEpisode() bool {
 		// necessary because some Agents store their actions for updates and
 		// many Environments clip actions. Failing to copy would cause the
 		// Agent's stored value to also be clipped.
-		step, _ = o.environment.Step(mat.VecDenseCopyOf(action))
+		step, _, err = o.environment.Step(mat.VecDenseCopyOf(action))
+		if err != nil {
+			return o.currentSteps >= o.maxSteps, fmt.Errorf("runEpisode: "+
+				"could not step environment: %v", err)
+		}
 
 		// Cache the environment step in each Saver
 		o.track(step)
@@ -95,20 +105,26 @@ func (o *Online) RunEpisode() bool {
 	o.progBar.AddMessage(fmt.Sprintf("Episode Length: %v", step.Number))
 
 	// Return whether or not the max timestep limit has been reached
-	return o.currentSteps >= o.maxSteps
+	return o.currentSteps >= o.maxSteps, nil
 }
 
 // Run runs the entire experiment for all timesteps
-func (o *Online) Run() {
+func (o *Online) Run() error {
 	ended := false
+	var err error
 	o.agent.Train()
 
 	for !ended {
-		ended = o.RunEpisode()
+		ended, err = o.RunEpisode()
+		if err != nil {
+			return fmt.Errorf("run: %v", err)
+		}
+
 		o.agent.EndEpisode()
 	}
 
 	o.progBar.Close()
+	return nil
 }
 
 // Save saves all the data cached by the Savers to disk

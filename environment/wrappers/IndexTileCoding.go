@@ -40,7 +40,7 @@ type IndexTileCoding struct {
 //
 // See tilecoder.TileCoder for more details.
 func NewIndexTileCoding(env environment.Environment, bins [][]int,
-	seed uint64) (*IndexTileCoding, ts.TimeStep) {
+	seed uint64) (*IndexTileCoding, ts.TimeStep, error) {
 	envSpec := env.ObservationSpec()
 	minDims := envSpec.LowerBound
 	maxDims := envSpec.UpperBound
@@ -48,36 +48,47 @@ func NewIndexTileCoding(env environment.Environment, bins [][]int,
 	coder := tilecoder.New(minDims, maxDims, bins, seed, true)
 
 	// Reset the tile-coded environment
-	step := env.Reset()
+	step, err := env.Reset()
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("newIndexTileCoding: could not "+
+			"reset wrapped environment: %v", err)
+	}
 	obs := coder.EncodeIndices(step.Observation)
 	step.Observation = mat.NewVecDense(len(obs), obs)
 
-	return &IndexTileCoding{env, coder}, step
+	return &IndexTileCoding{env, coder}, step, nil
 }
 
 // Reset resets the environment to some starting state
-func (t *IndexTileCoding) Reset() ts.TimeStep {
-	step := t.Environment.Reset()
+func (t *IndexTileCoding) Reset() (ts.TimeStep, error) {
+	step, err := t.Environment.Reset()
+	if err != nil {
+		return ts.TimeStep{}, err
+	}
 
 	// Tile code first observation
 	obs := t.coder.EncodeIndices(step.Observation)
 	step.Observation = mat.NewVecDense(len(obs), obs)
 
-	return step
+	return step, nil
 }
 
 // Step takes one environmental step given action a and returns the next
 // state as a timestep.TimeStep and a bool indicating whether or not the
 // episode has ended
-func (t *IndexTileCoding) Step(a *mat.VecDense) (ts.TimeStep, bool) {
+func (t *IndexTileCoding) Step(a *mat.VecDense) (ts.TimeStep, bool,
+	error) {
 	// Get the next step from the environment
-	step, last := t.Environment.Step(a)
+	step, last, err := t.Environment.Step(a)
+	if err != nil {
+		return ts.TimeStep{}, true, err
+	}
 
 	// Tile code the observation
 	obs := t.coder.EncodeIndices(step.Observation)
 	step.Observation = mat.NewVecDense(len(obs), obs)
 
-	return step, last
+	return step, last, nil
 }
 
 // ObservationSpec returns the observation specification of the
