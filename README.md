@@ -545,6 +545,9 @@ Currently, the only implemented `Checkpointer` is an `nStep` `Checkpointer`
 which checkpoints an `Agent` every `n` steps of an agent-environment
 interaction. For more information, see the `checkpointer` package.
 
+Currently, no agents implement the `Serializable` interface. This will
+be added on an *as-needed* basis.
+
 ## Experiment Configs
 An `experiment.Config` outlines what kind of `Experiment` should be run
 and with which `Environment` and which `Agent` with which hyperparameters
@@ -649,3 +652,4 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 - [ ] `Reset()`, `Step()` should return errors, not panic
 - [ ] Get rid of `Min()`, `Max()`, and `RewardSpec()` from Tasks.
+- [ ] Use Template for `MujocoEnv`

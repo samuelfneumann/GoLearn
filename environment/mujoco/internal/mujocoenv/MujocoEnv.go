@@ -15,80 +15,109 @@ package mujocoenv
 // // setQPos sets the position of the simulation body to position,
 // // which has length len. If the returned value is less than 0,
 // // an error occurred.
-// int setQPos(mjData* data, mjModel* model, double* position, int len) {
-// if (len != model->nq) {
-// 	return -1;
-// }
-// for (int i = 0; i < len; i++) {
+// int setQPos(mjData* data, mjModel* model, double* position, int len)
+// {
+// 	if (len != model->nq)
+// 	{
+// 		return -1;
+// 	}
+//
+// 	for (int i = 0; i < len; i++)
+// 	{
 // 		*((*data).qpos + i) = *(position + i);
 // 	}
-//  return 1;
+// 	return 1;
 // }
 //
 // // setQVel sets the velocity of the simulation body to velocity,
 // // which has length len. If the returned value is less than 0,
 // // an error occurred.
-// int setQVel(mjData* data, mjModel *model, double* velocity, int len) {
-// if (len != model->nv) {
-// 	return -1;
-// }
-// 	for (int i = 0; i < len; i++){
+// int setQVel(mjData* data, mjModel *model, double* velocity, int len)
+// {
+// 	if (len != model->nv)
+// 	{
+// 		return -1;
+// 	}
+//
+// 	for (int i = 0; i < len; i++)
+// 	{
 // 		*((*data).qvel + i) = *(velocity + i);
 // 	}
-// return 1;
+// 	return 1;
 // }
 //
 // // setControl sets the control of the simulation to control which
 // // has length len. If the returned value is less than 0,
 // // an error occurred.
-// int setControl(mjData* data, mjModel *model, double* control, int len) {
-// if (len != model->nu) {
-// 	return -1;
-// }
-// 	for (int i = 0; i < len; i++){
+// int setControl(mjData* data, mjModel *model, double* control, int len)
+// {
+// 	if (len != model->nu)
+// 	{
+// 		return -1;
+// 	}
+//
+// 	for (int i = 0; i < len; i++)
+// 	{
 // 		*((*data).ctrl + i) = *(control + i);
 // 	}
-// return 1;
+// 	return 1;
 // }
 //
 // // getBodyXPos gets the centre of mass of the body with ID id
 // // and places the centre of mass coordinates (x, y, z) in data.
 // // mjBodyData is the mjData of the simulation.
-// double* getBodyXPos(int id, mjData *mjBodyData, double *data) {
-//  for (int i = 0; i < DIMS; i++) {
+// double* getBodyXPos(int id, mjData *mjBodyData, double *data)
+// {
+// 	for (int i = 0; i < DIMS; i++)
+// 	{
 // 		*(data + i) = mjBodyData->xpos[id * DIMS + i];
-//  }
-// return data;
+// 	}
+// 	return data;
 // }
 //
 // // getBoundingSphereRadius returns the bounding sphere radius for
 // // the geom with ID id. If the returned value is not positive, then
 // // an error occurred.
-// double getBoundingSphereRadius(int id, mjModel *mjBodyData) {
-//  if (id > mjBodyData->ngeom) {
-// 	 return -1.0;
-// }
-//  return mjBodyData->geom_rbound[id];
-// }
-//
-// int getGeomSize(int id, mjModel *model, double *data, int len) {
-//  if (id > model->ngeom || len != DIMS) {
-// 	 return -1;
-//  }
-//  for (int i = 0; i < DIMS; i++) {
-//		*(data + i) = *(model->geom_size + (id * DIMS + i));
-//  }
-//  return 1;
+// double getBoundingSphereRadius(int id, mjModel *mjBodyData)
+// {
+// 	if (id > mjBodyData->ngeom)
+// 	{
+// 		return -1.0;
+// 	}
+// 	return mjBodyData->geom_rbound[id];
 // }
 //
-// int getGeomXPos(int id, mjModel *model, mjData *data, double *pos, int len) {
-//  if (id > model->ngeom || len != DIMS) {
-// 	 return -1;
-//  }
-//  for (int i = 0; i < DIMS; i++) {
-//		*(pos + i) = *(data->geom_xpos + (id * DIMS + i));
-//  }
-//  return 1;
+// // getGeomSize returns the sizes along the x, y, and z axes of the
+// // geom with ID id. The function returns a non-negative number if
+// // sucecssful.
+// int getGeomSize(int id, mjModel *model, double *data, int len)
+// {
+// 	if (id > model->ngeom || len != DIMS)
+// 	{
+// 		return -1;
+// 	}
+//
+// 	for (int i = 0; i < DIMS; i++)
+// 	{
+// 		*(data + i) = *(model->geom_size + (id * DIMS + i));
+// 	}
+// 	return 1;
+// }
+//
+// // getGeomXPos returns the global position (x, y, z) of a geom with
+// // ID id. The function returns a non-negative number if successful.
+// int getGeomXPos(int id, mjModel *model, mjData *data, double *pos, int len)
+// {
+// 	if (id > model->ngeom || len != DIMS)
+// 	{
+// 		return -1;
+// 	}
+//
+// 	for (int i = 0; i < DIMS; i++)
+// 	{
+// 		*(pos + i) = *(data->geom_xpos + (id * DIMS + i));
+// 	}
+// 	return 1;
 // }
 import "C"
 
