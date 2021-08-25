@@ -30,9 +30,6 @@ type Task interface {
 	Ender
 	GetReward(state mat.Vector, a mat.Vector, nextState mat.Vector) float64
 	AtGoal(state mat.Matrix) bool
-	Min() float64 // returns the min possible reward
-	Max() float64 // returns the max possible reward
-	RewardSpec() Spec
 }
 
 // Environment implements a simualted environment, which includes a Task to

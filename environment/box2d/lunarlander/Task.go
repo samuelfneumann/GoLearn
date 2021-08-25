@@ -119,26 +119,3 @@ func (l *Land) End(t *ts.TimeStep) bool {
 
 	return t.Last()
 }
-
-// Max returns the maximum attainable reward in the environment
-func (l *Land) Max() float64 {
-	return 100.0
-}
-
-// Min returns the minimum attainable reward in the environment
-func (l *Land) Min() float64 {
-	// Technically, this reward can be achieved by this task, but it
-	// most likely will never occur.
-	return math.Inf(-1)
-}
-
-// RewardSpec returns the reward specification for the environment
-func (l *Land) RewardSpec() environment.Spec {
-	shape := mat.NewVecDense(1, nil)
-
-	lowerBound := mat.NewVecDense(1, []float64{l.Min()})
-	upperBound := mat.NewVecDense(1, []float64{l.Max()})
-
-	return environment.NewSpec(shape, environment.Reward, lowerBound, upperBound,
-		environment.Continuous)
-}

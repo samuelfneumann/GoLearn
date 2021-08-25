@@ -2,7 +2,6 @@ package reacher
 
 import (
 	"fmt"
-	"math"
 
 	"golang.org/x/exp/rand"
 
@@ -97,26 +96,6 @@ func (r *Reach) GetReward(state, action, nextState mat.Vector) float64 {
 	rewardCtrl := mat.Dot(action, action)
 
 	return -(rewardDist + rewardCtrl)
-}
-
-// Max returns the maximum possible reward
-func (r *Reach) Max() float64 {
-	return math.Inf(1.0)
-}
-
-// Min returns the minimum possible reward
-func (r *Reach) Min() float64 {
-	return math.Inf(-1.0)
-}
-
-// RewardSpec returns the reward specification for the environment
-func (r *Reach) RewardSpec() environment.Spec {
-	shape := mat.NewVecDense(1, nil)
-	low := mat.NewVecDense(1, []float64{r.Min()})
-	high := mat.NewVecDense(1, []float64{r.Max()})
-
-	return environment.NewSpec(shape, environment.Reward, low, high,
-		environment.Continuous)
 }
 
 // Start returns a starting state for a new episode. The start state

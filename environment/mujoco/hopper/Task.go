@@ -129,26 +129,6 @@ func (h *Hop) GetReward(state, action, nextState mat.Vector) float64 {
 	return reward
 }
 
-// RewardSpec returns the reward specification for the environment
-func (h *Hop) RewardSpec() environment.Spec {
-	shape := mat.NewVecDense(1, nil)
-	low := mat.NewVecDense(1, []float64{h.Min()})
-	high := mat.NewVecDense(1, []float64{h.Max()})
-
-	return environment.NewSpec(shape, environment.Reward, low, high,
-		environment.Continuous)
-}
-
-// Max returns the maximum possible reward
-func (h *Hop) Max() float64 {
-	return math.Inf(1.0)
-}
-
-// Min returns the minimum possible reward
-func (h *Hop) Min() float64 {
-	return math.Inf(-1.0)
-}
-
 // Start returns a new starting state for the task
 func (h *Hop) Start() *mat.VecDense {
 	if !h.registered {
