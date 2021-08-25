@@ -26,20 +26,20 @@ import (
 // is denoted θ2.
 //
 // State observations are 11-dimensional vectors and consist of the
-// following features:
-// [
-// 	cos(θ1)
-// 	cos(θ2)
-// 	sin(θ1)
-// 	sin(θ2)
-//	target x
-//	target y
-//	θ1 angular velocity
-//	θ2 angular velocity
-//	x distance(fingertip, target)
-//	y distance(fingertip, target)
-//	z distance(fingertip, target)
-// ]
+// following features in the following order:
+//
+// 		1.  Cos(θ1)
+// 		2.  Cos(θ2)
+// 		3.  Sin(θ1)
+// 		4.  Sin(θ2)
+//		5.  Target x
+//		6.  Target y
+//		7.  θ1 angular velocity
+//		8.  θ2 angular velocity
+//		9.  X distance(fingertip, target)
+//		10. Y distance(fingertip, target)
+//		11. Z distance(fingertip, target)
+//
 //
 // Actions are 2-dimensional, continuous vectors consisting of the
 // rotation to apply to θ1 and θ2. Actions are clipped to stay between

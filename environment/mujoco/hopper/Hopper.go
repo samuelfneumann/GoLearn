@@ -23,19 +23,19 @@ import (
 // agent can control three of its joints to hop or move around. The
 // movable joints are the thigh joint, leg join, and foot joint.
 //
-// The state observation space is a vector of 11 components:
-// [
-// 		torso Z position
-//		torso Y orientation
-//		thigh -Y orientation
-//		leg -Y orientation
-//		foot -Y orientation
-//		torso X linear velocity
-//		torso Z linear velocity
-//		torso Y anglular velocity
-//		thigh Y angular velocity
-//		leg Y angular velocity
-//		foot Y angular velocity
+// The state observation space is a vector of 11 components consisting
+// of the following features in the following order
+//		1.  Torso Z position
+//		2.  Torso Y orientation
+//		3.  Thigh -Y orientation
+//		4.  Leg -Y orientation
+//		5.  Foot -Y orientation
+//		6.  Torso X linear velocity
+//		7.  Torso Z linear velocity
+//		8.  Torso Y anglular velocity
+//		9.  Thigh Y angular velocity
+//		10. Leg Y angular velocity
+//		11. Foot Y angular velocity
 // ]
 // where +/-Y denotes rotation about the positive or negative Y axis
 // respectively. All features of the state space are unbounded.
