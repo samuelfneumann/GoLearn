@@ -207,6 +207,7 @@ implemented environments are in the following packages:
 * `classiccontrol`: Implements the classic control environments: Mountain Car, Pendulum, Cartpole, and Acrobot
 * `box2d`: Implements environments using the [Box2D](https://box2d.org/) physics simulator [Go port](https://github.com/ByteArena/box2d)
 * `mujoco`: Implements environments using the [MuJoCo](http://www.mujoco.org/) physics simulator
+* `gym`: Provides access to [OpenAI Gym](https://gym.openai.com/)'s environments through [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym).
 
 Each package also defines public constants that determine the physical
 parameters of the `Environment`. For example, `mountaincar.Gravity` is
@@ -218,9 +219,9 @@ state features, bounds on state features, actions, dimensionality of
 action, and more by using the `go doc` command or by viewing the source
 files in a text editor.
 
-Classic control environments were adapted from OpenAI gym's implementations.
+Classic control environments were adapted from [OpenAI Gym](https://gym.openai.com/)'s implementations.
 All classic control environments have both discrete and continuous action
-variants. Box2D environments were also adapted from OpenAI gym's
+variants. Box2D environments were also adapted from [OpenAI Gym](https://gym.openai.com/)'s
 implementations and also have both discrete and continuous action variants.
 
 Although an `Environment` has no concept of rewards, an `Environment` does
@@ -266,15 +267,16 @@ Any other combination of `Environment`-`Task` will result in a panic
 when calling `CreateEnv()`.
 
 ## `gym` Package
-The `gym` package provides acces to OpenAI Gym's environments through [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym).
+The `gym` package provides acces to [OpenAI Gym](https://gym.openai.com/)'s
+environments through [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym).
 Currently, the package only supports the `MuJoCo` and `Classic Control` environment
 suites since these are the only suites [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym)
 currently supports. Once [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym)
 has added more environments, this package will automatically work with the
 new environments (given that you update [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym)).
 
-All OpenAI Gym environments work with only their default tasks and episode
-cutoffs.
+All [OpenAI Gym](https://gym.openai.com/) environments work with only their
+default tasks and episode cutoffs.
 
 ## `timestep` Package
 The `timestep` package manages environmental timesteps with the `TimeStep`
@@ -653,3 +655,4 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 - [ ] Task AtGoal() -> argument should be Vector or *VecDense
 
 - [ ] `atari-py` has `C++` shared libraries, so it could be added eventually when we want to add CNNs
+- [ ] Add `gym` to the `EnvConfig` structs.
