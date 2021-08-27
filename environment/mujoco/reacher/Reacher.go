@@ -40,7 +40,6 @@ import (
 //		10. Y distance(fingertip, target)
 //		11. Z distance(fingertip, target)
 //
-//
 // Actions are 2-dimensional, continuous vectors consisting of the
 // rotation to apply to θ1 and θ2. Actions are clipped to stay between
 // [-1, -1] and [1, 1] element-wise before being sent to the simulator,

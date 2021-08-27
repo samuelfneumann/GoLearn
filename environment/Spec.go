@@ -14,8 +14,8 @@ const (
 	Action SpecType = iota
 	Observation
 	Discount
-	Reward
-	AverageReward
+	Reward        // Deprecated
+	AverageReward // Depracated
 )
 
 // Cardinality determines the cardinality of a number (discrete or continuous)

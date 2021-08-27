@@ -267,7 +267,14 @@ when calling `CreateEnv()`.
 
 ## `gym` Package
 The `gym` package provides acces to OpenAI Gym's environments through [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym).
-The package is currently **incomplete**
+Currently, the package only supports the `MuJoCo` and `Classic Control` environment
+suites since these are the only suites [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym)
+currently supports. Once [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym)
+has added more environments, this package will automatically work with the
+new environments (given that you update [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym)).
+
+All OpenAI Gym environments work with only their default tasks and episode
+cutoffs.
 
 ## `timestep` Package
 The `timestep` package manages environmental timesteps with the `TimeStep`
@@ -638,16 +645,11 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 - [ ] Cartpole SwingUp would be nice to implement
 - [ ] Would be nice to have the acitons in discrete pendulum determined by min and max discrete actions. E.g. Action i -> (action i / minDiscreteAction) * MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction - MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
-- [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files. This may prove problematic though with the gym-http-api...
-- [ ] Eventually, it may be nice to have a Config and ConfigList for neural networks so that JSON config files can also determine the type of neural network to use with any agent. This is very low on the priority list.
+- [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files.
 
-- [ ] Readme should outline what exactly configs are and what they do for each package. Also, mention that environment Configs only allow environments with default behaviour, physical parameters, and task parameters to be created. To create a custom environemnt, you should use the relevant constructors with the relevant structs.
 - [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
 
-- [ ] Would be cool if eventually the network package looked more like something like github.com/aunum/goro.
 - [ ] Gridworld wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
 - [ ] Task AtGoal() -> argument should be Vector or *VecDense
 
-- [ ] For many linear agents, action/state values are computed more than once. The Policy computes the action/state values at each timestep, and the Learner computes the same state/action values for the timestep when learning.
-
-- [ ] mujoco state descriptions should look more like lunarlander's list
+- [ ] `atari-py` has `C++` shared libraries, so it could be added eventually when we want to add CNNs
