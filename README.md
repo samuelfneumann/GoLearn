@@ -40,7 +40,7 @@ packages:
 ## Agent `Config`s and `ConfigList`s
 Agents must be created with a configuration struct satisfying the `Config`
 interface:
-```
+```go
 // Config represents a configuration for creating an agent
 type Config interface {
 	// CreateAgent creates the agent that the config describes
@@ -75,7 +75,7 @@ package `xagent`. In package `xagent` then, there will be a Configuration
 struct, for example imagine it is called `xConfig`. Then, if agent `X`
 has the hyperparameters `learningRate`, `epsilon`, and `exploration`,
 then `xConfig` might look something like:
-```
+```go
 type xConfig struct {
 	LearningRate float64
 	Epsilon 	 float64
@@ -85,7 +85,7 @@ type xConfig struct {
 This configuration uniquely defines an `X` agent with specific hyperparameters.
 There are then two ways of creating the agent `X`. The easiest way is to
 call the `CreateAgent()` method on the `xConfig`:
-```
+```go
 config := xagent.xConfig{
 	LearningRate: 0.1,
 	Epsilon: 0.01,
@@ -100,7 +100,7 @@ agent := config.CreateAgent(env, seed)
 // Train the agent here
 ```
 The other way is through the agent constructor:
-```
+```go
 config := xagent.xConfig{
 	LearningRate: 0.1,
 	Epsilon: 0.01,
@@ -123,7 +123,7 @@ a bunch of different hyperparameter settings for a single agent type.
 To do this, instead of creating a `[]Config`, we can create a `ConfigList`.
 `ConfigList`s efficiently represent a set of all combinations of
 hyperparameters. For example, a `ConfigList` for agent `X` might be:
-```
+```go
 type xConfigList struct {
 	LearningRate []float64
 	Epsilon 	 []float64
@@ -133,7 +133,7 @@ type xConfigList struct {
 This `ConfigList` stores a list of all combinations of values found in the
 fields `LearningRate`, `Epsilon`, and `Exploration`. For example, assume
 a specific instantiation of an `xConfigList` looks like this:
-```
+```go
 config := xConfigList{
 	LearningRate []float64{0.1, 0.5},
 	Epsilon 	 []float64{0.01, 0.001},
@@ -165,7 +165,7 @@ A `TypedConfigList` consists of a type descriptor and a concrete `ConfigList`
 value. This might seem similar to how `interface` values are constructed
 in `Go`, and that's because it is!
 
-```
+```go
 TypedConfigList = | agent.Type | ConfigList |
 ```
 
@@ -174,7 +174,7 @@ Given a `JSON` serialization of a `TypedConfigList`, we can easily
 `ConfigList` as its underlying concrete type. This is required because
 we cannot easily unmarshall a concrete `ConfigList` into a
 `ConfigList` (interface) value. For example, the following code will panic:
-```
+```go
 var a ConfigList // ConfigList is an interface
 
 err := json.Unmarshall(data, a) // Data holds a concrete type
@@ -237,7 +237,7 @@ first construct a `Config` that describes the `Environment` and `Task`.
 Once the `Config` has been constructed, the `CreateEnv()` method will
 return the respective `Environment`:
 
-```
+```go
 c := envconfig.NewConfig(
 	envconfig.Cartpole,		// Environment
 	envconfig.Balance,		// Task
@@ -310,7 +310,7 @@ how episodes start and end respectively. The `Task` computes rewards for
 `state, action, next state` transitions and determines the goal states
 that the agent should reach. The `Task` interface is:
 
-```
+```go
 type Task interface {
 	Starter
 	Ender
@@ -339,7 +339,7 @@ but commonly used `Task`s for each `Environment` are implemented in the
 
 ### Starter Interface
 The `Starter` interface determines how a `Task` starts in an `Environment`:
-```
+```go
 type Starter interface {
 	Start() mat.Vector
 }
@@ -353,7 +353,7 @@ The main `Starter` for continuous-state environments is the `UniformStarter`
 which selects starting states drawn from a multivariate uniform distribution,
 where each dimension of the multivariate distribution is given bounds of
 selection. For example:
-```
+```go
 var seed uint64 = 1
 bounds := []r1.Interval{{Min: -0.6, Max:0.2}, {Min-0.02, Max: 0.02}}
 starter := environment.NewUniformStarter(bounds, seed)
@@ -367,7 +367,7 @@ uniformly, where `x ∈ [-0.6, 0.2]` and `y ∈ [-0.02, 0.02]`.
 
 ### Ender Interface
 The `Ender` interface determines how a `Task` ends in an `Environment`:
-```
+```go
 type Ender interface {
 	End(*timestep.TimeStep) bool
 }
@@ -411,7 +411,7 @@ So far, the following environment wrappers are implemented:
 It is easy to implement your own environment wrapper. All you need to do
 is create a struct that stores another `Environment` and have your
 wrapper implement the `Environment` interface:
-```
+```go
 type Environment interface {
 	Task
 	Reset() timestep.TimeStep
@@ -433,7 +433,7 @@ easy extension and modification of `Environments`.
 A `TileCoding` is an `Environment` wrapper, itself being an `Environment`.
 The `TileCoding` struct will tile-code all observations before passing
 them to an `Agent`. The `TileCoding` struct has the constructor:
-```
+```go
 func NewTileCoding(env environment.Environment, bins [][]int, seed uint64) (*TileCoding, ts.TimeStep)
 ```
 The `env` parameter is an `Environment` to wrap. The `bins` parameter
@@ -442,7 +442,7 @@ dimension, per tiling. The length of the outer slice is the number of
 tilings for the `TileCoding Environment` to use. The sub-slices determine
 the number of tiles per dimension to use in each respective tiling.
 For example, if we had:
-```
+```go
 bins := [][]int{{2, 3}, {16, 21}, {5, 6}}
 ```
 Then the `TileCoding Environment` would tile code all environmental
@@ -508,7 +508,7 @@ all data for each of the `Tracker`s registered with the `Experiment`. This
 is perhaps the easiest way to save experimental data.
 The `Tracker` interface
 is:
-```
+```go
 type Tracker interface {
 	Track(t ts.TimeStep)
 	Save()
@@ -535,7 +535,7 @@ tracked.
 ## Checkpointers
 A `Checkpointer` checkpoints an `Agent` during an experiment by saving the
 `Agent` to a binary file. The `Checkpointer` interface is:
-```
+```go
 type Checkpointer interface {
 	Checkpoint(ts.TimeStep) error
 }
@@ -543,7 +543,7 @@ type Checkpointer interface {
 
 Checkpointers can only work with `Serializable` `struct`s. A `struct` is
 serializable if it implements the `Serializable` interface:
-```
+```go
 type Serializable interface {
 	gob.GobEncoder
 	gob.GobDecoder
@@ -567,7 +567,7 @@ holds a `TypedConfigList` so that it knows how to `JSON` unmarshall the
 what `Type` of experiment we are running (e.g. an `OnlineExp` is a
 `Type` of `Experiment` that runs the `Agent` online and performs online
 evaluation only):
-```
+```go
 // Config represents a configuration of an experiment.
 type Config struct {
 	Type
@@ -579,7 +579,7 @@ type Config struct {
 
 To create and run an `Experiment`, you can use the specific `Experiment`'s
 constructor. For example, if we wanted an `Online` experiment:
-```
+```go
 agent := ...         // Create agent
 env := ...           // Create environment
 maxSteps := ...      // Maximum number of steps for the experiment
@@ -592,7 +592,7 @@ exp.Save() // Save the data generated
 ```
 Or you can use an `Experiment` `Config` (these can be `JSON` serialized
 to store and run later):
-```
+```go
 agentConfig := ...         // Create agent configuration list
 envConfig := ...           // Create environment configuration
 maxSteps := ...      // Maximum number of steps for the experiment
@@ -656,3 +656,4 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 - [ ] `atari-py` has `C++` shared libraries, so it could be added eventually when we want to add CNNs
 - [ ] Add `gym` to the `EnvConfig` structs.
+- [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
