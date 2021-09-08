@@ -652,10 +652,13 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 - [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
 
 - [ ] Gridworld wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
+- [ ] Maze wrapper that returns features as one-hot encodings.
 - [ ] Task AtGoal() -> argument should be Vector or *VecDense
 
-- [ ] `atari-py` has `C++` shared libraries, so it could be added eventually when we want to add CNNs
 - [ ] Add `gym` to the `EnvConfig` structs.
 - [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
 - [ ] For very large observations, we should actually be passing *TimeStep, to increase efficiency since Go is pass-by-value.
-Look into changing the API so that *TimeStep are passed around.
+Look into changing the API so that *TimeStep are passed around. For learning from underlying state, this isn't much of a problem,
+but for pixels e.g. or from large underlying state, this will be problematic.
+
+- [ ] Profile some code (e.g. DeepQ) to see if it can be made any faster.
