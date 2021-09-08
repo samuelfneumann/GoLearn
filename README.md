@@ -1,4 +1,5 @@
 # GoLearn: Reinforcement Learning in Go
+
 GoLearn is a reinforcement learning Go module. It implements many environments
 for reinforcement learning as well as agents. It also allows users to easily
 run experiments through `JSON` configuration files without ever touching
@@ -363,6 +364,7 @@ but commonly used `Task`s for each `Environment` are implemented in the
 ### Starter Interface
 
 The `Starter` interface determines how a `Task` starts in an `Environment`:
+
 ```go
 type Starter interface {
     Start() mat.Vector
@@ -436,7 +438,6 @@ So far, the following environment wrappers are implemented:
     returning the differential reward at each timestep and tracking/updating
     the policy's average reward estimate over time. This wrapper easily converts
     any algorithm to its differential counterpart.
-
 
 It is easy to implement your own environment wrapper. All you need to do
 is create a struct that stores another `Environment` and have your
@@ -690,12 +691,11 @@ indices `10n -  10(n+1)` determine the hyperparameter settings for run
 sequential runs of hyperparameter setting `m` of the `Agent` in the
 `Experiment`.
 
-
 ## ToDo
 
 * [ ] Cartpole SwingUp would be nice to implement
 
-* [ ] Would be nice to have the acitons in discrete pendulum determined by min and max discrete actions. E.g. Action i *> (action i / minDiscreteAction) * MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction * MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
+* [ ] Would be nice to have the acitons in discrete pendulum determined by min and max discrete actions. E.g. Action i -> (action i / minDiscreteAction) - MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction * MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
 
 * [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files.
 
