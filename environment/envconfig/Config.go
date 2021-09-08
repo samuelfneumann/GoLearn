@@ -13,10 +13,12 @@ import (
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/mountaincar"
 	"github.com/samuelfneumann/golearn/environment/classiccontrol/pendulum"
 	"github.com/samuelfneumann/golearn/environment/gridworld"
+	"github.com/samuelfneumann/golearn/environment/maze"
 	"github.com/samuelfneumann/golearn/environment/mujoco/hopper"
 	"github.com/samuelfneumann/golearn/environment/mujoco/reacher"
 	"github.com/samuelfneumann/golearn/environment/wrappers"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/gomaze"
 	"gonum.org/v1/gonum/spatial/r1"
 )
 
@@ -34,6 +36,7 @@ const (
 	LunarLander EnvName = "LunarLander"
 	Hopper      EnvName = "Hopper"
 	Reacher     EnvName = "Reacher"
+	Maze        EnvName = "Maze"
 )
 
 // TaskName stores the tasks that can be configured with this package.
@@ -57,6 +60,7 @@ const (
 	Land    TaskName = "Land"
 	Hop     TaskName = "Hop"
 	Reach   TaskName = "Reach"
+	Solve   TaskName = "Solve"
 )
 
 // Config implements a specific configuration of a specific environment
@@ -120,6 +124,10 @@ func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep,
 
 	case Gridworld:
 		e, step, err = CreateGridworld(c.ContinuousActions, c.Task,
+			int(c.EpisodeCutoff), seed, c.Discount)
+
+	case Maze:
+		e, step, err = CreateMaze(c.ContinuousActions, c.Task,
 			int(c.EpisodeCutoff), seed, c.Discount)
 
 	case LunarLander:
@@ -302,6 +310,44 @@ func CreateGridworld(continuousActions bool, taskName TaskName, cutoff int,
 
 	// Create the gridworld
 	return gridworld.New(r, c, task, discount)
+}
+
+// CreateMaze is a factory for creating a Maze environment
+// with default grid size (10 x 15) and default goal task parameters
+// of reaching the bottom right cell, with initialization in the top
+// left cell. The maze is constructed with Wilson initialization.
+func CreateMaze(continuousActions bool, taskName TaskName, cutoff int,
+	seed uint64, discount float64) (env.Environment, ts.TimeStep, error) {
+	if continuousActions {
+		return nil, ts.TimeStep{}, fmt.Errorf("createGridworld: gridworlds " +
+			"only support discrete actions")
+	}
+
+	// Environment parameters
+	r, c := 10, 15
+	goalCol, goalRow := []int{c - 1}, []int{r - 1}
+
+	// Create the start-state distribution - always at (0, 0)
+	starter := env.NewCategoricalStarter([]int{0, 0}, seed)
+
+	var task env.Task
+	var err error
+	switch taskName {
+	case Solve:
+		task, err = maze.NewSolve(starter, goalCol, goalRow, cutoff)
+		if err != nil {
+			return nil, ts.TimeStep{}, fmt.Errorf("createMaze: could " +
+				"not create goal")
+		}
+
+	default:
+		return nil, ts.TimeStep{}, fmt.Errorf("createMaze: Maze "+
+			"environment has no task %v", taskName)
+	}
+
+	// Create the maze
+	init := gomaze.NewWilson(int64(seed))
+	return maze.New(task, r, c, init, discount)
 }
 
 // CreateLunarLander is a factory for creating the Lunar Lander

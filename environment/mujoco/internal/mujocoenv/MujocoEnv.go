@@ -170,6 +170,8 @@ func init() {
 	}
 	mjKey := C.CString(fmt.Sprintf("%v/.mujoco/mjkey.txt", home))
 	defer C.free(unsafe.Pointer(mjKey))
+
+	fmt.Printf("Activating MuJoCo license: ")
 	C.mj_activate(mjKey)
 }
 

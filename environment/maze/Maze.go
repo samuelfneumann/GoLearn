@@ -10,13 +10,31 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-const (
-	DefaultStartRow int = -1
-	DefaultStartCol int = -1
-	DefaultEndRow   int = -1
-	DefaultEndCol   int = -1
-)
+// Assumes that Start() returns a vector or [row, col]
+// State observations are [x, y] == [col, row], where origin is the
+// top left cell of the grid
 
+// Maze implements a maze environment.
+//
+// State observations are 2-dimensional vectors consisting of the
+// [x, y] == [col, row] position of the agent. The origin is the top
+// left cell. State observations are discrete.
+//
+// Actions are discrete in the set (0, 1, 2, 3). Actions outside this
+// range will cause an error to be returned from Step(). Actions have
+// the following meanings:
+//
+//	Action		Meaning
+//	  0			Move north
+//	  1			Move south
+//	  2			Move west
+//	  3			Move east
+//
+// The Maze environment expects a Task to return a 2-dimensional start
+// state using its Start() method. This vector should be of the form
+// [x, y] == [col, row].
+//
+// Maze satisfies the environment.Environment interface.
 type Maze struct {
 	env.Task
 	maze *gomaze.Maze
@@ -25,28 +43,26 @@ type Maze struct {
 	currentStep ts.TimeStep
 }
 
+// New returns a new Maze environment.
 func New(t env.Task, rows, cols int, init gomaze.Initer,
 	discount float64) (env.Environment, ts.TimeStep, error) {
-
-	start := t.Start()
-	startRow := int(start.AtVec(1))
-	startCol := int(start.AtVec(0))
-
-	maze, err := gomaze.NewMaze(rows, cols, DefaultEndRow, DefaultEndCol,
-		startRow, startCol, init)
+	// Create the underlying GoMaze maze
+	maze, err := gomaze.NewMaze(rows, cols, -1, -1, -1, -1, init)
 	if err != nil {
 		return nil, ts.TimeStep{}, fmt.Errorf("new: could not create maze: %v",
 			err)
 	}
 
-	task, ok := t.(*Solve)
-	if ok {
-		task.Register(maze)
+	// Get a starting state
+	start := t.Start()
+	err = validateState(rows, cols, start)
+	if err != nil {
+		return nil, ts.TimeStep{}, fmt.Errorf("new %v", err)
 	}
+	maze.SetCell(int(start.AtVec(0)), int(start.AtVec(1)))
 
-	floatState := maze.Reset()
-	state := mat.NewVecDense(len(floatState), floatState)
-	step := ts.New(ts.First, 0, discount, state, 0)
+	// Create the new step and maze environment
+	step := ts.New(ts.First, 0, discount, start, 0)
 
 	mazeEnv := &Maze{
 		Task:        t,
@@ -82,19 +98,16 @@ func (m *Maze) Step(action *mat.VecDense) (ts.TimeStep, bool, error) {
 }
 
 func (m *Maze) Reset() (ts.TimeStep, error) {
-	floatState := m.maze.Reset()
+	_ = m.maze.Reset()
 
-	// ! Adjust this for new tasks that don't use GoMaze's underlying goal/start etc.
-	// start := m.Start()
-	// if start.Len() != 2 {
-	// 	return ts.TimeStep{}, fmt.Errorf("oh no")
-	// }
-	// m.maze.SetCell(int(start.AtVec(0)), int(start.AtVec(1)))
-	// state := start
-	// ! --------------------------------------------
+	// Get a starting position
+	start := m.Start()
+	if err := validateState(m.maze.Rows(), m.maze.Cols(), start); err != nil {
+		return ts.TimeStep{}, fmt.Errorf("reset: %v", err)
+	}
+	m.maze.SetCell(int(start.AtVec(0)), int(start.AtVec(1)))
 
-	state := mat.NewVecDense(len(floatState), floatState)
-	step := ts.New(ts.First, 0, m.discount, state, 0)
+	step := ts.New(ts.First, 0, m.discount, start, 0)
 
 	m.currentStep = step
 
@@ -131,4 +144,25 @@ func (m *Maze) DiscountSpec() env.Spec {
 
 	return env.NewSpec(shape, env.Discount, lowerBound, lowerBound,
 		env.Discrete)
+}
+
+func (m *Maze) String() string {
+	return m.maze.String()
+}
+
+func validateState(rows, cols int, state mat.Vector) error {
+	if state.Len() != 2 {
+		return fmt.Errorf("illegal number of "+
+			"start vector dimensions \n\thave(%v) \n\twant(2)", state.Len())
+	}
+	if startRow := int(state.AtVec(0)); startRow > rows || startRow < 0 {
+		return fmt.Errorf("row index out of "+
+			"range [%v] with length %v", startRow, rows)
+	}
+	if startCol := int(state.AtVec(1)); startCol > rows || startCol < 0 {
+		return fmt.Errorf("row index out of "+
+			"range [%v] with length %v", startCol, rows)
+	}
+
+	return nil
 }

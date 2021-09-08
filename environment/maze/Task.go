@@ -1,9 +1,10 @@
 package maze
 
 import (
+	"fmt"
+
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
-	"github.com/samuelfneumann/gomaze"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -16,38 +17,32 @@ const (
 // Then, use a uniform categorical starter or single starter, set a goal position, etc.
 // Can have multiple goals like gridworld
 type Solve struct {
-	maze *gomaze.Maze
+	env.Starter
 
-	// goal position [][2]int
-	// start position
+	goalCol []int
+	goalRow []int
 
 	stepLimit env.Ender
-
-	registered bool
 }
 
-func NewSolve(cutoff int) env.Task {
+func NewSolve(starter env.CategoricalStarter, goalCol, goalRow []int,
+	cutoff int) (env.Task, error) {
+	if len(goalCol) != len(goalRow) {
+		return nil, fmt.Errorf("newSolve: goal must have same number of " +
+			"x positions as y positions")
+	}
+
 	stepLimit := env.NewStepLimit(cutoff)
 	return &Solve{
 		stepLimit: stepLimit,
-	}
+		Starter:   starter,
+		goalCol:   goalCol,
+		goalRow:   goalRow,
+	}, nil
 }
 
-func (s *Solve) Register(m *gomaze.Maze) {
-	s.maze = m
-	s.registered = true
-}
-
-func (s *Solve) Start() *mat.VecDense {
-	row, col := s.maze.Start()
-	return mat.NewVecDense(2, []float64{
-		float64(row),
-		float64(col),
-	})
-}
-
-func (s *Solve) GetReward(_, _, _ mat.Vector) float64 {
-	if s.maze.AtGoal() {
+func (s *Solve) GetReward(_, _, nextState mat.Vector) float64 {
+	if s.AtGoal(nextState) {
 		return TerminalReward
 	}
 	return TimeStepReward
@@ -58,7 +53,7 @@ func (s *Solve) End(t *ts.TimeStep) bool {
 		return last
 	}
 
-	if s.maze.AtGoal() {
+	if s.AtGoal(t.Observation) {
 		t.SetEnd(ts.TerminalStateReached)
 		t.StepType = ts.Last
 		return true
@@ -72,7 +67,14 @@ func (s *Solve) AtGoal(state mat.Matrix) bool {
 		return false
 	}
 
-	goalRow, goalCol := s.maze.Goal()
+	for i := range s.goalCol {
 
-	return int(state.At(0, 0)) == goalRow && int(state.At(0, 1)) == goalCol
+		goalCol := s.goalCol[i]
+		goalRow := s.goalRow[i]
+
+		if int(state.At(0, 0)) == goalRow && int(state.At(0, 1)) == goalCol {
+			return true
+		}
+	}
+	return false
 }
