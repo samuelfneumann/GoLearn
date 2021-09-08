@@ -39,7 +39,8 @@ func main() {
 	var expConf experiment.Config
 	err = dec.Decode(&expConf)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("could not decode experiment config: %v",
+			err))
 	}
 	expFile.Close()
 

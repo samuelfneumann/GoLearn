@@ -114,7 +114,8 @@ func New(env environment.Environment, c agent.Config,
 	tau := config.Tau
 	targetUpdateInterval := config.TargetUpdateInterval
 
-	// Create the training network, which is the network whose
+	// Create the training network, which is the network whose weights
+	// are learned
 	trainNet := config.trainNet
 	gTrain := trainNet.Graph()
 
@@ -278,8 +279,6 @@ func (d *DeepQ) Step() {
 		msg := fmt.Sprintf("step: could not set target net input: %v", err)
 		panic(msg)
 	}
-
-	// Compute the next state-action values
 	err = d.targetNetVM.RunAll()
 	if err != nil {
 		panic(fmt.Sprintf("step: could not run target vm: %v", err))

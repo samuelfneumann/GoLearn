@@ -60,7 +60,6 @@ const (
 	Land    TaskName = "Land"
 	Hop     TaskName = "Hop"
 	Reach   TaskName = "Reach"
-	Solve   TaskName = "Solve"
 )
 
 // Config implements a specific configuration of a specific environment
@@ -324,17 +323,17 @@ func CreateMaze(continuousActions bool, taskName TaskName, cutoff int,
 	}
 
 	// Environment parameters
-	r, c := 10, 15
+	r, c := 5, 5
 	goalCol, goalRow := []int{c - 1}, []int{r - 1}
 
 	// Create the start-state distribution - always at (0, 0)
-	starter := env.NewCategoricalStarter([]int{0, 0}, seed)
+	starter := env.NewCategoricalStarter([][]int{{0}, {0}}, int64(seed))
 
 	var task env.Task
 	var err error
 	switch taskName {
-	case Solve:
-		task, err = maze.NewSolve(starter, goalCol, goalRow, cutoff)
+	case Goal:
+		task, err = maze.NewGoal(starter, goalCol, goalRow, cutoff)
 		if err != nil {
 			return nil, ts.TimeStep{}, fmt.Errorf("createMaze: could " +
 				"not create goal")

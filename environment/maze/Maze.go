@@ -74,29 +74,33 @@ func New(t env.Task, rows, cols int, init gomaze.Initer,
 	return mazeEnv, step, nil
 }
 
+// Step takes a single environmental step given some action
 func (m *Maze) Step(action *mat.VecDense) (ts.TimeStep, bool, error) {
 	if action.Len() > 1 {
 		return ts.TimeStep{}, false, fmt.Errorf("step: actions must be " +
 			"1-dimensional")
 	}
 
+	// Calculate the next position given the action
 	a := int(action.AtVec(0))
-
 	newPos, _, _, err := m.maze.Step(a)
 	if err != nil {
 		return ts.TimeStep{}, false, err
 	}
 	nextState := mat.NewVecDense(len(newPos), newPos)
 
+	// Construct next timestep
 	reward := m.GetReward(m.CurrentTimeStep().Observation, action, nextState)
 	nextStep := ts.New(ts.Mid, reward, m.discount, nextState,
 		m.CurrentTimeStep().Number+1)
-
 	last := m.End(&nextStep)
 
+	m.currentStep = nextStep
 	return nextStep, last, nil
 }
 
+// Reset resets the environment to some starting state to begin a new
+// episode
 func (m *Maze) Reset() (ts.TimeStep, error) {
 	_ = m.maze.Reset()
 
@@ -105,19 +109,21 @@ func (m *Maze) Reset() (ts.TimeStep, error) {
 	if err := validateState(m.maze.Rows(), m.maze.Cols(), start); err != nil {
 		return ts.TimeStep{}, fmt.Errorf("reset: %v", err)
 	}
-	m.maze.SetCell(int(start.AtVec(0)), int(start.AtVec(1)))
 
+	// Set the starting position, and construct the first time step
+	m.maze.SetCell(int(start.AtVec(0)), int(start.AtVec(1)))
 	step := ts.New(ts.First, 0, m.discount, start, 0)
 
 	m.currentStep = step
-
 	return step, nil
 }
 
+// CurrentTimeStep returns the current time step of the environment
 func (m *Maze) CurrentTimeStep() ts.TimeStep {
 	return m.currentStep
 }
 
+// ActionSpec returns the action specification of the environment
 func (m *Maze) ActionSpec() env.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{0.0})
@@ -126,10 +132,12 @@ func (m *Maze) ActionSpec() env.Spec {
 	return env.NewSpec(shape, env.Action, lowerBound, upperBound, env.Discrete)
 }
 
+// ObservationSpec returns the observation specification of the
+// environment
 func (m *Maze) ObservationSpec() env.Spec {
 	shape := mat.NewVecDense(2, nil)
 	lowerBound := mat.NewVecDense(2, []float64{0., 0.})
-	upperBound := mat.NewVecDense(1, []float64{
+	upperBound := mat.NewVecDense(2, []float64{
 		float64(m.maze.Rows()),
 		float64(m.maze.Cols()),
 	})
@@ -138,6 +146,7 @@ func (m *Maze) ObservationSpec() env.Spec {
 		env.Discrete)
 }
 
+// DiscountSpec returns the discount specification of the environment
 func (m *Maze) DiscountSpec() env.Spec {
 	shape := mat.NewVecDense(1, nil)
 	lowerBound := mat.NewVecDense(1, []float64{m.discount})
@@ -146,10 +155,14 @@ func (m *Maze) DiscountSpec() env.Spec {
 		env.Discrete)
 }
 
+// String returns a string representation of the environment
 func (m *Maze) String() string {
 	return m.maze.String()
 }
 
+// validateState returns an error if the given state is invalid. The
+// rows and cols parameters are the number of rows and columns in the
+// maze.
 func validateState(rows, cols int, state mat.Vector) error {
 	if state.Len() != 2 {
 		return fmt.Errorf("illegal number of "+

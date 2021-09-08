@@ -64,7 +64,7 @@ func Set(dest, source NeuralNet) error {
 	sourceNodes := source.Learnables()
 	nodes := dest.Learnables()
 	for i, destLearnable := range nodes {
-		sourceLearnable := sourceNodes[i].Clone()
+		sourceLearnable := sourceNodes[i].Clone() // Is Clone() needed?
 		err := G.Let(destLearnable, sourceLearnable.(*G.Node).Value())
 		if err != nil {
 			return fmt.Errorf("set: could not set value: %v", err)

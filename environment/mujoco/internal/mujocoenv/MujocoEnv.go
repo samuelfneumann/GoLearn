@@ -172,7 +172,10 @@ func init() {
 	defer C.free(unsafe.Pointer(mjKey))
 
 	fmt.Printf("Activating MuJoCo license: ")
-	C.mj_activate(mjKey)
+	errCode := int(C.mj_activate(mjKey))
+	if errCode == 1 {
+		fmt.Println("Done!")
+	}
 }
 
 // MujocoEnv implements the base functionality for all environments

@@ -657,3 +657,5 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 - [ ] `atari-py` has `C++` shared libraries, so it could be added eventually when we want to add CNNs
 - [ ] Add `gym` to the `EnvConfig` structs.
 - [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
+- [ ] For very large observations, we should actually be passing *TimeStep, to increase efficiency since Go is pass-by-value.
+Look into changing the API so that *TimeStep are passed around.

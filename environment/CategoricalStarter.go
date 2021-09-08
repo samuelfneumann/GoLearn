@@ -1,45 +1,55 @@
 package environment
 
 import (
-	"golang.org/x/exp/rand"
+	"math/rand"
 
 	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/stat/distuv"
 )
 
 // Categorical starter returns starting states as vectors sampled from
 // a multi-dimensional uniform categorical distribution. The categorical
 // distributions sample values in (0, 1, 2, ... N).
 type CategoricalStarter struct {
-	features int
-	seed     uint64
-	rand     []distuv.Categorical
+	features      int
+	seed          int64
+	rng           []*rand.Rand
+	startFeatures [][]int
 }
 
-// NewCategoricalStarter returns a new CategoricalStarter, sampling
-// dimension i from (0, 1, 2, ... bounds[i]-1)
-func NewCategoricalStarter(bounds []int, seed uint64) CategoricalStarter {
+func NewCategoricalStarter(startFeatures [][]int,
+	seed int64) CategoricalStarter {
 	source := rand.NewSource(seed)
+	rng := make([]*rand.Rand, len(startFeatures))
 
-	rand := make([]distuv.Categorical, len(bounds))
-	for i := range rand {
+	for i := range rng {
 		// Create the weights for the uniform categorical distribution
-		weights := make([]float64, bounds[i])
+		weights := make([]float64, len(startFeatures[i]))
 		for j := range weights {
 			weights[j] = 1.0 / float64(len(weights))
 		}
 
-		rand[i] = distuv.NewCategorical(weights, source)
+		rng[i] = rand.New(source)
 	}
 
-	return CategoricalStarter{len(bounds), seed, rand}
+	return CategoricalStarter{
+		features:      len(startFeatures),
+		seed:          seed,
+		rng:           rng,
+		startFeatures: startFeatures,
+	}
 }
 
 // Start returns a starting state vector
 func (c CategoricalStarter) Start() *mat.VecDense {
 	start := make([]float64, c.features)
+
 	for i := range start {
-		start[i] = c.rand[i].Rand()
+		// Get a random index for the current feature's starting value
+		ind := c.rng[i].Intn(len(c.startFeatures[i]))
+
+		// Set the current features starting value from the predeclared legal
+		// starting values
+		start[i] = float64(c.startFeatures[i][ind])
 	}
 
 	return mat.NewVecDense(c.features, start)
