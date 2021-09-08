@@ -4,7 +4,8 @@ for reinforcement learning as well as agents. It also allows users to easily
 run experiments through `JSON` configuration files without ever touching
 the code.
 
-# Algorithms
+## Algorithms
+
 A number of algorithms are implemented. These are separated into the
 `agent/linear` and `agent/nonlinear` packages.
 
@@ -18,7 +19,8 @@ of the `agent/nonlinear` package refers to the ability of the package to use
 nonlinear function approximation, but the package is not restricted to
 only use nonlinear function approximation.
 
-## Value-Based Algorithms
+### Value-Based Algorithms
+
 The following value based algorithms are implemented in the following
 packages:
 
@@ -28,7 +30,8 @@ packages:
 | `Linear Expected SARSA` |   `agent/linear/discrete/esarsa`  |
 |    `Deep Q-learning`    |  `agent/nonlinear/discrete/deepq` |
 
-## Policy Gradient Algorithms
+### Policy Gradient Algorithms
+
 The following policy gradient algorithms are implemented in the following
 packages:
 
@@ -38,33 +41,36 @@ packages:
 |   `Vanilla Policy Gradient`    | `agent/nonlinear/continuous/vanillapg` |
 
 ## Agent `Config`s and `ConfigList`s
+
 Agents must be created with a configuration struct satisfying the `Config`
 interface:
+
 ```go
 // Config represents a configuration for creating an agent
 type Config interface {
-	// CreateAgent creates the agent that the config describes
-	CreateAgent(env environment.Environment, seed uint64) (Agent, error)
+    // CreateAgent creates the agent that the config describes
+    CreateAgent(env environment.Environment, seed uint64) (Agent, error)
 
-	// ValidAgent returns whether the argument Agent is valid for the
-	// Config. This differs from the Type() method in that an actual
-	// Agent struct is used here, whereas the Type() method returns
-	// a Type (string) describing the Agent's type. For example a
-	// Config's Type may be "CategoricalVanillaPG-MLP" or "Gaussian
-	// VanillaPG-TreeMLP", which are different Config types, but each of
-	// which have *vanillapg.VanillaPG as a valid Agent since that
-	// is the Agent the Configs describe.
-	ValidAgent(Agent) bool
+    // ValidAgent returns whether the argument Agent is valid for the
+    // Config. This differs from the Type() method in that an actual
+    // Agent struct is used here, whereas the Type() method returns
+    // a Type (string) describing the Agent's type. For example a
+    // Config's Type may be "CategoricalVanillaPG-MLP" or "Gaussian
+    // VanillaPG-TreeMLP", which are different Config types, but each of
+    // which have *vanillapg.VanillaPG as a valid Agent since that
+    // is the Agent the Configs describe.
+    ValidAgent(Agent) bool
 
-	// Validate returns an error describing whether or not the
-	// configuration is valid.
-	Validate() error
+    // Validate returns an error describing whether or not the
+    // configuration is valid.
+    Validate() error
 
-	// Type returns the type of agent which can be constructed from
-	// the Config.
-	Type() Type
+    // Type returns the type of agent which can be constructed from
+    // the Config.
+    Type() Type
 }
 ```
+
 Each `Config` struct uniquely determines the set of hyperparameters and
 options of a specific agent. If you try to create an `Agent` for which
 the `ValidAgent()` `Config` method would return `false`, the `Agent`
@@ -75,21 +81,24 @@ package `xagent`. In package `xagent` then, there will be a Configuration
 struct, for example imagine it is called `xConfig`. Then, if agent `X`
 has the hyperparameters `learningRate`, `epsilon`, and `exploration`,
 then `xConfig` might look something like:
+
 ```go
 type xConfig struct {
-	LearningRate float64
-	Epsilon 	 float64
-	Exploration  string
+    LearningRate float64
+    Epsilon      float64
+    Exploration  string
 }
 ```
+
 This configuration uniquely defines an `X` agent with specific hyperparameters.
 There are then two ways of creating the agent `X`. The easiest way is to
 call the `CreateAgent()` method on the `xConfig`:
+
 ```go
 config := xagent.xConfig{
-	LearningRate: 0.1,
-	Epsilon: 0.01,
-	Exploration: "Gaussian",
+    LearningRate: 0.1,
+    Epsilon: 0.01,
+    Exploration: "Gaussian",
 }
 
 env := ... // Create some environment to train the agent in
@@ -99,12 +108,14 @@ agent := config.CreateAgent(env, seed)
 
 // Train the agent here
 ```
+
 The other way is through the agent constructor:
+
 ```go
 config := xagent.xConfig{
-	LearningRate: 0.1,
-	Epsilon: 0.01,
-	Exploration: "Gaussian",
+    LearningRate: 0.1,
+    Epsilon: 0.01,
+    Exploration: "Gaussian",
 }
 
 env := ... // Create some environment to train the agent in
@@ -123,23 +134,27 @@ a bunch of different hyperparameter settings for a single agent type.
 To do this, instead of creating a `[]Config`, we can create a `ConfigList`.
 `ConfigList`s efficiently represent a set of all combinations of
 hyperparameters. For example, a `ConfigList` for agent `X` might be:
+
 ```go
 type xConfigList struct {
-	LearningRate []float64
-	Epsilon 	 []float64
-	Exploration  []string
+    LearningRate []float64
+    Epsilon      []float64
+    Exploration  []string
 }
 ```
+
 This `ConfigList` stores a list of all combinations of values found in the
 fields `LearningRate`, `Epsilon`, and `Exploration`. For example, assume
 a specific instantiation of an `xConfigList` looks like this:
+
 ```go
 config := xConfigList{
-	LearningRate []float64{0.1, 0.5},
-	Epsilon 	 []float64{0.01, 0.001},
-	Exploration  []string{"Gaussian},
+    LearningRate []float64{0.1, 0.5},
+    Epsilon      []float64{0.01, 0.001},
+    Exploration  []string{"Gaussian},
 }
 ```
+
 Then, this list basically stores a slice of 5 `xConfig`s, each taking on
 a different combination of `LearningRate`s, `Epsilon`s, and `Exploration`s.
 On a `ConfigList`, you can then call an `ConfigAt(i int, c ConfigList)`
@@ -158,8 +173,8 @@ An `Experiment` can be `JSON` serialized (more on that later). In the
 concrete type, the `TypedConfigList`, which provides a privitive way
 of typing `ConfigList`s.
 
+### `TypedConfigList`
 
-## `TypedConfigList`
 A `TypedConfigList` provides a primitive typing mechanism of `ConfigList`s.
 A `TypedConfigList` consists of a type descriptor and a concrete `ConfigList`
 value. This might seem similar to how `interface` values are constructed
@@ -174,14 +189,16 @@ Given a `JSON` serialization of a `TypedConfigList`, we can easily
 `ConfigList` as its underlying concrete type. This is required because
 we cannot easily unmarshall a concrete `ConfigList` into a
 `ConfigList` (interface) value. For example, the following code will panic:
+
 ```go
 var a ConfigList // ConfigList is an interface
 
 err := json.Unmarshall(data, a) // Data holds a concrete type
 if a == nil {
-	panic(err)
+    panic(err)
 }
 ```
+
 A (possibly `JSON` marshalled) `Experiment` (more on this later) must store
 an agent `ConfigList` describing which hyperparameters of a specific agent
 should be run in the experiment. A problem is that the marshalled
@@ -195,7 +212,8 @@ The `JSON` marhsalled `TypedConfigList` will perform `ConfigList` typing
 for the `Experiment`. The `Experiment` will then simply call `CreateAgent()`
 and run.
 
-# Environments
+## Environments
+
 This library makes a separation between an `Environment` and a `Task`. An
 `Environment` is simply some domain that can be acted in, but does not
 return any reward for actions. An `Environment` has a state, and actions
@@ -204,6 +222,7 @@ no rewards are given for any actions in an `Environment`. The currently
 implemented environments are in the following packages:
 
 * `gridworld`: Implements gridworld environments
+* `maze`: Implements randomly generated maze environments
 * `classiccontrol`: Implements the classic control environments: Mountain Car, Pendulum, Cartpole, and Acrobot
 * `box2d`: Implements environments using the [Box2D](https://box2d.org/) physics simulator [Go port](https://github.com/ByteArena/box2d)
 * `mujoco`: Implements environments using the [MuJoCo](http://www.mujoco.org/) physics simulator
@@ -229,7 +248,8 @@ have a `Task`, which determines the rewards taken for actions in the
 `Environment`, the starting states in an`Environment`, and the end conditions
 of an agent-environment interaction.
 
-## `envconfig` Package
+### `envconfig` Package
+
 The `envconfig` package is used to construct `Environment`s with specific
 `Task`s with default parameters. For example, to create the Cartpole
 environment with the `Balance` task with default parameters, one can
@@ -239,12 +259,12 @@ return the respective `Environment`:
 
 ```go
 c := envconfig.NewConfig(
-	envconfig.Cartpole,		// Environment
-	envconfig.Balance,		// Task
-	true,					// Continuous actions?
-	500,					// Episode cutoff
-	0.99,					// Discount
-	false,					// Use the OpenAI Gym (true) or the GoLearn (false) implementation
+    envconfig.Cartpole,        // Environment
+    envconfig.Balance,        // Task
+    true,                    // Continuous actions?
+    500,                    // Episode cutoff
+    0.99,                    // Discount
+    false,                    // Use the OpenAI Gym (true) or the GoLearn (false) implementation
 )
 
 env, firstStep := c.CreateEnv()
@@ -266,7 +286,8 @@ configurations:
 Any other combination of `Environment`-`Task` will result in a panic
 when calling `CreateEnv()`.
 
-## `gym` Package
+### `gym` Package
+
 The `gym` package provides acces to [OpenAI Gym](https://gym.openai.com/)'s
 environments through [GoGym: Go Bindings for OpenAI Gym](https://github.com/samuelfneumann/GoGym).
 Currently, the package only supports the `MuJoCo` and `Classic Control` environment
@@ -278,7 +299,8 @@ new environments (given that you update [GoGym: Go Bindings for OpenAI Gym](http
 All [OpenAI Gym](https://gym.openai.com/) environments work with only their
 default tasks and episode cutoffs.
 
-## `timestep` Package
+### `timestep` Package
+
 The `timestep` package manages environmental timesteps with the `TimeStep`
 struct. Each time an `Environment` takes a step, it returns a new `TimeStep`
 `struct`. A `TimeStep` contains a `StepType` (either `First`, `Middle`,
@@ -299,7 +321,8 @@ action)`. Sometimes the `next action` is omitted. These `struct`s are sent to
 `Agent`s for many different reasons, for example, to compute the TD error on a
 transition in order to track the average reward.
 
-## Task Interface
+### Task Interface
+
 An `Environment` has a `Task` which outlines what the agent should acomplish.
 For example, the `mountaincar` package implements a `Goal` `Task` where,
 when added to a Mountain Car environment, rewards the agent for reaching a
@@ -312,13 +335,13 @@ that the agent should reach. The `Task` interface is:
 
 ```go
 type Task interface {
-	Starter
-	Ender
-	GetReward(state mat.Vector, a mat.Vector, nextState mat.Vector) float64
-	AtGoal(state mat.Matrix) bool
-	Min() float64 // returns the min possible reward
-	Max() float64 // returns the max possible reward
-	RewardSpec() spec.Environment
+    Starter
+    Ender
+    GetReward(state mat.Vector, a mat.Vector, nextState mat.Vector) float64
+    AtGoal(state mat.Matrix) bool
+    Min() float64 // returns the min possible reward
+    Max() float64 // returns the max possible reward
+    RewardSpec() spec.Environment
 }
 ```
 
@@ -338,12 +361,14 @@ but commonly used `Task`s for each `Environment` are implemented in the
 `Environment`'s respective package.
 
 ### Starter Interface
+
 The `Starter` interface determines how a `Task` starts in an `Environment`:
 ```go
 type Starter interface {
-	Start() mat.Vector
+    Start() mat.Vector
 }
 ```
+
 An environment will call the `Start()` method of its task, which will
 return a starting state. The agent will then start from this state
 to complete its task. If a `Starter` produces a starting state that is
@@ -353,25 +378,29 @@ The main `Starter` for continuous-state environments is the `UniformStarter`
 which selects starting states drawn from a multivariate uniform distribution,
 where each dimension of the multivariate distribution is given bounds of
 selection. For example:
+
 ```go
 var seed uint64 = 1
 bounds := []r1.Interval{{Min: -0.6, Max:0.2}, {Min-0.02, Max: 0.02}}
 starter := environment.NewUniformStarter(bounds, seed)
 ```
+
 will create a `UniformStarter` which samples starting states `[x, y]`
 uniformly, where `x ∈ [-0.6, 0.2]` and `y ∈ [-0.02, 0.02]`.
 
 `Task`s can take in `Starter` structs to determine how and where the
 `Task` will begin for each episode.
 
-
 ### Ender Interface
+
 The `Ender` interface determines how a `Task` ends in an `Environment`:
+
 ```go
 type Ender interface {
-	End(*timestep.TimeStep) bool
+    End(*timestep.TimeStep) bool
 }
 ```
+
 The `End()` method takes in a pointer to a `TimeStep`. The function checks
 whether this `TimeStep` is the last in the episode. If so, the function
 first changest the `TimeStep.StepType` field to `timestep.Last` and returns
@@ -389,6 +418,7 @@ may be used for `Environment`s within that package. The global
 * `FunctionEnder`: Ends an episode when a function or method returns `true`.
 
 ## Environment Wrappers
+
 `Environment` wrappers can be founds in the `environment/wrappers` package.
 
 `Environment` wrappers are themselves `Environment`s, but they somehow alter
@@ -401,26 +431,28 @@ So far, the following environment wrappers are implemented:
 
 * `TileCoding`: Tile codes environmental observations
 * `IndexTileCoding`: Tile codes environmental observations and returns as
-	state observations the indices of non-zero components in the tile-coded vector.
+    state observations the indices of non-zero components in the tile-coded vector.
 * `AverageReward`: Converts an environment to the average reward formulation,
-	returning the differential reward at each timestep and tracking/updating
-	the policy's average reward estimate over time. This wrapper easily converts
-	any algorithm to its differential counterpart.
+    returning the differential reward at each timestep and tracking/updating
+    the policy's average reward estimate over time. This wrapper easily converts
+    any algorithm to its differential counterpart.
 
 
 It is easy to implement your own environment wrapper. All you need to do
 is create a struct that stores another `Environment` and have your
 wrapper implement the `Environment` interface:
+
 ```go
 type Environment interface {
-	Task
-	Reset() timestep.TimeStep
-	Step(action mat.Vector) (timestep.TimeStep, bool)
-	DiscountSpec() spec.Environment
-	ObservationSpec() spec.Environment
-	ActionSpec() spec.Environment
+    Task
+    Reset() timestep.TimeStep
+    Step(action mat.Vector) (timestep.TimeStep, bool)
+    DiscountSpec() spec.Environment
+    ObservationSpec() spec.Environment
+    ActionSpec() spec.Environment
 }
 ```
+
 With struct embedding this is even easier. Simply embed an `Environment` in
 your `Environment` wrapper, and then "override" the necessary methods. Usually,
 only the `Reset()`, `Step()`, and `ObservationSpec()` methods need to
@@ -430,21 +462,26 @@ be overridden if you embed an `Environment` in your wrapper.
 easy extension and modification of `Environments`.
 
 ### wrappers.TileCoding and wrappers.IndexTileCoding
+
 A `TileCoding` is an `Environment` wrapper, itself being an `Environment`.
 The `TileCoding` struct will tile-code all observations before passing
 them to an `Agent`. The `TileCoding` struct has the constructor:
+
 ```go
 func NewTileCoding(env environment.Environment, bins [][]int, seed uint64) (*TileCoding, ts.TimeStep)
 ```
+
 The `env` parameter is an `Environment` to wrap. The `bins` parameter
 determins both the number of tilings to use and the bins per each
 dimension, per tiling. The length of the outer slice is the number of
 tilings for the `TileCoding Environment` to use. The sub-slices determine
 the number of tiles per dimension to use in each respective tiling.
 For example, if we had:
+
 ```go
 bins := [][]int{{2, 3}, {16, 21}, {5, 6}}
 ```
+
 Then the `TileCoding Environment` would tile code all environmental
 observations using `3` tilings before passing the observations back to
 the `Agent`. The first tiling has shape `2x3` tiles. The second tiling
@@ -484,8 +521,10 @@ is `[1 0 0 1 0 0 0 0 0 0 1 0 1]`, then the state feature vector returned by
 `IndexTileCoding` is `[3 10 12 0]` in no particular order except that the
 bias unit will alway be the last index if a bias unit is used.
 
-# Experiments
-## Trackers
+## Experiments
+
+### Trackers
+
 `Trackers` define what data an `Experiment` will save to disk. For example,
 the `trackers.Return Tracker` will cause an `Experiment` to save the episodic
 returns seen during the `Experiment`. The `trackers.EpisodeLength Tracker`
@@ -508,10 +547,11 @@ all data for each of the `Tracker`s registered with the `Experiment`. This
 is perhaps the easiest way to save experimental data.
 The `Tracker` interface
 is:
+
 ```go
 type Tracker interface {
-	Track(t ts.TimeStep)
-	Save()
+    Track(t ts.TimeStep)
+    Save()
 }
 ```
 
@@ -532,21 +572,24 @@ episode, not the differential return. In this case, the underlying, wrapped
 and the episodic return (rather than the episodic differential return) can be
 tracked.
 
-## Checkpointers
+### Checkpointers
+
 A `Checkpointer` checkpoints an `Agent` during an experiment by saving the
 `Agent` to a binary file. The `Checkpointer` interface is:
+
 ```go
 type Checkpointer interface {
-	Checkpoint(ts.TimeStep) error
+    Checkpoint(ts.TimeStep) error
 }
 ```
 
 Checkpointers can only work with `Serializable` `struct`s. A `struct` is
 serializable if it implements the `Serializable` interface:
+
 ```go
 type Serializable interface {
-	gob.GobEncoder
-	gob.GobDecoder
+    gob.GobEncoder
+    gob.GobDecoder
 }
 ```
 
@@ -558,6 +601,7 @@ Currently, no agents implement the `Serializable` interface. This will
 be added on an *as-needed* basis.
 
 ## Experiment Configs
+
 An `experiment.Config` outlines what kind of `Experiment` should be run
 and with which `Environment` and which `Agent` with which hyperparameters
 (defined by the `Agent`'s `ConfigList`). The `Experiment` `Config` holds
@@ -567,18 +611,20 @@ holds a `TypedConfigList` so that it knows how to `JSON` unmarshall the
 what `Type` of experiment we are running (e.g. an `OnlineExp` is a
 `Type` of `Experiment` that runs the `Agent` online and performs online
 evaluation only):
+
 ```go
 // Config represents a configuration of an experiment.
 type Config struct {
-	Type
-	MaxSteps  uint
-	EnvConf   envconfig.Config
-	AgentConf agent.TypedConfigList
+    Type
+    MaxSteps  uint
+    EnvConf   envconfig.Config
+    AgentConf agent.TypedConfigList
 }
 ```
 
 To create and run an `Experiment`, you can use the specific `Experiment`'s
 constructor. For example, if we wanted an `Online` experiment:
+
 ```go
 agent := ...         // Create agent
 env := ...           // Create environment
@@ -590,8 +636,10 @@ exp := NewOnline(env, agent, maxSteps, trackers, checkpointers)
 exp.Run()  // Run the experiment
 exp.Save() // Save the data generated
 ```
+
 Or you can use an `Experiment` `Config` (these can be `JSON` serialized
 to store and run later):
+
 ```go
 agentConfig := ...         // Create agent configuration list
 envConfig := ...           // Create environment configuration
@@ -600,10 +648,10 @@ trackers := ...      // Create trackers for the experiment
 checkpointers := ... // Create checkpointers for the experiment
 
 expConfig := experiment.Config{
-	Type: experiment.OnlineExp,
-	MaxSteps: 1_000_000,
-	EnvConf: envConfig,
-	AgentConf: agentConfig,
+    Type: experiment.OnlineExp,
+    MaxSteps: 1_000_000,
+    EnvConf: envConfig,
+    AgentConf: agentConfig,
 }
 
 // JSON marshall the expConfig so that we can run in as many times as we
@@ -617,7 +665,8 @@ exp.Run()  // Run the experiment
 exp.Save() // Save the data generated
 ```
 
-# Running the program
+## Running the program
+
 To run the program, simply run the `main.go` file. The program takes two
 commandline arguments: a `JSON` configuration file for an `Experiment` and
 a hyperparameter setting index for the `Agent` defined in the configuration
@@ -642,23 +691,27 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 `Experiment`.
 
 
-# ToDo
+## ToDo
 
+* [ ] Cartpole SwingUp would be nice to implement
 
-- [ ] Cartpole SwingUp would be nice to implement
-- [ ] Would be nice to have the acitons in discrete pendulum determined by min and max discrete actions. E.g. Action i -> (action i / minDiscreteAction) * MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction - MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
-- [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files.
+* [ ] Would be nice to have the acitons in discrete pendulum determined by min and max discrete actions. E.g. Action i *> (action i / minDiscreteAction) * MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction * MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
 
-- [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
+* [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files.
 
-- [ ] Gridworld wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
-- [ ] Maze wrapper that returns features as one-hot encodings.
-- [ ] Task AtGoal() -> argument should be Vector or *VecDense
+* [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
 
-- [ ] Add `gym` to the `EnvConfig` structs.
-- [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
-- [ ] For very large observations, we should actually be passing *TimeStep, to increase efficiency since Go is pass-by-value.
-Look into changing the API so that *TimeStep are passed around. For learning from underlying state, this isn't much of a problem,
+* [ ] Gridworld wrapper that returns features as [x, y] instead of one*hot. This is much harder than one*hot for NNs.
+
+* [ ] Maze wrapper that returns features as one*hot encodings.
+
+* [ ] Task AtGoal() -> argument should be Vector or *VecDense
+
+* [ ] Add `gym` to the `EnvConfig` structs.
+
+* [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
+
+* [ ] For very large observations, we should actually be passing \*TimeStep, to increase efficiency since Go is pass-by-value. Look into changing the API so that \*TimeStep are passed around. For learning from underlying state, this isn't much of a problem,
 but for pixels e.g. or from large underlying state, this will be problematic.
 
-- [ ] Profile some code (e.g. DeepQ) to see if it can be made any faster.
+* [ ] Profile some code (e.g. DeepQ) to see if it can be made any faster.
