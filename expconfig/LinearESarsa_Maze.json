@@ -1,0 +1,32 @@
+{
+	"Type": "OnlineExperiment",
+	"MaxSteps": 5000,
+	"EnvConfig": {
+		"Environment": "Maze",
+		"Task": "Goal",
+		"ContinuousActions": false,
+		"EpisodeCutoff": 500,
+		"Discount": 0.99,
+		"Gym": false,
+		"TileCoding": {
+			"UseTileCoding": false,
+			"UseIndices": true,
+			"Bins": []
+		}
+	},
+	"AgentConfig": {
+		"Type": "EGreedyESarsa-Linear",
+		"ConfigList": {
+			"BehaviourE": [
+				0.01
+			],
+			"TargetE": [
+				0.0001
+			],
+			"LearningRate": [
+				0.1,
+				0.01
+			]
+		}
+	}
+}

@@ -333,7 +333,7 @@ func CreateMaze(continuousActions bool, taskName TaskName, cutoff int,
 	var err error
 	switch taskName {
 	case Goal:
-		task, err = maze.NewGoal(starter, goalCol, goalRow, cutoff)
+		task, err = maze.NewGoal(starter, goalCol, goalRow, r, c, cutoff)
 		if err != nil {
 			return nil, ts.TimeStep{}, fmt.Errorf("createMaze: could " +
 				"not create goal")

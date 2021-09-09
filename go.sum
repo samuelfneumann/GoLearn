@@ -290,8 +290,8 @@ github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb
 github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da/go.mod h1:gi+0XIa01GRL2eRQVjQkKGqKF3SF9vZR/HnPullcV2E=
 github.com/samuelfneumann/gogym v0.0.0-20210818181143-721a2babd182 h1:NAMMEGxR5ZIVC9eryhWO1oYwN6E4i6ke8Cl5cAMYWbo=
 github.com/samuelfneumann/gogym v0.0.0-20210818181143-721a2babd182/go.mod h1:5X6ZDzWP5HfLyphhdW7dtA/kRx+5l5ofD0FSKXGlx4E=
-github.com/samuelfneumann/gomaze v0.0.0-20210908204236-047e856231e1 h1:C+u68ixVBlwaaCOF2cH2F8NaplwO7MLqxhLdFq3nj7E=
-github.com/samuelfneumann/gomaze v0.0.0-20210908204236-047e856231e1/go.mod h1:VYG04ac34gyfNvkKVg4exVtfLk/LQbEcjjYWW3slOeQ=
+github.com/samuelfneumann/gomaze v0.0.0-20210909132401-20a9e79e361e h1:hnlewwlbEIlExMuA8uFwxrQRBxTkdoTw/vIYKaVE4Zw=
+github.com/samuelfneumann/gomaze v0.0.0-20210909132401-20a9e79e361e/go.mod h1:VYG04ac34gyfNvkKVg4exVtfLk/LQbEcjjYWW3slOeQ=
 github.com/samuelfneumann/progressbar v0.0.0-20210809184043-f04c52f01c18 h1:l/CzUlXB4T+Q/oxXwgGLSl8RZthjxDkwXB5Gzsf/IPc=
 github.com/samuelfneumann/progressbar v0.0.0-20210809184043-f04c52f01c18/go.mod h1:SYaxs9DsILqzMyW37kyTljmE7HG9udfyikYUpk/0udY=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=

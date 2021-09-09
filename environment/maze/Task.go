@@ -25,14 +25,18 @@ type Goal struct {
 	goalCol []int
 	goalRow []int
 
+	rows int
+	cols int
+
 	stepLimit env.Ender
 }
 
 // NewGoal returns a new Goal. The goalCol and goalRow arguments
 // should have the same length. The cutoff parameter determines the
-// number of timesteps before an episode is cut off.
+// number of timesteps before an episode is cut off. The rows and cols
+// define the size of the maze.
 func NewGoal(starter env.CategoricalStarter, goalCol, goalRow []int,
-	cutoff int) (env.Task, error) {
+	rows, cols int, cutoff int) (env.Task, error) {
 	if len(goalCol) != len(goalRow) {
 		return nil, fmt.Errorf("newGoal: goal must have same number of " +
 			"x positions as y positions")
@@ -44,6 +48,8 @@ func NewGoal(starter env.CategoricalStarter, goalCol, goalRow []int,
 		Starter:   starter,
 		goalCol:   goalCol,
 		goalRow:   goalRow,
+		rows:      rows,
+		cols:      cols,
 	}, nil
 }
 
@@ -71,20 +77,34 @@ func (s *Goal) End(t *ts.TimeStep) bool {
 }
 
 // AtGoal returns if the argument state is the goal state
-func (s *Goal) AtGoal(state mat.Matrix) bool {
-	rows, cols := state.Dims()
-	if rows != 2 || cols != 1 {
-		return false
-	}
+func (g *Goal) AtGoal(obs mat.Matrix) bool {
+	col, row := g.toCoord(obs.(mat.Vector))
 
-	for i := range s.goalCol {
+	for i := range g.goalCol {
 
-		goalCol := s.goalCol[i]
-		goalRow := s.goalRow[i]
+		goalCol := g.goalCol[i]
+		goalRow := g.goalRow[i]
 
-		if int(state.At(0, 0)) == goalRow && int(state.At(1, 0)) == goalCol {
+		if row == goalRow && col == goalCol {
 			return true
 		}
 	}
 	return false
+}
+
+// toCoord converts a one-hot encoding to an (x, y)/(col, row)
+// coordinate
+func (g *Goal) toCoord(oneHot mat.Vector) (col, row int) {
+	var nonZeroInd int
+	for i := 0; i < oneHot.Len(); i++ {
+		if oneHot.AtVec(i) == 1.0 {
+			nonZeroInd = i
+			break
+		}
+	}
+
+	row = nonZeroInd / g.cols
+	col = nonZeroInd - (row * g.cols)
+
+	return
 }

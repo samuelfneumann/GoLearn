@@ -6,17 +6,14 @@ import (
 
 	env "github.com/samuelfneumann/golearn/environment"
 	ts "github.com/samuelfneumann/golearn/timestep"
+	"github.com/samuelfneumann/golearn/utils/floatutils"
 	"github.com/samuelfneumann/gomaze"
 	"gonum.org/v1/gonum/mat"
 )
 
-// Assumes that Start() returns a vector or [row, col]
-// State observations are [x, y] == [col, row], where origin is the
-// top left cell of the grid
-
 // Maze implements a maze environment.
 //
-// State observations are 2-dimensional vectors consisting of the
+// State observations are vectors consisting of the one-hot encoding of
 // [x, y] == [col, row] position of the agent. The origin is the top
 // left cell. State observations are discrete.
 //
@@ -47,7 +44,7 @@ type Maze struct {
 func New(t env.Task, rows, cols int, init gomaze.Initer,
 	discount float64) (env.Environment, ts.TimeStep, error) {
 	// Create the underlying GoMaze maze
-	maze, err := gomaze.NewMaze(rows, cols, -1, -1, -1, -1, init)
+	maze, err := gomaze.NewMaze(rows, cols, -1, -1, -1, -1, init, true)
 	if err != nil {
 		return nil, ts.TimeStep{}, fmt.Errorf("new: could not create maze: %v",
 			err)
@@ -62,7 +59,9 @@ func New(t env.Task, rows, cols int, init gomaze.Initer,
 	maze.SetCell(int(start.AtVec(0)), int(start.AtVec(1)))
 
 	// Create the new step and maze environment
-	step := ts.New(ts.First, 0, discount, start, 0)
+	oneHot := maze.OneHot()
+	obs := mat.NewVecDense(len(oneHot), oneHot)
+	step := ts.New(ts.First, 0, discount, obs, 0)
 
 	mazeEnv := &Maze{
 		Task:        t,
@@ -110,9 +109,13 @@ func (m *Maze) Reset() (ts.TimeStep, error) {
 		return ts.TimeStep{}, fmt.Errorf("reset: %v", err)
 	}
 
-	// Set the starting position, and construct the first time step
+	// Set the starting position
 	m.maze.SetCell(int(start.AtVec(0)), int(start.AtVec(1)))
-	step := ts.New(ts.First, 0, m.discount, start, 0)
+
+	// Create the first timestep
+	oneHot := m.maze.OneHot()
+	obs := mat.NewVecDense(len(oneHot), oneHot)
+	step := ts.New(ts.First, 0, m.discount, obs, 0)
 
 	m.currentStep = step
 	return step, nil
@@ -135,12 +138,9 @@ func (m *Maze) ActionSpec() env.Spec {
 // ObservationSpec returns the observation specification of the
 // environment
 func (m *Maze) ObservationSpec() env.Spec {
-	shape := mat.NewVecDense(2, nil)
-	lowerBound := mat.NewVecDense(2, []float64{0., 0.})
-	upperBound := mat.NewVecDense(2, []float64{
-		float64(m.maze.Rows()),
-		float64(m.maze.Cols()),
-	})
+	shape := mat.NewVecDense(m.maze.Len(), nil)
+	lowerBound := mat.NewVecDense(m.maze.Len(), nil)
+	upperBound := mat.NewVecDense(m.maze.Len(), floatutils.Ones(m.maze.Len()))
 
 	return env.NewSpec(shape, env.Observation, lowerBound, upperBound,
 		env.Discrete)

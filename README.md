@@ -711,7 +711,6 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 * [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
 
-* [ ] For very large observations, we should actually be passing \*TimeStep, to increase efficiency since Go is pass-by-value. Look into changing the API so that \*TimeStep are passed around. For learning from underlying state, this isn't much of a problem,
-but for pixels e.g. or from large underlying state, this will be problematic.
-
 * [ ] Profile some code (e.g. DeepQ) to see if it can be made any faster.
+
+* [ ] Create exp replayer that returns a nil next action for those agents that only want SARS instead of SARSA
