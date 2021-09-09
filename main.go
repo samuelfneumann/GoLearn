@@ -9,6 +9,7 @@ import (
 
 	// Blank imports needed for registering agents with agent package
 	// to enable TypedConfigList's
+	"github.com/samuelfneumann/gogym"
 	_ "github.com/samuelfneumann/golearn/agent/linear/continuous/actorcritic"
 	_ "github.com/samuelfneumann/golearn/agent/linear/discrete/esarsa"
 	_ "github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
@@ -104,4 +105,7 @@ func main() {
 	// LoadData -> should be int or float specified...
 	data := tracker.LoadFData(returnFilename)
 	fmt.Println(data)
+
+	// Clean up GoGym package before leaving
+	gogym.Close()
 }

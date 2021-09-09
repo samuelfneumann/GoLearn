@@ -12,6 +12,10 @@ import (
 	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
+type Closer interface {
+	Close()
+}
+
 // Interface Experiment outlines structs that can run experiments.
 // Experiments will track environment TimeSteps, caching each TimeStep
 // in RAM to be later saved to disk. The Save() function
@@ -68,6 +72,7 @@ type Config struct {
 	AgentConfig agent.TypedConfigList
 }
 
+// CreateExp creates the experiment determined by the Config
 func (c Config) CreateExp(i int, seed uint64, t []tracker.Tracker,
 	check []checkpointer.Checkpointer) (Experiment, error) {
 	env, _, err := c.EnvConfig.CreateEnv(seed)

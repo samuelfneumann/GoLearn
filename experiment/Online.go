@@ -123,6 +123,10 @@ func (o *Online) Run() error {
 		o.agent.EndEpisode()
 	}
 
+	// Close the environment if needed
+	if env, ok := o.environment.(Closer); ok {
+		env.Close()
+	}
 	o.progBar.Close()
 	return nil
 }
