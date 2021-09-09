@@ -51,3 +51,9 @@ type PixelEnvironment interface {
 	Environment
 	Pixels(scale float64, dc gg.Context, save bool) image.Image
 }
+
+// Closer is an environment which can be closed
+type Closer interface {
+	Environment
+	Close()
+}

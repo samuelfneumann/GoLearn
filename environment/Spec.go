@@ -10,6 +10,7 @@ import (
 // specify the layout of an acion, an observation, a discount, or a reward
 type SpecType int
 
+// Available environment Spec types
 const (
 	Action SpecType = iota
 	Observation
@@ -21,6 +22,7 @@ const (
 // Cardinality determines the cardinality of a number (discrete or continuous)
 type Cardinality string
 
+// Whether the values described by the Spec are continuous or discrete
 const (
 	Continuous Cardinality = "Continuous"
 	Discrete   Cardinality = "Discrete"

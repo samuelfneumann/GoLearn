@@ -124,7 +124,7 @@ func (o *Online) Run() error {
 	}
 
 	// Close the environment if needed
-	if env, ok := o.environment.(Closer); ok {
+	if env, ok := o.environment.(env.Closer); ok {
 		env.Close()
 	}
 	o.progBar.Close()

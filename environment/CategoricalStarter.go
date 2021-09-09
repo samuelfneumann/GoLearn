@@ -6,9 +6,8 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-// Categorical starter returns starting states as vectors sampled from
-// a multi-dimensional uniform categorical distribution. The categorical
-// distributions sample values in (0, 1, 2, ... N).
+// CategoricalStarter returns starting states as vectors sampled from
+// a multi-dimensional uniform categorical distribution.
 type CategoricalStarter struct {
 	features      int
 	seed          int64
@@ -16,6 +15,9 @@ type CategoricalStarter struct {
 	startFeatures [][]int
 }
 
+// NewCategoricalStarter returns a new CategoricalStarter. The
+// element at index i in the resulting starting state vector, will
+// have a value drawn uniformly randmly from startFeatures[i].
 func NewCategoricalStarter(startFeatures [][]int,
 	seed int64) CategoricalStarter {
 	source := rand.NewSource(seed)

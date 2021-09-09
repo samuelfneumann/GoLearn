@@ -12,11 +12,7 @@ import (
 	ts "github.com/samuelfneumann/golearn/timestep"
 )
 
-type Closer interface {
-	Close()
-}
-
-// Interface Experiment outlines structs that can run experiments.
+// Experiment outlines structs that can run experiments.
 // Experiments will track environment TimeSteps, caching each TimeStep
 // in RAM to be later saved to disk. The Save() function
 // will then take all cached data and save it to disk. This is usually
@@ -60,6 +56,7 @@ type Experiment interface {
 // configurations to create a specific type of experiment.
 type Type string
 
+// Valid experiment types
 const (
 	OnlineExp Type = "OnlineExperiment"
 )
