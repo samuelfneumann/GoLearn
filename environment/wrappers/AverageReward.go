@@ -5,7 +5,6 @@ import (
 
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/timestep"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"gonum.org/v1/gonum/mat"
 )
@@ -52,12 +51,12 @@ type AverageReward struct {
 	// The last timestep is needed to calculate the TD error, since it stores
 	// the reward R_{t} for the last action A_{t} taken in the last state S_{t}
 	// and the next state S_{t+1}
-	lastStep timestep.TimeStep
+	lastStep ts.TimeStep
 
 	// The second last timestep is needed to calculate the TD error, since
 	// it stores the last state S_{t} that the last action A_{t}/lastAction
 	// was taken in
-	secondLastStep timestep.TimeStep
+	secondLastStep ts.TimeStep
 	lastAction     *mat.VecDense
 }
 
@@ -68,7 +67,7 @@ type AverageReward struct {
 // registered learner as the update target or not. If false, then the
 // environmental reward is used as the average reward update target.
 func NewAverageReward(env environment.Environment, init, learningRate float64,
-	useTDError bool) (*AverageReward, timestep.TimeStep, error) {
+	useTDError bool) (*AverageReward, ts.TimeStep, error) {
 	// Get the first step from the embedded environment
 	step, err := env.Reset()
 	if err != nil {
@@ -82,7 +81,7 @@ func NewAverageReward(env environment.Environment, init, learningRate float64,
 	// Track the second last step so that the TD error can be properly
 	// calculated using the SARSA tuple (S_{t-1}, A_{t-1}, R_{t-1}, S_{t},
 	// A_{t}). The secondLastStep TimeStep stores S_{t-1}
-	secondLastStep := timestep.TimeStep{}
+	secondLastStep := ts.TimeStep{}
 
 	averageR := &AverageReward{env, init, learningRate, useTDError, nil, step,
 		secondLastStep, nil}
@@ -92,7 +91,7 @@ func NewAverageReward(env environment.Environment, init, learningRate float64,
 
 // Reset resets the environment and returns a starting state drawn from
 // the environment Starter
-func (a *AverageReward) Reset() (timestep.TimeStep, error) {
+func (a *AverageReward) Reset() (ts.TimeStep, error) {
 	step, err := a.Environment.Reset()
 	if err != nil {
 		return ts.TimeStep{}, err
@@ -100,7 +99,7 @@ func (a *AverageReward) Reset() (timestep.TimeStep, error) {
 	step.Discount = 1.0
 
 	a.lastStep = step
-	a.secondLastStep = timestep.TimeStep{}
+	a.secondLastStep = ts.TimeStep{}
 	a.lastAction = nil
 
 	return step, nil
@@ -123,14 +122,14 @@ func (a *AverageReward) Register(l agent.Learner) {
 // Step takes one environmental step given action a and returns the next
 // timestep as a timestep.TimeStep and a bool indicating whether or not
 // the episode has ended.
-func (a *AverageReward) Step(action *mat.VecDense) (timestep.TimeStep, bool,
+func (a *AverageReward) Step(action *mat.VecDense) (ts.TimeStep, bool,
 	error) {
 	// If using the TD error to update the average reward estimate, then
 	// Register() must have been called first.
 	if a.learner == nil && a.useTDError {
 		return ts.TimeStep{}, true, fmt.Errorf("step: when using the TD " +
 			"error to update the average reward, a learner must first be " +
-			"registered using the Register() method.")
+			"registered using the Register() method")
 	}
 
 	// Take a step in the embedded environment
@@ -144,7 +143,7 @@ func (a *AverageReward) Step(action *mat.VecDense) (timestep.TimeStep, bool,
 	if a.useTDError && !a.lastStep.First() {
 		// Calculate differential TD error for S_{t-1}, A_{t-1}, R_{t-1},
 		// S_{t}, A_{t}
-		transition := timestep.NewTransition(a.secondLastStep, a.lastAction,
+		transition := ts.NewTransition(a.secondLastStep, a.lastAction,
 			a.lastStep, action)
 		tdError := a.learner.TdError(transition)
 

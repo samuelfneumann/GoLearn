@@ -57,3 +57,12 @@ type Closer interface {
 	Environment
 	Close()
 }
+
+// RowColer is an environment that can return the rows and columns of
+// its underlying state space. In effect, this is an interface
+// which all tabular environments will satisfy.
+type RowColer interface {
+	Environment
+	Rows() int
+	Cols() int
+}
