@@ -180,9 +180,16 @@ func Prod(input *G.Node, along int) *G.Node {
 // of actions drawn from a diagonal Gaussian distribution with mean mean and
 // standard deviation std.
 //
-// If given a matrix of size m x n, then each argument should
-// be a matrix of size m x n, where each row is a single observation
-// in a batch of observations.
+// All arguments should be two-dimensional and of the same size m x n.
+// For each argument, the rows (m) denote the number of sampled in the
+// batch. For the mean and std, the columns (n) denote the main diagonal
+// of the mean or standard deviation respectively in the diagonal Gaussian,
+// for which the PDF of actions is calculated. For the actions parameter,
+// the columns denote each dimension of the actions.
+//
+// For row j and column i, mean[i, j] and std[i, j] denote the mean and
+// standard deviation respectively of the Gaussiasn distribution from
+// which the j-th component of actions[i] was drawn.
 func GaussianLogPdf(mean, std, actions *G.Node) *G.Node {
 	graph := mean.Graph()
 	if graph != std.Graph() || graph != actions.Graph() {
