@@ -146,9 +146,10 @@ func (c *fifoRemove1Cache) sampleFrom() []int {
 }
 
 // Sample samples and returns a batch of transitions from the replay
-// buffer
-func (c *fifoRemove1Cache) Sample() ([]float64, []float64, []float64, []float64,
-	[]float64, []float64, error) {
+// buffer. The returned values are the state, action, reward, discount,
+// next state, and next action.
+func (c *fifoRemove1Cache) Sample() ([]float64, []float64, []float64,
+	[]float64, []float64, []float64, error) {
 	c.wait.Wait()
 
 	if c.Capacity() == 0 {

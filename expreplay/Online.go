@@ -47,7 +47,8 @@ func (o *onlineCache) Add(t timestep.Transition) error {
 }
 
 // Sample samples and returns a batch of transitions from the replay
-// buffer
+// buffer. The returned values are the state, action, reward, discount,
+// next state, and next action.
 func (o *onlineCache) Sample() ([]float64, []float64, []float64, []float64,
 	[]float64, []float64, error) {
 	if len(o.stateCache) == 0 {

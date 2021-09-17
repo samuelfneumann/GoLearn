@@ -286,7 +286,8 @@ func (c *cache) removeFront() {
 }
 
 // Sample samples and returns a batch of transitions from the replay
-// buffer
+// buffer. The returned values are the state, action, reward, discount,
+// next state, and next action.
 func (c *cache) Sample() ([]float64, []float64, []float64, []float64,
 	[]float64, []float64, error) {
 	c.wait.Wait()
