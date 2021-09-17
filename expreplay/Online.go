@@ -13,6 +13,10 @@ import (
 // computational efficiency when a new cache is created with
 // online sampling.
 type onlineCache struct {
+	// Whether the next action in the SARSA tuple should be store and
+	// returned.
+	includeNextAction bool
+
 	stateCache      []float64
 	actionCache     []float64
 	rewardCache     []float64
@@ -22,8 +26,10 @@ type onlineCache struct {
 }
 
 // newOnline returns a new online replay buffer
-func newOnline() ExperienceReplayer {
-	return &onlineCache{}
+func newOnline(includeNextAction bool) ExperienceReplayer {
+	return &onlineCache{
+		includeNextAction: includeNextAction,
+	}
 }
 
 func (o *onlineCache) Add(t timestep.Transition) error {
@@ -32,7 +38,10 @@ func (o *onlineCache) Add(t timestep.Transition) error {
 	o.rewardCache = []float64{t.Reward}
 	o.discountCache = []float64{t.Discount}
 	o.nextStateCache = t.NextState.RawVector().Data
-	o.nextActionCache = t.NextAction.RawVector().Data
+
+	if o.includeNextAction {
+		o.nextActionCache = t.NextAction.RawVector().Data
+	}
 
 	return nil
 }
@@ -48,8 +57,14 @@ func (o *onlineCache) Sample() ([]float64, []float64, []float64, []float64,
 		}
 		return nil, nil, nil, nil, nil, nil, err
 	}
+
+	var nextActionCache []float64
+	if o.includeNextAction {
+		nextActionCache = o.nextActionCache
+	}
+
 	return o.stateCache, o.actionCache, o.rewardCache, o.discountCache,
-		o.nextStateCache, o.nextActionCache, nil
+		o.nextStateCache, nextActionCache, nil
 }
 
 // Capacity returns the current number of elements in the cache that

@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/intutils"
@@ -32,13 +33,14 @@ type Config struct {
 }
 
 // Create creates and returns the ExperienceReplayer with the specified
-// Config.
+// Config. The includeNextAction parameter determiines whether or not
+// the next action in the SARSA tuple should also be stored.
 func (c Config) Create(featureSize, actionSize int,
-	seed int64) (ExperienceReplayer, error) {
+	seed int64, includeNextAction bool) (ExperienceReplayer, error) {
 
 	return Factory(c.RemoveMethod, c.SampleMethod, c.MinReplayCapacity,
-		c.MaxReplayCapacity, featureSize, actionSize, c.RemoveSize, c.SampleSize,
-		seed)
+		c.MaxReplayCapacity, featureSize, actionSize, c.RemoveSize,
+		c.SampleSize, seed, includeNextAction)
 }
 
 // ExperienceReplayer implements an experience replay buffer
@@ -67,6 +69,11 @@ type ExperienceReplayer interface {
 
 // cache implements a concrete ExperienceReplayer
 type cache struct {
+	// includeNextAction denotes whether the next action in the
+	// SARSA tuple should be stored and returned
+	includeNextAction bool
+
+	wait            sync.WaitGroup // Guards the following caches
 	stateCache      []float64
 	actionCache     []float64
 	rewardCache     []float64
@@ -98,22 +105,28 @@ type cache struct {
 // Factory is a factory method for creating an ExperienceReplayer
 func Factory(removeMethod, sampleMethod SelectorType, minCapacity, maxCapacity,
 	featureSize, actionSize, removeSize, sampleSize int,
-	seed int64) (ExperienceReplayer, error) {
+	seed int64, includeNextAction bool) (ExperienceReplayer, error) {
 	remover := CreateSelector(removeMethod, removeSize, seed)
 	sampler := CreateSelector(sampleMethod, sampleSize, seed)
 
 	return New(remover, sampler, minCapacity, maxCapacity, featureSize,
-		actionSize)
+		actionSize, includeNextAction)
 }
 
 // New creates and returns a new ExperienceReplayer. The remover and
-// sampler paramters are Selectors which determine how data is removed
+// sampler parameters are Selectors which determine how data is removed
 // and sampled from the replay buffer. The featureSize and actionSize
 // parameters define the size of the feature and action vectors.
+// The includeNextAction parameter determiines whether or not
+// the next action in the SARSA tuple should also be stored.
+// The minCapacity parameter determines the minimum number of samples
+// that should be in the buffer before sampling is allowed.
+// The maxCapacity parameter determines the maximum number of samples
+// allowed in the buffer at any given time.
 //
 // Pixel observations should be flattened before adding to the buffer.
 func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
-	actionSize int) (ExperienceReplayer, error) {
+	actionSize int, includeNextAction bool) (ExperienceReplayer, error) {
 	if minCapacity <= 0 {
 		return &cache{}, fmt.Errorf("new: minCapacity must be > 0")
 	}
@@ -133,19 +146,22 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 			msg := "new: using online sampler, ignoring batch size > 1"
 			fmt.Fprintln(os.Stderr, msg)
 		}
-		return newOnline(), nil
+		return newOnline(includeNextAction), nil
 	}
 
 	if _, ok := remover.(*fifoSelector); ok && remover.BatchSize() == 1 {
 		return newFifoRemove1Cache(sampler, minCapacity, maxCapacity, featureSize,
-			actionSize), nil
+			actionSize, includeNextAction), nil
 	}
 
 	stateCache := make([]float64, maxCapacity*featureSize)
 	nextStateCache := make([]float64, maxCapacity*featureSize)
 
 	actionCache := make([]float64, maxCapacity*actionSize)
-	nextActionCache := make([]float64, maxCapacity*actionSize)
+	var nextActionCache []float64
+	if includeNextAction {
+		nextActionCache = make([]float64, maxCapacity*actionSize)
+	}
 
 	rewardCache := make([]float64, maxCapacity)
 	discountCache := make([]float64, maxCapacity)
@@ -161,6 +177,8 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 	}
 
 	return &cache{
+		includeNextAction: includeNextAction,
+
 		stateCache:      stateCache,
 		actionCache:     actionCache,
 		rewardCache:     rewardCache,
@@ -184,6 +202,8 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 
 // sampleFrom returns the indices to sample from
 func (c *cache) sampleFrom() []int {
+	c.wait.Wait()
+
 	return c.inUseIndices
 }
 
@@ -196,6 +216,8 @@ func (c *cache) sampleFrom() []int {
 // that the first data was inserted into the buffer at position 9, the
 // next at position 15, and the last at position 1
 func (c *cache) insertOrder(n int) []int {
+	c.wait.Wait()
+
 	size := intutils.Min(n, c.Capacity())
 	insertOrder := make([]int, size)
 	element := c.orderOfInsert.Front()
@@ -231,6 +253,8 @@ func (c *cache) BatchSize() int {
 // remove removes elements from the cache using indices sampled from the
 // cache's remover
 func (c *cache) remove() error {
+	c.wait.Wait()
+
 	if c.Capacity() <= c.minCapacity {
 		return fmt.Errorf("remove: cannot remove, cache at min capacity")
 	}
@@ -265,6 +289,8 @@ func (c *cache) removeFront() {
 // buffer
 func (c *cache) Sample() ([]float64, []float64, []float64, []float64,
 	[]float64, []float64, error) {
+	c.wait.Wait()
+
 	if c.Capacity() == 0 {
 		err := &ExpReplayError{
 			Op:  "sample",
@@ -282,30 +308,59 @@ func (c *cache) Sample() ([]float64, []float64, []float64, []float64,
 
 	indices := c.sampler.choose(c)
 
+	// Create the state batches
 	stateBatch := make([]float64, c.BatchSize()*c.featureSize)
 	nextStateBatch := make([]float64, c.BatchSize()*c.featureSize)
+
+	// Fill the state batches
+	c.wait.Add(2 * len(indices))
 	for i, index := range indices {
 		batchStartInd := i * c.featureSize
 		expStartInd := index * c.featureSize
-		copy(stateBatch[batchStartInd:batchStartInd+c.featureSize],
-			c.stateCache[expStartInd:expStartInd+c.featureSize],
-		)
-		copy(nextStateBatch[batchStartInd:batchStartInd+c.featureSize],
-			c.nextStateCache[expStartInd:expStartInd+c.featureSize],
-		)
+		go func() {
+			copyInto(stateBatch, batchStartInd, batchStartInd+c.featureSize,
+				c.stateCache[expStartInd:expStartInd+c.featureSize])
+			c.wait.Done()
+		}()
+
+		go func() {
+			copyInto(nextStateBatch, batchStartInd,
+				batchStartInd+c.featureSize,
+				c.nextStateCache[expStartInd:expStartInd+c.featureSize],
+			)
+			c.wait.Done()
+		}()
 	}
 
+	// Create the action batches
 	actionBatch := make([]float64, c.BatchSize()*c.actionSize)
-	nextActionBatch := make([]float64, c.BatchSize()*c.actionSize)
+	var nextActionBatch []float64
+	if c.includeNextAction {
+		nextActionBatch = make([]float64, c.BatchSize()*c.actionSize)
+	}
+
+	// Fill the action batches
+	c.wait.Add(2 * len(indices))
 	for i, index := range indices {
 		batchStartInd := i * c.actionSize
 		expStartInd := index * c.actionSize
-		copy(actionBatch[batchStartInd:batchStartInd+c.actionSize],
-			c.actionCache[expStartInd:expStartInd+c.actionSize],
-		)
-		copy(nextActionBatch[batchStartInd:batchStartInd+c.actionSize],
-			c.nextActionCache[expStartInd:expStartInd+c.actionSize],
-		)
+
+		go func() {
+			copyInto(actionBatch, batchStartInd, batchStartInd+c.actionSize,
+				c.actionCache[expStartInd:expStartInd+c.actionSize],
+			)
+			c.wait.Done()
+		}()
+
+		go func() {
+			if c.includeNextAction {
+				copyInto(nextActionBatch, batchStartInd,
+					batchStartInd+c.actionSize,
+					c.nextActionCache[expStartInd:expStartInd+c.actionSize],
+				)
+			}
+			c.wait.Done()
+		}()
 	}
 
 	rewardBatch := make([]float64, c.BatchSize())
@@ -322,6 +377,8 @@ func (c *cache) Sample() ([]float64, []float64, []float64, []float64,
 // Capacity returns the current number of elements in the cache that
 // are available for sampling
 func (c *cache) Capacity() int {
+	c.wait.Wait()
+
 	return len(c.inUseIndices)
 }
 
@@ -339,6 +396,10 @@ func (c *cache) MinCapacity() int {
 
 // Add adds a transition to the cache
 func (c *cache) Add(t timestep.Transition) error {
+	// Wait for previous Add operation, then add again
+	c.wait.Wait()
+	c.wait.Add(4)
+
 	if c.Capacity() >= c.maxCapacity {
 		err := c.remove()
 		if err != nil {
@@ -363,20 +424,40 @@ func (c *cache) Add(t timestep.Transition) error {
 
 	// Copy states
 	stateInd := index * c.featureSize
-	copy(c.stateCache[stateInd:stateInd+c.featureSize], t.State.RawVector().Data)
-	copy(c.nextStateCache[stateInd:stateInd+c.featureSize],
-		t.NextState.RawVector().Data)
+	go func() {
+		copyInto(c.stateCache, stateInd, stateInd+c.featureSize,
+			t.State.RawVector().Data)
+		c.wait.Done()
+	}()
+	go func() {
+		copyInto(c.nextStateCache, stateInd, stateInd+c.featureSize,
+			t.NextState.RawVector().Data)
+		c.wait.Done()
+	}()
 
 	// Copy actions
 	actionInd := index * c.actionSize
-	copy(c.actionCache[actionInd:actionInd+c.actionSize],
-		t.Action.RawVector().Data)
-	copy(c.nextActionCache[actionInd:actionInd+c.actionSize],
-		t.NextAction.RawVector().Data)
+	go func() {
+		copyInto(c.actionCache, actionInd, actionInd+c.actionSize,
+			t.Action.RawVector().Data)
+		c.wait.Done()
+	}()
+	go func() {
+		if c.includeNextAction {
+			copyInto(c.nextActionCache, actionInd, actionInd+c.actionSize,
+				t.NextAction.RawVector().Data)
+		}
+		c.wait.Done()
+	}()
 
 	// Copy reward R
 	c.rewardCache[index] = t.Reward
 	c.discountCache[index] = t.Discount
 
 	return nil
+}
+
+// copyInto copies src into dest[start:end]
+func copyInto(dest []float64, start, end int, src []float64) int {
+	return copy(dest[start:end], src)
 }
