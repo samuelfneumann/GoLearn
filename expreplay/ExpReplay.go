@@ -32,6 +32,12 @@ type Config struct {
 	MinReplayCapacity int
 }
 
+// BatchSize returns the size of batches sampled from the experience
+// replayer defined by the config
+func (c Config) BatchSize() int {
+	return c.SampleSize
+}
+
 // Create creates and returns the ExperienceReplayer with the specified
 // Config. The includeNextAction parameter determiines whether or not
 // the next action in the SARSA tuple should also be stored.
@@ -49,7 +55,8 @@ type ExperienceReplayer interface {
 	Add(t timestep.Transition) error
 
 	// Sample samples a batch of experience from the buffer and returns
-	// the batch of SARSA tuples as []float64
+	// the batch of (state, action, reward, discount, next state,
+	// next action) tuples as []float64
 	Sample() ([]float64, []float64, []float64, []float64, []float64,
 		[]float64, error)
 
@@ -371,6 +378,7 @@ func (c *cache) Sample() ([]float64, []float64, []float64, []float64,
 		rewardBatch[i] = c.rewardCache[index]
 	}
 
+	c.wait.Wait()
 	return stateBatch, actionBatch, rewardBatch, discountBatch, nextStateBatch,
 		nextActionBatch, nil
 }
@@ -455,6 +463,7 @@ func (c *cache) Add(t timestep.Transition) error {
 	c.rewardCache[index] = t.Reward
 	c.discountCache[index] = t.Discount
 
+	c.wait.Wait()
 	return nil
 }
 

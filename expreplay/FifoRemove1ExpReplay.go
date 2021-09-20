@@ -232,6 +232,7 @@ func (c *fifoRemove1Cache) Sample() ([]float64, []float64, []float64,
 		rewardBatch[i] = c.rewardCache[index]
 	}
 
+	c.wait.Wait()
 	return stateBatch, actionBatch, rewardBatch, discountBatch, nextStateBatch,
 		nextActionBatch, nil
 }
@@ -311,6 +312,7 @@ func (c *fifoRemove1Cache) Add(t timestep.Transition) error {
 	c.rewardCache[index] = t.Reward
 	c.discountCache[index] = t.Discount
 
+	c.wait.Wait()
 	c.currentInUsePos = (c.currentInUsePos + 1) % c.MaxCapacity()
 	return nil
 }
