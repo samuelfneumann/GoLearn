@@ -196,9 +196,17 @@ func (v *VAC) Step() {
 	} else if err != nil {
 		panic(err)
 	}
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println(state)
+	fmt.Println(action)
+	fmt.Println(reward)
+	fmt.Println(nextState)
 
 	// Needed to calculate the state value function
-	target := tensor.NewDense(
+	noOpTarget := tensor.NewDense(
 		tensor.Float64,
 		v.vTrainValueFnTargets.Shape(),
 		tensor.WithBacking(make([]float64, v.vTrainValueFnTargets.Shape()[0])),
@@ -209,7 +217,7 @@ func (v *VAC) Step() {
 	if err != nil {
 		panic(err)
 	}
-	err = G.Let(v.vTrainValueFnTargets, target)
+	err = G.Let(v.vTrainValueFnTargets, noOpTarget)
 	if err != nil {
 		panic(err)
 	}
@@ -225,7 +233,7 @@ func (v *VAC) Step() {
 	if err != nil {
 		panic(err)
 	}
-	err = G.Let(v.vTrainValueFnTargets, target)
+	err = G.Let(v.vTrainValueFnTargets, noOpTarget)
 	if err != nil {
 		panic(err)
 	}
@@ -267,13 +275,19 @@ func (v *VAC) Step() {
 	}
 	v.trainPolicyVM.Reset()
 
+	// Create the update target for the state value function
+	// v(s) = r + ℽ * v(s')
+	targetSValue := mat.NewVecDense(nextSValue.Len(), nil)
+	targetSValue.MulElemVec(d, nextSValue)
+	targetSValue.AddVec(r, nextSValue)
+	target := tensor.NewDense(
+		tensor.Float64,
+		v.vTrainValueFnTargets.Shape(),
+		tensor.WithBacking(targetSValue.RawVector().Data),
+	)
+
 	// Update the value function
 	for i := 0; i < v.valueGradSteps; i++ {
-		target := tensor.NewDense(
-			tensor.Float64,
-			v.vTrainValueFnTargets.Shape(),
-			tensor.WithBacking(nextSValue.RawVector().Data),
-		)
 		err = G.Let(v.vTrainValueFnTargets, target)
 		if err != nil {
 			panic(err)
@@ -282,6 +296,7 @@ func (v *VAC) Step() {
 		if err := v.vTrainValueFnVM.RunAll(); err != nil {
 			panic(err)
 		}
+
 		if err := v.vSolver.Step(v.vTrainValueFn.Model()); err != nil {
 			panic(err)
 		}
