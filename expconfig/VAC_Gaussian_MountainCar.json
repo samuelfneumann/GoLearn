@@ -2,8 +2,8 @@
 	"Type": "OnlineExperiment",
 	"MaxSteps": 100000,
 	"EnvConfig": {
-		"Environment": "Cartpole",
-		"Task": "Balance",
+		"Environment": "MountainCar",
+		"Task": "Goal",
 		"ContinuousActions": true,
 		"EpisodeCutoff": 500,
 		"Discount": 0.99,
@@ -15,7 +15,7 @@
 		}
 	},
 	"AgentConfig": {
-		"Type": "GaussianVanillaPG-TreeMLP",
+		"Type": "GaussianVanillaAC-TreeMLP",
 		"ConfigList": {
 			"RootLayers": [
 				[
@@ -73,21 +73,18 @@
 			],
 			"ValueFnLayers": [
 				[
-					100,
-					50,
-					25
+					64,
+					64
 				]
 			],
 			"ValueFnBiases": [
 				[
-					true,
 					true,
 					true
 				]
 			],
 			"ValueFnActivations": [
 				[
-					"relu",
 					"relu",
 					"relu"
 				]
@@ -104,7 +101,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 0.0005,
+						"StepSize": 0.1,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -116,7 +113,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 0.005,
+						"StepSize": 0.1,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -125,19 +122,17 @@
 				}
 			],
 			"ValueGradSteps": [
-				25
-			],
-			"EpochLength": [
-				2
-			],
-			"FinishEpisodeOnEpochEnd": [
-				true
-			],
-			"Lambda": [
 				1
 			],
-			"Gamma": [
-				0.99
+			"ExpReplay": [
+				{
+					"RemoveMethod": "Fifo",
+					"SampleMethod": "Uniform",
+					"RemoveSize": 1,
+					"SampleSize": 2,
+					"MaxReplayCapacity": 1000000,
+					"MinReplayCapacity": 32
+				}
 			]
 		}
 	}

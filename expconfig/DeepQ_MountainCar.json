@@ -63,7 +63,7 @@
 					"RemoveMethod": "Fifo",
 					"SampleMethod": "Uniform",
 					"RemoveSize": 1,
-					"SampleSize": 32,
+					"SampleSize": 2,
 					"MaxReplayCapacity": 4000,
 					"MinReplayCapacity": 100
 				}

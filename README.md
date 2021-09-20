@@ -701,9 +701,7 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 * [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
 
-* [ ] Gridworld wrapper that returns features as [x, y] instead of one*hot. This is much harder than one*hot for NNs.
-
-* [ ] Maze wrapper that returns features as one*hot encodings.
+* [ ] Gridworld and maze wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
 
 * [ ] Task AtGoal() -> argument should be Vector or *VecDense
 
@@ -711,6 +709,8 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 * [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
 
-* [ ] Profile some code (e.g. DeepQ) to see if it can be made any faster.
+* [ ] Idea: Instead of outputting mean for GaussianPolicyNN, output tanh(mean) and then multiply my the max action! This will ensure the mean stays always in the neighbourhood of legal actions! This is what is done in the RLControl repo.
 
-* [ ] Create exp replayer that returns a nil next action for those agents that only want SARS instead of SARSA
+* [ ] Add ability to add transiiton to ER with nil next action -- then change in DeepQ and VAC
+
+* [ ] `Observe`, `ObserveFirst`, and `Step` of `agent.Agent` should return an error instead of panic

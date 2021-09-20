@@ -110,9 +110,12 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 		panic(err)
 	}
 
+	// Calculate the mean
+	mean := net.Prediction()[0]
+	// ! Here, we could tanh the mean then Hadammard by the maximum action
+
 	// Calculate the standard deviation and offset it for numerical
 	// stability
-	mean := net.Prediction()[0]
 	offset := G.NewConstant(stdOffset)
 	logStd := net.Prediction()[1]
 	std := G.Must(G.Exp(logStd))

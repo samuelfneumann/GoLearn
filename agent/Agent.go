@@ -84,8 +84,5 @@ type LogPdfOfer interface {
 	// LogPdfOf returns the log probability of taking the argument
 	// actions in the argument states. Inputs should be constructed in
 	// row major order.
-	//
-	// This function is needed for non-TD implementations of policy
-	// gradient algorithms.
 	LogPdfOf(states, actions []float64) (*G.Node, error)
 }

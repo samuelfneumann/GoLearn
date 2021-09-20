@@ -22,6 +22,7 @@ const (
 	// Deep methods
 	CategoricalVanillaPGMLP  Type = "CategoricalVanillaPG-MLP"
 	GaussianVanillaPGTreeMLP Type = "GaussianVanillaPG-TreeMLP"
+	GaussianVanillaACTreeMLP Type = "GaussianVanillaAC-TreeMLP"
 
 	EGreedyDeepQMLP Type = "EGreedyDeepQ-MLP"
 )

@@ -66,7 +66,7 @@ type DeepQ struct {
 
 // New creates and returns a new DeepQ agent
 func New(env environment.Environment, c agent.Config,
-	seed int64) (*DeepQ, error) {
+	seed int64) (agent.Agent, error) {
 	if !c.ValidAgent(&DeepQ{}) {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
@@ -208,7 +208,7 @@ func New(env environment.Environment, c agent.Config,
 // That is, the algorithm uses linear function approximation to learn
 // online with no target networks.
 func NewQlearning(env environment.Environment, config qlearning.Config,
-	seed int64, InitWFn *initwfn.InitWFn) (*DeepQ, error) {
+	seed int64, InitWFn *initwfn.InitWFn) (agent.Agent, error) {
 	learningRate := config.LearningRate
 	sol, err := solver.NewVanilla(learningRate, 1)
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	_ "github.com/samuelfneumann/golearn/agent/linear/continuous/actorcritic"
 	_ "github.com/samuelfneumann/golearn/agent/linear/discrete/esarsa"
 	_ "github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
+	_ "github.com/samuelfneumann/golearn/agent/nonlinear/continuous/vanillaac"
 	_ "github.com/samuelfneumann/golearn/agent/nonlinear/continuous/vanillapg"
 	_ "github.com/samuelfneumann/golearn/agent/nonlinear/discrete/deepq"
 
@@ -22,12 +23,64 @@ import (
 )
 
 // func main() {
-// 	e := gym.New(gym.MountainCarV0, "http://127.0.0.1:5000", 0.99)
+// 	init, err := initwfn.NewGlorotN(math.Sqrt(2.0))
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-// 	fmt.Println(e.Reset())
+// 	pSolver, err := solver.NewDefaultAdam(0.1, 1)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-// 	obs, _ := e.Step(mat.NewVecDense(1, []float64{1}))
-// 	fmt.Println(obs)
+// 	vSolver, err := solver.NewDefaultAdam(0.1, 1)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	config := vanillaac.NewGaussianTreeMLPConfigList(
+// 		[][]int{{5, 5}},
+// 		[][]bool{{true, true}},
+// 		[][]*network.Activation{{network.ReLU(), network.ReLU()}},
+// 		[][][]int{{{5, 5}, {5, 5}}},
+// 		[][][]bool{{{true, true}, {true, true}}},
+// 		[][][]*network.Activation{
+// 			{
+// 				{network.ReLU(), network.ReLU()},
+// 				{network.ReLU(), network.ReLU()},
+// 			},
+// 		},
+// 		[][]int{{5, 5}},
+// 		[][]bool{{true, true}},
+// 		[][]*network.Activation{{network.ReLU(), network.ReLU()}},
+
+// 		[]*initwfn.InitWFn{init},
+
+// 		// Batch size 1 -> we don't train in mini-batches of data in RL
+// 		[]*solver.Solver{pSolver},
+// 		[]*solver.Solver{vSolver},
+
+// 		[]int{1},
+// 		[]expreplay.Config{
+// 			{
+// 				RemoveMethod:      expreplay.Fifo,
+// 				SampleMethod:      expreplay.Uniform,
+// 				RemoveSize:        1,
+// 				SampleSize:        32,
+// 				MaxReplayCapacity: 1_000_000,
+// 				MinReplayCapacity: 32,
+// 			},
+// 		},
+// 	)
+
+// 	f, err := os.Create("VAC-Gaussian.json")
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	defer f.Close()
+// 	enc := json.NewEncoder(f)
+// 	enc.SetIndent("", "\t")
+// 	enc.Encode(config)
 // }
 
 func main() {
