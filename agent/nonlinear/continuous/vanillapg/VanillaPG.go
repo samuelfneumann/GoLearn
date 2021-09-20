@@ -13,6 +13,8 @@ import (
 	"gorgonia.org/tensor"
 )
 
+var LogPDF G.Value
+
 // Note: Step() is called on each timestep. When the epoch is finished
 // the current episode may not be finised, but Step() will be called,
 // updating the current policy. In this case, we will finish the
@@ -93,7 +95,8 @@ type VPG struct {
 }
 
 // New creates and returns a new VanillaPG.
-func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) {
+func New(env environment.Environment, c agent.Config,
+	seed int64) (agent.Agent, error) {
 	if !c.ValidAgent(&VPG{}) {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
@@ -136,7 +139,8 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 
 	_, err = G.Grad(valueFnLoss, trainValueFn.Learnables()...)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("new: could not compute value function "+
+			"gradient: %v", err)
 	}
 	trainValueFnVM := G.NewTapeMachine(trainValueFn.Graph(), G.BindDualValues(trainValueFn.Learnables()...))
 
@@ -146,6 +150,7 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 	// Create the training policy
 	trainPolicy := config.trainPolicy()
 	logProb := trainPolicy.(agent.LogPdfOfer).LogPdfNode()
+	G.Read(logProb, &LogPDF)
 	advantages := G.NewVector(
 		trainPolicy.Network().Graph(),
 		tensor.Float64,
@@ -159,7 +164,8 @@ func New(env environment.Environment, c agent.Config, seed int64) (*VPG, error) 
 
 	_, err = G.Grad(policyLoss, trainPolicy.Network().Learnables()...)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("new: could not compute the policy "+
+			"gradient: %v", err)
 	}
 	trainPolicyVM := G.NewTapeMachine(trainPolicy.Network().Graph(), G.BindDualValues(trainPolicy.Network().Learnables()...))
 
@@ -211,13 +217,14 @@ func (v *VPG) Eval() { v.behaviour.Eval() }
 // Train sets the algorithm into training mode
 func (v *VPG) Train() { v.behaviour.Train() }
 
+// IsEval returns whether the agent is in evaluation mode
 func (v *VPG) IsEval() bool { return v.behaviour.IsEval() }
 
 // ObserveFirst observes and records information about the first
 // timestep in an episode.
 func (v *VPG) ObserveFirst(t ts.TimeStep) {
 	if !t.First() {
-		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
+		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be "+
 			"called on the first timestep (current timestep = %d)", t.Number)
 	}
 	v.prevStep = t
@@ -334,9 +341,9 @@ func (v *VPG) Step() {
 	// Update behaviour policy and prediction value funcion
 	network.Set(v.behaviour.Network(), v.trainPolicy.Network())
 	network.Set(v.vValueFn, v.vTrainValueFn)
+
 	v.completedEpochs++
 	v.currentEpochStep = 0
-
 }
 
 // TdError returns the TD error of the agent's value function for a

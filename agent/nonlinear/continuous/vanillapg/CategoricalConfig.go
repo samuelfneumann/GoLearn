@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"reflect"
 
-	G "gorgonia.org/gorgonia"
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/nonlinear/continuous/policy"
 	env "github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/initwfn"
 	"github.com/samuelfneumann/golearn/network"
 	"github.com/samuelfneumann/golearn/solver"
+	G "gorgonia.org/gorgonia"
 )
 
 func init() {
@@ -130,15 +130,15 @@ func (c CategoricalMLPConfigList) Len() int {
 // function.
 type CategoricalMLPConfig struct {
 	// Policy neural net
-	policy            agent.LogPdfOfer // VPG.trainPolicy
-	behaviour         agent.NNPolicy   // VPG.behaviour
+	policy            agent.LogPdfOfer // Policy whose weights are learned
+	behaviour         agent.NNPolicy   // Policy to select actions online
 	PolicyLayers      []int
 	PolicyBiases      []bool
 	PolicyActivations []*network.Activation
 
 	// State value function neural net
-	vValueFn           network.NeuralNet
-	vTrainValueFn      network.NeuralNet
+	vValueFn           network.NeuralNet // Function to compute action values
+	vTrainValueFn      network.NeuralNet // Function whose weights are learned
 	ValueFnLayers      []int
 	ValueFnBiases      []bool
 	ValueFnActivations []*network.Activation
@@ -146,6 +146,7 @@ type CategoricalMLPConfig struct {
 	// Weight init function for all neural nets
 	InitWFn *initwfn.InitWFn
 
+	// Solvers for policy and vValueFn
 	PolicySolver *solver.Solver
 	VSolver      *solver.Solver
 
@@ -200,7 +201,7 @@ func (c CategoricalMLPConfig) ValidAgent(a agent.Agent) bool {
 // configuration
 func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 	seed uint64) (agent.Agent, error) {
-
+	// Policy for action selection
 	behaviour, err := policy.NewCategoricalMLP(
 		e,
 		1,
@@ -216,6 +217,7 @@ func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 			"behaviour policy: %v", err)
 	}
 
+	// Policy whose weights are learned
 	p, err := policy.NewCategoricalMLP(
 		e,
 		c.EpochLength,
@@ -232,6 +234,7 @@ func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 
 	features := e.ObservationSpec().Shape.Len()
 
+	// Value function for single samples
 	valueFn, err := network.NewSingleHeadMLP(
 		features,
 		1,
@@ -246,6 +249,7 @@ func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 			"function: %v", err)
 	}
 
+	// Value function whose weights are learned
 	trainValueFn, err := network.NewSingleHeadMLP(
 		features,
 		c.EpochLength,
@@ -260,8 +264,12 @@ func (c CategoricalMLPConfig) CreateAgent(e env.Environment,
 			"train value function: %v", err)
 	}
 
+	// Set the weights of the policy networks to be equal
 	network.Set(behaviour.Network(), p.Network())
+
+	// Set the weights of the value function networks to be equal
 	network.Set(valueFn, trainValueFn)
+
 	c.policy = p
 	c.behaviour = behaviour
 	c.vValueFn = valueFn
