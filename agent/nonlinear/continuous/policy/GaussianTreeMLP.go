@@ -24,7 +24,10 @@ const stdOffset float64 = 1e-3
 // tree MLP. The MLP has a single root network. The root network breaks
 // off into two leaf networks. One predicts the mean, and the other
 // the log standard deviation. See the network.TreeMLP struct for
-// more details.
+// more details. The network's prediction of the mean is passed through
+// a hyperbolic tangent layer and then multiplied by the upper bound
+// of actions in the environment to ensure that the mean of the
+// Gaussian policy is always within the action bounds.
 //
 // Given a nework prediction of the mean μ and standard deviation σ of
 // the Gaussian policy, actions are selected by sampling from the
@@ -110,9 +113,33 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 		panic(err)
 	}
 
-	// Calculate the mean
+	// Scale the mean to be within the action bounds
 	mean := net.Prediction()[0]
-	// ! Here, we could tanh the mean then Hadammard by the maximum action
+
+	mean = G.Must(G.Tanh(mean))
+	actionLen := env.ActionSpec().UpperBound.Len()
+	shape := []int{
+		batchForLogProb,
+		env.ActionSpec().UpperBound.Len(),
+	}
+	upperBound := make([]float64, actionLen*batchForLogProb)
+	for i := 0; i < len(upperBound); i += actionLen {
+		copy(
+			upperBound[i*actionLen:(i+1)*actionLen],
+			env.ActionSpec().UpperBound.(*mat.VecDense).RawVector().Data,
+		)
+	}
+
+	actionScaleTensor := tensor.NewDense(
+		tensor.Float64,
+		shape,
+		tensor.WithBacking(upperBound),
+	)
+	actionScale := G.NewConstant(
+		actionScaleTensor,
+		G.WithName("ActionScale"),
+	)
+	mean = G.Must(G.HadamardProd(mean, actionScale))
 
 	// Calculate the standard deviation and offset it for numerical
 	// stability
@@ -220,19 +247,26 @@ func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	}
 	defer g.vm.Reset()
 
-	mean := mat.NewVecDense(g.actionDims, g.meanVal.Data().([]float64))
+	meanVal := make([]float64, len(g.meanVal.Data().([]float64)))
+	copy(meanVal, g.meanVal.Data().([]float64))
+	mean := mat.NewVecDense(g.actionDims, meanVal)
 
 	// If in evaluation mode, return the mean action only
 	if g.IsEval() {
 		return mean
 	}
 
-	stddev := mat.NewVecDense(g.actionDims, g.stddevVal.Data().([]float64))
+	stddevVal := make([]float64, len(g.stddevVal.Data().([]float64)))
+	copy(stddevVal, g.stddevVal.Data().([]float64))
+	stddev := mat.NewVecDense(g.actionDims, stddevVal)
+
 	eps := mat.NewVecDense(g.actionDims, g.normal.Rand(nil))
 
 	stddev.MulElemVec(stddev, eps)
 	mean.AddVec(mean, stddev)
 
+	fmt.Println("MEAN:", g.meanVal)
+	fmt.Println("STDDEV:", g.stddevVal)
 	return mean
 }
 
