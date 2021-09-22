@@ -1,11 +1,11 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 3000000,
+	"MaxSteps": 50000,
 	"EnvConfig": {
-		"Environment": "Cartpole",
-		"Task": "Balance",
+		"Environment": "Gridworld",
+		"Task": "Goal",
 		"ContinuousActions": false,
-		"EpisodeCutoff": 500,
+		"EpisodeCutoff": 200,
 		"Discount": 0.99,
 		"Gym": false,
 		"TileCoding": {
@@ -71,7 +71,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 0.005,
+						"StepSize": 1e-3,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -83,11 +83,12 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 0.005,
+						"StepSize": 1e-2,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
-						"Batch": 1
+						"Batch": 1,
+						"Clip": -1.0
 					}
 				}
 			],

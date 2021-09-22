@@ -36,10 +36,11 @@ packages:
 The following policy gradient algorithms are implemented in the following
 packages:
 
-|              Agent             |                 Package                |
-|--------------------------------|----------------------------------------|
-| `Linear-Gaussian Actor-Critic` | `agent/linear/continuous/actorcritic`  |
-|   `Vanilla Policy Gradient`    | `agent/nonlinear/continuous/vanillapg` |
+|                Agent                |                 Package                |
+|-------------------------------------|----------------------------------------|
+| `Linear-Gaussian Actor-Critic`      | `agent/linear/continuous/actorcritic`  |
+|   `Vanilla Policy Gradient`         | `agent/nonlinear/continuous/vanillapg` |
+| `Vanilla Actor Critic` (Unfinished) | `agent/nonlinear/continuous/vanillaac` |
 
 ## Agent `Config`s and `ConfigList`s
 
@@ -275,14 +276,16 @@ env, firstStep := c.CreateEnv()
 
 Currently, the following `Environment`-`Task` combinations are valid
 configurations:
-| Environment |               Task              |
-|-------------|---------------------------------|
-| MountainCar |               Goal              |
-|  Cartpole   | Balance, SwingUp (soon to come) |
-|  Pendulum   |             SwingUp             |
-|   Acrobot   | SwingUp, Balance (soon to come) |
-| LunarLander |               Land              |
-|   Hopper    |               Hop               |
+|  Environment |               Task              |
+|--------------|---------------------------------|
+|   Gridworld  |               Goal              |
+|     Maze     |               Goal              |
+|  MountainCar |               Goal              |
+|   Cartpole   | Balance, SwingUp (soon to come) |
+|   Pendulum   |             SwingUp             |
+|    Acrobot   | SwingUp, Balance (soon to come) |
+|  LunarLander |               Land              |
+|    Hopper    |               Hop               |
 
 Any other combination of `Environment`-`Task` will result in a panic
 when calling `CreateEnv()`.
@@ -701,16 +704,14 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 * [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
 
-* [ ] Gridworld and maze wrapper that returns features as [x, y] instead of one-hot. This is much harder than one-hot for NNs.
-
 * [ ] Task AtGoal() -> argument should be Vector or *VecDense
 
 * [ ] Add `gym` to the `EnvConfig` structs.
 
 * [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
 
-* [ ] Idea: Instead of outputting mean for GaussianPolicyNN, output tanh(mean) and then multiply my the max action! This will ensure the mean stays always in the neighbourhood of legal actions! This is what is done in the RLControl repo.
-
 * [ ] Add ability to add transiiton to ER with nil next action -- then change in DeepQ and VAC
 
 * [ ] `Observe`, `ObserveFirst`, and `Step` of `agent.Agent` should return an error instead of panic
+
+* [ ] Use target nets for policy and value function of vanilla AC

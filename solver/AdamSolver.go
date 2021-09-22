@@ -1,6 +1,8 @@
 package solver
 
-import G "gorgonia.org/gorgonia"
+import (
+	G "gorgonia.org/gorgonia"
+)
 
 // AdamConfig describes a configuration of the Adam solver
 type AdamConfig struct {
@@ -9,15 +11,17 @@ type AdamConfig struct {
 	Beta1    float64
 	Beta2    float64
 	Batch    int
+	Clip     float64 // <= 0 if no clipping
 }
 
 // NewDefaultAdam returns a new Adam Solver with default hyperparameters
 func NewDefaultAdam(stepSize float64, batchSize int) (*Solver, error) {
-	return NewAdam(stepSize, 1e-8, 0.9, 0.999, batchSize)
+	return NewAdam(stepSize, 1e-8, 0.9, 0.999, batchSize, -1.0)
 }
 
 // NewAdam returns a new Adam Solver
-func NewAdam(stepSize, epsilon, beta1, beta2 float64, batchSize int) (*Solver,
+func NewAdam(stepSize, epsilon, beta1, beta2 float64, batchSize int,
+	clip float64) (*Solver,
 	error) {
 	adam := AdamConfig{
 		StepSize: stepSize,
@@ -25,6 +29,7 @@ func NewAdam(stepSize, epsilon, beta1, beta2 float64, batchSize int) (*Solver,
 		Beta1:    beta1,
 		Beta2:    beta2,
 		Batch:    int(batchSize),
+		Clip:     clip,
 	}
 
 	return newSolver(Adam, adam)
@@ -33,13 +38,26 @@ func NewAdam(stepSize, epsilon, beta1, beta2 float64, batchSize int) (*Solver,
 // Create returns a new Gorgonia Adam Solver as described by the
 // AdamConfig
 func (a AdamConfig) Create() G.Solver {
-	solver := G.NewAdamSolver(
-		G.WithLearnRate(a.StepSize),
-		G.WithEps(a.Epsilon),
-		G.WithBeta1(a.Beta1),
-		G.WithBeta2(a.Beta2),
-		G.WithBatchSize(float64(a.Batch)),
-	)
+	var solver G.Solver
+
+	if a.Clip <= 0 {
+		solver = G.NewAdamSolver(
+			G.WithLearnRate(a.StepSize),
+			G.WithEps(a.Epsilon),
+			G.WithBeta1(a.Beta1),
+			G.WithBeta2(a.Beta2),
+			G.WithBatchSize(float64(a.Batch)),
+		)
+	} else {
+		solver = G.NewAdamSolver(
+			G.WithLearnRate(a.StepSize),
+			G.WithEps(a.Epsilon),
+			G.WithBeta1(a.Beta1),
+			G.WithBeta2(a.Beta2),
+			G.WithBatchSize(float64(a.Batch)),
+			G.WithClip(a.Clip),
+		)
+	}
 	return solver
 }
 

@@ -247,6 +247,8 @@ func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	}
 	defer g.vm.Reset()
 
+	// Make a copy of the mean value so that the meanVal field is
+	// not modified
 	meanVal := make([]float64, len(g.meanVal.Data().([]float64)))
 	copy(meanVal, g.meanVal.Data().([]float64))
 	mean := mat.NewVecDense(g.actionDims, meanVal)
@@ -256,6 +258,8 @@ func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 		return mean
 	}
 
+	// Make a copy of the stddev value so that the stddevVal field is
+	// not modified
 	stddevVal := make([]float64, len(g.stddevVal.Data().([]float64)))
 	copy(stddevVal, g.stddevVal.Data().([]float64))
 	stddev := mat.NewVecDense(g.actionDims, stddevVal)
@@ -265,8 +269,6 @@ func (g *GaussianTreeMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	stddev.MulElemVec(stddev, eps)
 	mean.AddVec(mean, stddev)
 
-	fmt.Println("MEAN:", g.meanVal)
-	fmt.Println("STDDEV:", g.stddevVal)
 	return mean
 }
 

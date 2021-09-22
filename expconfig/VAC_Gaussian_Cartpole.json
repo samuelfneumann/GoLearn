@@ -101,7 +101,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 0.1,
+						"StepSize": 1e-4,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -113,7 +113,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 0.1,
+						"StepSize": 1e-4,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -130,9 +130,15 @@
 					"SampleMethod": "Uniform",
 					"RemoveSize": 1,
 					"SampleSize": 2,
-					"MaxReplayCapacity": 1000000,
+					"MaxReplayCapacity": 100000,
 					"MinReplayCapacity": 32
 				}
+			],
+			"Tau": [
+				0.01
+			],
+			"TargetUpdateInterval": [
+				1
 			]
 		}
 	}

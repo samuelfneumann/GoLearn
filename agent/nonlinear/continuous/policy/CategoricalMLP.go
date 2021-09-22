@@ -112,6 +112,8 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 
 	// Logits and probabilities of action selection for the current
 	// policy in the state(s) inputted to the policy's neural net.
+	// * Can be made more numerically stable my first subtracting the
+	// * maximum logit before exponentiating
 	logits := net.Prediction()[0]
 	probs := G.Must(G.Exp(logits))
 
@@ -229,12 +231,12 @@ func (c *CategoricalMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	if err := c.vm.RunAll(); err != nil {
 		panic(fmt.Sprintf("selectAction: could not run policy VM: %v", err))
 	}
-	logProbActions := c.probsVal.Data().([]float64)
+	logits := c.probsVal.Data().([]float64)
 	c.vm.Reset()
 
 	// If in evalutaion mode, select the highest probability action
 	if c.IsEval() {
-		maxActions := floatutils.ArgMax(logProbActions...)
+		maxActions := floatutils.ArgMax(logits...)
 
 		// If multiple actions have the highest probability, choose
 		// from them uniformly randomly
@@ -242,8 +244,9 @@ func (c *CategoricalMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 		return mat.NewVecDense(1, []float64{float64(action)})
 	}
 
-	dist := distuv.NewCategorical(logProbActions, c.source)
-	action := mat.NewVecDense(1, []float64{dist.Rand()})
+	dist := distuv.NewCategorical(logits, c.source)
+	selected := dist.Rand()
+	action := mat.NewVecDense(1, []float64{selected})
 
 	return action
 }

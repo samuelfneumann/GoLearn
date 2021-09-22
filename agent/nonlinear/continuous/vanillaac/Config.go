@@ -20,6 +20,7 @@ type config interface {
 
 	valueFn() network.NeuralNet
 	trainValueFn() network.NeuralNet
+	targetValueFn() network.NeuralNet
 
 	initWFn() *initwfn.InitWFn
 
@@ -34,4 +35,7 @@ type config interface {
 
 	// expReplay returns the experience replayer to use
 	expReplay() expreplay.Config
+
+	tau() float64
+	targetUpdateInterval() int
 }

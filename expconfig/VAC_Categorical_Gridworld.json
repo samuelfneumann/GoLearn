@@ -1,53 +1,48 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 3000000,
+	"MaxSteps": 20000,
 	"EnvConfig": {
-		"Environment": "Cartpole",
-		"Task": "Balance",
+		"Environment": "Gridworld",
+		"Task": "Goal",
 		"ContinuousActions": false,
 		"EpisodeCutoff": 500,
-		"Discount": 0.99,
+		"Discount": 1.0,
 		"Gym": false,
 		"TileCoding": {
 			"UseTileCoding": false,
 			"UseIndices": true,
-			"Bins": []
+			"Bins": null
 		}
 	},
 	"AgentConfig": {
-		"Type": "CategoricalVanillaPG-MLP",
+		"Type": "CategoricalVanillaAC-MLP",
 		"ConfigList": {
-			"PolicyLayers": [
+			"Layers": [
 				[
-					100,
-					50,
-					25
+					64,
+					64
 				]
 			],
-			"PolicyBiases": [
+			"Biases": [
 				[
-					true,
 					true,
 					true
 				]
 			],
-			"PolicyActivations": [
+			"Activations": [
 				[
-					"relu",
 					"relu",
 					"relu"
 				]
 			],
 			"ValueFnLayers": [
 				[
-					100,
-					50,
-					25
+					64,
+					64
 				]
 			],
 			"ValueFnBiases": [
 				[
-					true,
 					true,
 					true
 				]
@@ -55,13 +50,12 @@
 			"ValueFnActivations": [
 				[
 					"relu",
-					"relu",
 					"relu"
 				]
 			],
 			"InitWFn": [
 				{
-					"Type": "GlorotU",
+					"Type": "GlorotN",
 					"Config": {
 						"Gain": 1.4142135623730951
 					}
@@ -69,43 +63,43 @@
 			],
 			"PolicySolver": [
 				{
-					"Type": "Adam",
+					"Type": "Vanilla",
 					"Config": {
-						"StepSize": 0.005,
-						"Epsilon": 1e-8,
-						"Beta1": 0.9,
-						"Beta2": 0.999,
-						"Batch": 1
+						"StepSize": 1e-3,
+						"Batch": 1,
+						"Clip": -1.0
 					}
 				}
 			],
 			"VSolver": [
 				{
-					"Type": "Adam",
+					"Type": "Vanilla",
 					"Config": {
-						"StepSize": 0.005,
-						"Epsilon": 1e-8,
-						"Beta1": 0.9,
-						"Beta2": 0.999,
-						"Batch": 1
+						"StepSize": 1e-2,
+						"Batch": 1,
+						"Clip": -1.0
 					}
 				}
 			],
 			"ValueGradSteps": [
-				25
-			],
-			"EpochLength": [
-				500
-			],
-			"FinishEpisodeOnEpochEnd": [
-				true
-			],
-			"Lambda": [
 				1
 			],
-			"Gamma": [
-				0.99
+			"ExpReplay": [
+				{
+					"RemoveMethod": "Fifo",
+					"SampleMethod": "Uniform",
+					"RemoveSize": 1,
+					"SampleSize": 2,
+					"MaxReplayCapacity": 1000,
+					"MinReplayCapacity": 32
+				}
+			],
+			"Tau": [
+				0.01
+			],
+			"TargetUpdateInterval": [
+				1
 			]
-		}
+}
 	}
 }

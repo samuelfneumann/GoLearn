@@ -10,7 +10,7 @@
 		"Gym": false,
 		"TileCoding": {
 			"UseTileCoding": false,
-			"UseIndices": true,
+			"UseIndices": false,
 			"Bins": null
 		}
 	},
@@ -38,11 +38,9 @@
 			"LeafLayers": [
 				[
 					[
-						64,
 						64
 					],
 					[
-						64,
 						64
 					]
 				]
@@ -50,11 +48,9 @@
 			"LeafBiases": [
 				[
 					[
-						true,
 						true
 					],
 					[
-						true,
 						true
 					]
 				]
@@ -62,11 +58,9 @@
 			"LeafActivations": [
 				[
 					[
-						"relu",
 						"relu"
 					],
 					[
-						"relu",
 						"relu"
 					]
 				]
@@ -79,7 +73,7 @@
 			],
 			"ValueFnBiases": [
 				[
-					true,
+					true, 
 					true
 				]
 			],
@@ -101,7 +95,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 0.1,
+						"StepSize": 0.001,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -113,7 +107,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 0.1,
+						"StepSize": 0.001,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -130,8 +124,8 @@
 					"SampleMethod": "Uniform",
 					"RemoveSize": 1,
 					"SampleSize": 2,
-					"MaxReplayCapacity": 1000000,
-					"MinReplayCapacity": 32
+					"MaxReplayCapacity": 2,
+					"MinReplayCapacity": 2
 				}
 			]
 		}

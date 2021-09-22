@@ -18,22 +18,14 @@ import (
 func init() {
 	// Register ConfigList type so that it can be typed using
 	// agent.TypedConfigList to help with serialization/deserialization.
-	agent.Register(agent.GaussianVanillaACTreeMLP, GaussianTreeMLPConfigList{})
+	agent.Register(agent.CategoricalVanillaACMLP, CategoricalMLPConfigList{})
 }
 
-// GaussianTreeMLPConfigList implements functionality for storing a
-// list of GaussianTreeMLPConfig's in a simple way. Instead of storing
-// a slice of Configs, the ConfigList stores each field's values and
-// constructs the list by every combination of field values.
-type GaussianTreeMLPConfigList struct {
+type CategoricalMLPConfigList struct {
 	// Policy neural net
-	RootLayers      [][]int
-	RootBiases      [][]bool
-	RootActivations [][]*network.Activation
-
-	LeafLayers      [][][]int
-	LeafBiases      [][][]bool
-	LeafActivations [][][]*network.Activation
+	Layers      [][]int
+	Biases      [][]bool
+	Activations [][]*network.Activation
 
 	// State value function neural net
 	ValueFnLayers      [][]int
@@ -56,17 +48,10 @@ type GaussianTreeMLPConfigList struct {
 	TargetUpdateInterval []int
 }
 
-// NewGaussianTreeMLPConfigList returns a new GaussianTreeMLPConfigList
-// as an agent.TypedConfigList. Because the returned value is a
-// TypedList, it can safely be JSON serialized and deserialized without
-// specifying what the type of the ConfigList is.
-func NewGaussianTreeMLPConfigList(
-	RootLayers [][]int,
-	RootBiases [][]bool,
-	RootActivations [][]*network.Activation,
-	LeafLayers [][][]int,
-	LeafBiases [][][]bool,
-	LeafActivations [][][]*network.Activation,
+func NewCategoricalMLPConfigList(
+	Layers [][]int,
+	Biases [][]bool,
+	Activations [][]*network.Activation,
 	ValueFnLayers [][]int,
 	ValueFnBiases [][]bool,
 	ValueFnActivations [][]*network.Activation,
@@ -78,14 +63,10 @@ func NewGaussianTreeMLPConfigList(
 	Tau []float64,
 	TargetUpdateInterval []int,
 ) agent.TypedConfigList {
-	config := GaussianTreeMLPConfigList{
-		RootLayers:      RootLayers,
-		RootBiases:      RootBiases,
-		RootActivations: RootActivations,
-
-		LeafLayers:      LeafLayers,
-		LeafBiases:      LeafBiases,
-		LeafActivations: LeafActivations,
+	config := CategoricalMLPConfigList{
+		Layers:      Layers,
+		Biases:      Biases,
+		Activations: Activations,
 
 		ValueFnLayers:      ValueFnLayers,
 		ValueFnBiases:      ValueFnBiases,
@@ -108,51 +89,46 @@ func NewGaussianTreeMLPConfigList(
 }
 
 // Config returns an empty Config that is of the type stored by
-// GaussianTreeMLPConfigList
-func (g GaussianTreeMLPConfigList) Config() agent.Config {
-	return GaussianTreeMLPConfig{}
+// CategoricalMLPConfigList
+func (c CategoricalMLPConfigList) Config() agent.Config {
+	return CategoricalMLPConfig{}
 }
 
 // Type returns the type of Config stored in the list
-func (g GaussianTreeMLPConfigList) Type() agent.Type {
-	return g.Config().Type()
+func (c CategoricalMLPConfigList) Type() agent.Type {
+	return c.Config().Type()
 }
 
 // Len returns the number of configurations stored in the list
-func (g GaussianTreeMLPConfigList) Len() int {
-	return len(g.RootLayers) * len(g.RootBiases) * len(g.RootActivations) *
-		len(g.LeafLayers) * len(g.LeafBiases) * len(g.LeafActivations) *
-		len(g.ValueFnLayers) * len(g.ValueFnBiases) *
-		len(g.ValueFnActivations) * len(g.InitWFn) * len(g.PolicySolver) *
-		len(g.VSolver) * len(g.ValueGradSteps) *
-		len(g.ExpReplay) * len(g.Tau) * len(g.TargetUpdateInterval)
+func (c CategoricalMLPConfigList) Len() int {
+	return len(c.Layers) * len(c.Biases) * len(c.Activations) *
+		len(c.ValueFnLayers) * len(c.ValueFnBiases) *
+		len(c.ValueFnActivations) * len(c.InitWFn) * len(c.PolicySolver) *
+		len(c.VSolver) * len(c.ValueGradSteps) *
+		len(c.ExpReplay) * len(c.Tau) * len(c.TargetUpdateInterval)
 }
 
 // NumFields gets the total number of settable fields/hyperparameters
 // for the agent configuration
-func (g GaussianTreeMLPConfigList) NumFields() int {
-	rValue := reflect.ValueOf(g)
+func (c CategoricalMLPConfigList) NumFields() int {
+	rValue := reflect.ValueOf(c)
 	return rValue.NumField()
 }
 
-// GaussianTreeMLPConfig implements a configuration for a Gaussian
-// policy vanilla actor critic agent. The Gaussian policy is
+// CategoricalMLPConfig implements a configuration for a Categorical
+// policy vanilla actor critic agent. The Categorical policy is
 // parameterized by a neural network which has a single input and
 // a single root network. The root network then splits off into two
 // leaf networks - one for the mean and one for the log standard
-// deviation of the policy. See the policy.GaussianTreeMLP struct for
+// deviation of the policy. See the policy.CategoricalMLP struct for
 // more details. The action dimensions may be n-dimensional.
-type GaussianTreeMLPConfig struct {
+type CategoricalMLPConfig struct {
 	// Policy neural net
-	policy          agent.LogPdfOfer // VPG.trainPolicy
-	behaviour       agent.NNPolicy   // VPG.behaviour
-	RootLayers      []int
-	RootBiases      []bool
-	RootActivations []*network.Activation
-
-	LeafLayers      [][]int
-	LeafBiases      [][]bool
-	LeafActivations [][]*network.Activation
+	policy      agent.LogPdfOfer // VPG.trainPolicy
+	behaviour   agent.NNPolicy   // VPG.behaviour
+	Layers      []int
+	Biases      []bool
+	Activations []*network.Activation
 
 	// State value function neural net
 	vValueFn           network.NeuralNet
@@ -180,12 +156,12 @@ type GaussianTreeMLPConfig struct {
 }
 
 // BatchSize gets the batch size for the policy generated by this config
-func (g GaussianTreeMLPConfig) BatchSize() int {
+func (g CategoricalMLPConfig) BatchSize() int {
 	return g.ExpReplay.BatchSize()
 }
 
 // Validate checks a Config to ensure it is a valid configuration
-func (g GaussianTreeMLPConfig) Validate() error {
+func (g CategoricalMLPConfig) Validate() error {
 	if g.BatchSize() <= 0 {
 		return fmt.Errorf("cannot have batch size %v < 1", g.BatchSize())
 	}
@@ -195,30 +171,27 @@ func (g GaussianTreeMLPConfig) Validate() error {
 
 // ValidAgent returns true if the argument agent can be constructed
 // from the Config and false otherwise.
-func (g GaussianTreeMLPConfig) ValidAgent(a agent.Agent) bool {
+func (g CategoricalMLPConfig) ValidAgent(a agent.Agent) bool {
 	_, ok := a.(*VAC)
 	return ok
 }
 
 // Type returns the type of agent constructed by the Config
-func (c GaussianTreeMLPConfig) Type() agent.Type {
-	return agent.GaussianVanillaACTreeMLP
+func (c CategoricalMLPConfig) Type() agent.Type {
+	return agent.CategoricalVanillaACMLP
 }
 
 // CreateAgent creates and returns the agent determine by the
 // configuration
-func (g GaussianTreeMLPConfig) CreateAgent(e env.Environment,
+func (g CategoricalMLPConfig) CreateAgent(e env.Environment,
 	seed uint64) (agent.Agent, error) {
-	behaviour, err := policy.NewGaussianTreeMLP(
+	behaviour, err := policy.NewCategoricalMLP(
 		e,
 		1,
 		G.NewGraph(),
-		g.RootLayers,
-		g.RootBiases,
-		g.RootActivations,
-		g.LeafLayers,
-		g.LeafBiases,
-		g.LeafActivations,
+		g.Layers,
+		g.Biases,
+		g.Activations,
 		g.InitWFn.InitWFn(),
 		seed,
 	)
@@ -227,16 +200,13 @@ func (g GaussianTreeMLPConfig) CreateAgent(e env.Environment,
 			"behaviour policy: %v", err)
 	}
 
-	p, err := policy.NewGaussianTreeMLP(
+	p, err := policy.NewCategoricalMLP(
 		e,
 		g.BatchSize(),
 		G.NewGraph(),
-		g.RootLayers,
-		g.RootBiases,
-		g.RootActivations,
-		g.LeafLayers,
-		g.LeafBiases,
-		g.LeafActivations,
+		g.Layers,
+		g.Biases,
+		g.Activations,
 		g.InitWFn.InitWFn(),
 		seed,
 	)
@@ -284,7 +254,7 @@ func (g GaussianTreeMLPConfig) CreateAgent(e env.Environment,
 		g.ValueFnActivations,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("createAgent: could not create target "+
+		return nil, fmt.Errorf("createAgent: could not create train "+
 			"value function: %v", err)
 	}
 
@@ -304,68 +274,67 @@ func (g GaussianTreeMLPConfig) CreateAgent(e env.Environment,
 // See the Config.go file in the vanillapg package for more details.
 
 // policy returns the constructed policy to train from the config
-func (g GaussianTreeMLPConfig) trainPolicy() agent.LogPdfOfer {
+func (g CategoricalMLPConfig) trainPolicy() agent.LogPdfOfer {
 	return g.policy
 }
 
 // behaviour returns the constructed behaviour policy from the config
-func (g GaussianTreeMLPConfig) behaviourPolicy() agent.NNPolicy {
+func (g CategoricalMLPConfig) behaviourPolicy() agent.NNPolicy {
 	return g.behaviour
 }
 
 // valueFn returns the constructed value function from the config
-func (g GaussianTreeMLPConfig) valueFn() network.NeuralNet {
+func (g CategoricalMLPConfig) valueFn() network.NeuralNet {
 	return g.vValueFn
 }
 
 // trainValueFn returns the constructed value function to train from
 // the config
-func (g GaussianTreeMLPConfig) trainValueFn() network.NeuralNet {
+func (g CategoricalMLPConfig) trainValueFn() network.NeuralNet {
 	return g.vTrainValueFn
 }
 
-// targetValueFn returns the target value function
-func (g GaussianTreeMLPConfig) targetValueFn() network.NeuralNet {
-	return g.vTargetValueFn
-}
-
 // initWFn returns the initWFn from the config
-func (g GaussianTreeMLPConfig) initWFn() *initwfn.InitWFn {
+func (g CategoricalMLPConfig) initWFn() *initwfn.InitWFn {
 	return g.InitWFn
 }
 
 // policySolver returns the constructed policy solver from the config
-func (g GaussianTreeMLPConfig) policySolver() *solver.Solver {
+func (g CategoricalMLPConfig) policySolver() *solver.Solver {
 	return g.PolicySolver
 }
 
 // vSolver reutrns the constructed value function solver from the
 // config
-func (g GaussianTreeMLPConfig) vSolver() *solver.Solver {
+func (g CategoricalMLPConfig) vSolver() *solver.Solver {
 	return g.VSolver
 }
 
 // batchSize returns the batch size for the config
-func (g GaussianTreeMLPConfig) batchSize() int {
+func (g CategoricalMLPConfig) batchSize() int {
 	return g.BatchSize()
 }
 
 // valueGradSteps returns the number of gradient steps per environment
 // step to take for the value function
-func (g GaussianTreeMLPConfig) valueGradSteps() int {
+func (g CategoricalMLPConfig) valueGradSteps() int {
 	return g.ValueGradSteps
 }
 
 // expReplay returns the experience replayer configuration for the
 // agent
-func (g GaussianTreeMLPConfig) expReplay() expreplay.Config {
+func (g CategoricalMLPConfig) expReplay() expreplay.Config {
 	return g.ExpReplay
 }
 
-func (g GaussianTreeMLPConfig) tau() float64 {
-	return g.Tau
+func (c CategoricalMLPConfig) targetValueFn() network.NeuralNet {
+	return c.vTargetValueFn
 }
 
-func (g GaussianTreeMLPConfig) targetUpdateInterval() int {
-	return g.TargetUpdateInterval
+func (c CategoricalMLPConfig) tau() float64 {
+	return c.Tau
+}
+
+func (c CategoricalMLPConfig) targetUpdateInterval() int {
+	return c.TargetUpdateInterval
 }
