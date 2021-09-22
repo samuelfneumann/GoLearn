@@ -210,7 +210,7 @@ func New(env environment.Environment, c agent.Config,
 func NewQlearning(env environment.Environment, config qlearning.Config,
 	seed int64, InitWFn *initwfn.InitWFn) (agent.Agent, error) {
 	learningRate := config.LearningRate
-	sol, err := solver.NewVanilla(learningRate, 1)
+	sol, err := solver.NewVanilla(learningRate, 1, -1.0)
 	if err != nil {
 		return nil, fmt.Errorf("newQLearning: cannot create solver: %v", err)
 	}
