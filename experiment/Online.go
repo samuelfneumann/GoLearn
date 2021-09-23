@@ -50,7 +50,6 @@ func NewOnline(e env.Environment, a ag.Agent, steps uint,
 
 	// Create a progress bar for watching experiment progress
 	progBar := progressbar.New(50, int(steps), time.Second, true)
-	progBar.Display()
 
 	return &Online{e, a, steps, 0, trackers, checkpointers, progBar}
 }
@@ -110,6 +109,8 @@ func (o *Online) RunEpisode() (bool, error) {
 
 // Run runs the entire experiment for all timesteps
 func (o *Online) Run() error {
+	o.progBar.Display()
+
 	ended := false
 	var err error
 	o.agent.Train()
