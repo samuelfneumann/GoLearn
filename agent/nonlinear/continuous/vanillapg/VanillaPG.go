@@ -13,8 +13,6 @@ import (
 	"gorgonia.org/tensor"
 )
 
-var LogPDF G.Value
-
 // Note: Step() is called on each timestep. When the epoch is finished
 // the current episode may not be finised, but Step() will be called,
 // updating the current policy. In this case, we will finish the
@@ -149,8 +147,7 @@ func New(env environment.Environment, c agent.Config,
 
 	// Create the training policy
 	trainPolicy := config.trainPolicy()
-	logProb := trainPolicy.(agent.LogPdfOfer).LogPdfNode()
-	G.Read(logProb, &LogPDF)
+	logProb := trainPolicy.LogPdfNode()
 	advantages := G.NewVector(
 		trainPolicy.Network().Graph(),
 		tensor.Float64,
