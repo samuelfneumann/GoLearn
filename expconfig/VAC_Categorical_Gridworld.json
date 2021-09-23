@@ -63,20 +63,26 @@
 			],
 			"PolicySolver": [
 				{
-					"Type": "Vanilla",
+					"Type": "Adam",
 					"Config": {
-						"StepSize": 1e-3,
+						"StepSize": 1e-5,
 						"Batch": 1,
+						"Epsilon": 1e-8,
+						"Beta1": 0.9,
+						"Beta2": 0.999,
 						"Clip": -1.0
 					}
 				}
 			],
 			"VSolver": [
 				{
-					"Type": "Vanilla",
+					"Type": "Adam",
 					"Config": {
-						"StepSize": 1e-2,
+						"StepSize": 1e-4,
 						"Batch": 1,
+						"Epsilon": 1e-8,
+						"Beta1": 0.9,
+						"Beta2": 0.999,
 						"Clip": -1.0
 					}
 				}
@@ -90,8 +96,8 @@
 					"SampleMethod": "Uniform",
 					"RemoveSize": 1,
 					"SampleSize": 2,
-					"MaxReplayCapacity": 1000,
-					"MinReplayCapacity": 32
+					"MaxReplayCapacity": 2,
+					"MinReplayCapacity": 2
 				}
 			],
 			"Tau": [

@@ -31,8 +31,8 @@
 			],
 			"RootActivations": [
 				[
-					"relu",
-					"relu"
+					"tanh",
+					"tanh"
 				]
 			],
 			"LeafLayers": [
@@ -62,12 +62,12 @@
 			"LeafActivations": [
 				[
 					[
-						"relu",
-						"relu"
+						"tanh",
+						"tanh"
 					],
 					[
-						"relu",
-						"relu"
+						"tanh",
+						"tanh"
 					]
 				]
 			],
@@ -85,8 +85,8 @@
 			],
 			"ValueFnActivations": [
 				[
-					"relu",
-					"relu"
+					"tanh",
+					"tanh"
 				]
 			],
 			"InitWFn": [
@@ -105,7 +105,8 @@
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
-						"Batch": 1
+						"Batch": 1,
+						"Clip": -1.0
 					}
 				}
 			],
@@ -117,7 +118,8 @@
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
-						"Batch": 1
+						"Batch": 1,
+						"Clip": -1.0
 					}
 				}
 			],
@@ -129,7 +131,7 @@
 					"RemoveMethod": "Fifo",
 					"SampleMethod": "Uniform",
 					"RemoveSize": 1,
-					"SampleSize": 2,
+					"SampleSize": 32,
 					"MaxReplayCapacity": 100000,
 					"MinReplayCapacity": 32
 				}

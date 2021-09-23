@@ -1,4 +1,9 @@
 // Package vanillaac implements a vanilla actor-critic algorithm
+//
+// This algorithm uses a state value function critic and baseline
+// with a target network for the state value function. The value
+// function and policy are each learned from data sampled from an
+// experience replay buffer.
 package vanillaac
 
 import (
@@ -17,25 +22,28 @@ import (
 	"gorgonia.org/tensor"
 )
 
-// With Adam, this explodes on Gridworld
-// With vanilla, it does learn on Gridworl, but explodes on Cartpole...
-
 var PLoss G.Value
 var VLoss G.Value
 var LogPDF G.Value
 var Adv G.Value
+var PNextStateValue G.Value
+var PReward G.Value
+var PDiscount G.Value
+var PStateValue G.Value
 
+// VAV implements the vanilla actor-critic algorithm
 type VAC struct {
 	// Policy
 	behaviour         agent.NNPolicy   // Has its own VM
 	trainPolicy       agent.LogPdfOfer // Policy struct that is learned
 	trainPolicySolver G.Solver
 	trainPolicyVM     G.VM
-	pStateValue       *G.Node
-	pNextStateValue   *G.Node
-	pDiscount         *G.Node
-	pReward           *G.Node
-	logProb           *G.Node
+	pStateValue       *G.Node // For computing the advantage
+	pNextStateValue   *G.Node // For computing the advantage
+	pDiscount         *G.Node // For computing the advantage
+	pReward           *G.Node // For computing the advantage
+	logProb           *G.Node // Log PDF of actions sampled from ER
+	advantage         *G.Node
 
 	replay expreplay.ExperienceReplayer
 
@@ -53,6 +61,7 @@ type VAC struct {
 	vDiscount       *G.Node
 	vReward         *G.Node
 
+	// Target value function
 	vTargetValueFn       network.NeuralNet
 	vTargetValueFnVM     G.VM
 	tau                  float64
@@ -60,11 +69,14 @@ type VAC struct {
 	stepsSinceUpdate     int
 }
 
+// New returns a new VAC as described by the configuration c with
+// actions selected for the environment e
 func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 	if !c.ValidAgent(&VAC{}) {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
 	}
 
+	// Ensure we have a VAC config, as described in this package
 	config, ok := c.(config)
 	if !ok {
 		return nil, fmt.Errorf("new: invalid configuration type: %T", c)
@@ -86,7 +98,7 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 			"replay buffer: %v", err)
 	}
 
-	// Create the prediction value function
+	// Create the online prediction value function
 	valueFn := config.valueFn()
 	vVM := G.NewTapeMachine(valueFn.Graph())
 
@@ -94,11 +106,11 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 	targetValueFn := config.targetValueFn()
 	vTargetVM := G.NewTapeMachine(targetValueFn.Graph())
 
-	// Create the training value function
+	// Create the training value function, whose weights are learned
 	trainValueFn := config.trainValueFn()
-	graph := trainValueFn.Graph()
 
-	// Create the training value function target and MSE loss
+	// Create the next state value, reward, and discount placeholders
+	// for creating the update target for the critic
 	vNextStateValue := G.NewVector(
 		trainValueFn.Graph(),
 		tensor.Float64,
@@ -117,9 +129,12 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 		G.WithName("Discount_CriticLoss"),
 		G.WithShape(config.batchSize()),
 	)
+
+	// Compute the critic's update target
 	trainValueFnTargets := G.Must(G.HadamardProd(vDiscount, vNextStateValue))
 	trainValueFnTargets = G.Must(G.Add(vReward, trainValueFnTargets))
 
+	// Critic MSE loss
 	prediction := trainValueFn.Prediction()[0]
 	valueFnLoss := G.Must(G.Sub(prediction, trainValueFnTargets))
 	valueFnLoss = G.Must(G.Square(valueFnLoss))
@@ -133,7 +148,7 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 			"gradient: %v", err)
 	}
 
-	trainValueFnVM := G.NewTapeMachine(graph,
+	trainValueFnVM := G.NewTapeMachine(trainValueFn.Graph(),
 		G.BindDualValues(trainValueFn.Learnables()...))
 
 	// Create the prediction policy
@@ -142,7 +157,10 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 	// Create the training policy
 	trainPolicy := config.trainPolicy()
 
-	// Create the training policy loss
+	// Create the log pdf node and the state value, next state value,
+	// reward, and discount placeholders for computing the advantage,
+	// 𝔸, to use in the policy gradient update:
+	// 𝔸 = r + ℽ * v(s') - v(s)
 	logProb := trainPolicy.LogPdfNode()
 	G.Read(logProb, &LogPDF)
 	pStateValue := G.NewVector(
@@ -169,11 +187,19 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 		G.WithName("Reward_PolicyLoss"),
 		G.WithShape(config.batchSize()),
 	)
+
+	// Compute the advantage 𝔸
 	advantage := G.Must(G.HadamardProd(pDiscount, pNextStateValue))
 	advantage = G.Must(G.Add(pReward, advantage))
 	advantage = G.Must(G.Sub(advantage, pStateValue))
 	G.Read(advantage, &Adv)
+	G.Read(pNextStateValue, &PNextStateValue)
+	G.Read(pStateValue, &PStateValue)
+	G.Read(pReward, &PReward)
+	G.Read(pDiscount, &PDiscount)
 
+	// Construct the policy loss: -𝔼[ln(π) * 𝔸]
+	// Where the negation ensures gradient ascent
 	policyLoss := G.Must(G.HadamardProd(logProb, advantage))
 	policyLoss = G.Must(G.Mean(policyLoss))
 	policyLoss = G.Must(G.Neg(policyLoss))
@@ -185,11 +211,12 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 		return nil, fmt.Errorf("new: could not compute the policy "+
 			"gradient: %v", err)
 	}
+
 	trainPolicyVM := G.NewTapeMachine(trainPolicy.Network().Graph(),
 		G.BindDualValues(trainPolicy.Network().Learnables()...))
 
 	// Create the agent
-	vac := &VAC{
+	return &VAC{
 		behaviour:         behaviour,
 		trainPolicy:       trainPolicy,
 		trainPolicyVM:     trainPolicyVM,
@@ -200,6 +227,7 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 		pReward:         pReward,
 		pDiscount:       pDiscount,
 		logProb:         logProb,
+		advantage:       advantage,
 
 		vValueFn: valueFn,
 		vVM:      vVM,
@@ -221,23 +249,30 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 
 		replay:     replay,
 		actionDims: e.ActionSpec().Shape.Len(),
-	}
-
-	return vac, nil
+	}, nil
 }
 
+// SelectAction returns an action for the timestep t
 func (v *VAC) SelectAction(t ts.TimeStep) *mat.VecDense {
-	return v.behaviour.SelectAction(t)
+	a := v.behaviour.SelectAction(t)
+	fmt.Println()
+	fmt.Println(a)
+	return a
 }
 
+// EndEpisode performs cleanup at the end of an episode
 func (v *VAC) EndEpisode() {}
 
+// Eval sets the agent into evaluation mode
 func (v *VAC) Eval() { v.behaviour.Eval() }
 
+// Train sets the agent into training mode
 func (v *VAC) Train() { v.behaviour.Train() }
 
+// IsEval returns whether the agent is in evaluation mode or not
 func (v *VAC) IsEval() bool { return v.behaviour.IsEval() }
 
+// ObserveFirst stores the first timestep in the episode
 func (v *VAC) ObserveFirst(t ts.TimeStep) {
 	if !t.First() {
 		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be "+
@@ -247,7 +282,10 @@ func (v *VAC) ObserveFirst(t ts.TimeStep) {
 	v.prevStep = t
 }
 
+// Observe stores an action taken in the environment and the next
+// time step as a result of taking that action
 func (v *VAC) Observe(action mat.Vector, nextStep ts.TimeStep) {
+	fmt.Println(action)
 	if !nextStep.First() {
 		nextAction := mat.NewVecDense(v.actionDims, nil)
 		transition := ts.NewTransition(v.prevStep, action.(*mat.VecDense),
@@ -262,20 +300,22 @@ func (v *VAC) Observe(action mat.Vector, nextStep ts.TimeStep) {
 	v.prevStep = nextStep
 }
 
+// Step performs the update of the agent, updating both the policy and
+// value function
 func (v *VAC) Step() {
+	// If in evaluation mode, don't update
 	if v.IsEval() {
 		return
 	}
 
+	// Sample transitions from the replay buffer
 	S, A, rewards, discounts, NextS, _, err := v.replay.Sample()
 	if expreplay.IsEmptyBuffer(err) || expreplay.IsInsufficientSamples(err) {
 		return
 	}
 
-	v.stepsSinceUpdate++
-
-	// == === Get Values Needed To Compute Targets === ===
-	// Predict the state value
+	// === === Get Values Needed To Compute Losses === ===
+	// Predict the state value for the policy update
 	err = v.vTargetValueFn.SetInput(S)
 	if err != nil {
 		panic(err)
@@ -285,7 +325,7 @@ func (v *VAC) Step() {
 		panic(err)
 	}
 
-	// Set the state value tensor
+	// Set the state value tensor placeholder
 	pStateValueTensor := tensor.NewDense(
 		tensor.Float64,
 		v.pStateValue.Shape(),
@@ -299,7 +339,7 @@ func (v *VAC) Step() {
 	}
 	v.vTargetValueFnVM.Reset()
 
-	// Next state value
+	// Predict the next state value for the policy and critic updates
 	err = v.vTargetValueFn.SetInput(NextS)
 	if err != nil {
 		panic(err)
@@ -309,7 +349,7 @@ func (v *VAC) Step() {
 		panic(err)
 	}
 
-	// Set the next state value tensor
+	// Set the next state value tensor placeholders
 	pNextStateValueTensor := tensor.NewDense(
 		tensor.Float64,
 		v.pNextStateValue.Shape(),
@@ -334,7 +374,7 @@ func (v *VAC) Step() {
 	}
 	v.vTargetValueFnVM.Reset()
 
-	// Set the reward tensor
+	// Set the reward tensor placeholders
 	pRewardTensor := tensor.NewDense(
 		tensor.Float64,
 		v.pReward.Shape(),
@@ -354,7 +394,7 @@ func (v *VAC) Step() {
 		panic(err)
 	}
 
-	// Set the discount tensor
+	// Set the discount tensor placeholders
 	pDiscountTensor := tensor.NewDense(
 		tensor.Float64,
 		v.pDiscount.Shape(),
@@ -374,18 +414,14 @@ func (v *VAC) Step() {
 		panic(err)
 	}
 
-	if v.valueGradSteps != 1 {
-		panic("valueGradSteps > 1 not implemented yet")
-	}
-
-	// === === Policy Train === ===
+	// === === Policy Step === ===
 	// Set the log probability of actions
 	_, err = v.trainPolicy.LogPdfOf(S, A)
 	if err != nil {
 		panic(err)
 	}
 
-	// Update the weights
+	// Update the policy weights
 	err = v.trainPolicyVM.RunAll()
 	if err != nil {
 		panic(err)
@@ -403,24 +439,30 @@ func (v *VAC) Step() {
 	v.trainPolicyVM.Reset()
 
 	// === === Value Function Train === ===
-	err = v.vTrainValueFn.SetInput(S)
-	if err != nil {
-		panic(err)
-	}
-	err = v.vTrainValueFnVM.RunAll()
-	if err != nil {
-		panic(err)
-	}
-	err = v.vSolver.Step(v.vTrainValueFn.Model())
-	if err != nil {
-		panic(err)
+	for i := 0; i < v.valueGradSteps; i++ {
+		err = v.vTrainValueFn.SetInput(S)
+		if err != nil {
+			panic(err)
+		}
+		err = v.vTrainValueFnVM.RunAll()
+		if err != nil {
+			panic(err)
+		}
+		err = v.vSolver.Step(v.vTrainValueFn.Model())
+		if err != nil {
+			panic(err)
+		}
+		v.vTrainValueFnVM.Reset()
 	}
 
-	// Update other value functions
+	// Update the online value function
 	err = network.Set(v.vValueFn, v.vTrainValueFn)
 	if err != nil {
 		panic(err)
 	}
+
+	// Update the target network
+	v.stepsSinceUpdate++
 	if v.stepsSinceUpdate%v.targetUpdateInterval == 0 {
 		if v.tau == 1.0 {
 			err = network.Set(v.vTargetValueFn, v.vTrainValueFn)
@@ -434,9 +476,9 @@ func (v *VAC) Step() {
 			}
 		}
 	}
-	v.vTrainValueFnVM.Reset()
 }
 
+// TdError computes the TD error of a single transition
 func (v *VAC) TdError(t ts.Transition) float64 {
 	state := t.State.RawVector().Data
 	nextState := t.NextState.RawVector().Data

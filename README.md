@@ -36,11 +36,11 @@ packages:
 The following policy gradient algorithms are implemented in the following
 packages:
 
-|                Agent                |                 Package                |
-|-------------------------------------|----------------------------------------|
-| `Linear-Gaussian Actor-Critic`      | `agent/linear/continuous/actorcritic`  |
-|   `Vanilla Policy Gradient`         | `agent/nonlinear/continuous/vanillapg` |
-| `Vanilla Actor Critic` (Unfinished) | `agent/nonlinear/continuous/vanillaac` |
+|                Agent               |                 Package                |
+|------------------------------------|----------------------------------------|
+|   `Linear-Gaussian Actor-Critic`   | `agent/linear/continuous/actorcritic`  |
+|     `Vanilla Policy Gradient`      | `agent/nonlinear/continuous/vanillapg` |
+|       `Vanilla Actor Critic`       | `agent/nonlinear/continuous/vanillaac` |
 
 ## Agent `Config`s and `ConfigList`s
 
@@ -713,5 +713,3 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 * [ ] Add ability to add transiiton to ER with nil next action -- then change in DeepQ and VAC
 
 * [ ] `Observe`, `ObserveFirst`, and `Step` of `agent.Agent` should return an error instead of panic
-
-* [ ] Use target nets for policy and value function of vanilla AC

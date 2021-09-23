@@ -22,68 +22,13 @@ import (
 	"github.com/samuelfneumann/golearn/experiment/tracker"
 )
 
-// func main() {
-// 	init, err := initwfn.NewGlorotN(math.Sqrt(2.0))
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	pSolver, err := solver.NewDefaultAdam(0.1, 1)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	vSolver, err := solver.NewDefaultAdam(0.1, 1)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	config := vanillaac.NewGaussianTreeMLPConfigList(
-// 		[][]int{{5, 5}},
-// 		[][]bool{{true, true}},
-// 		[][]*network.Activation{{network.ReLU(), network.ReLU()}},
-// 		[][][]int{{{5, 5}, {5, 5}}},
-// 		[][][]bool{{{true, true}, {true, true}}},
-// 		[][][]*network.Activation{
-// 			{
-// 				{network.ReLU(), network.ReLU()},
-// 				{network.ReLU(), network.ReLU()},
-// 			},
-// 		},
-// 		[][]int{{5, 5}},
-// 		[][]bool{{true, true}},
-// 		[][]*network.Activation{{network.ReLU(), network.ReLU()}},
-
-// 		[]*initwfn.InitWFn{init},
-
-// 		// Batch size 1 -> we don't train in mini-batches of data in RL
-// 		[]*solver.Solver{pSolver},
-// 		[]*solver.Solver{vSolver},
-
-// 		[]int{1},
-// 		[]expreplay.Config{
-// 			{
-// 				RemoveMethod:      expreplay.Fifo,
-// 				SampleMethod:      expreplay.Uniform,
-// 				RemoveSize:        1,
-// 				SampleSize:        32,
-// 				MaxReplayCapacity: 1_000_000,
-// 				MinReplayCapacity: 32,
-// 			},
-// 		},
-// 	)
-
-// 	f, err := os.Create("VAC-Gaussian.json")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	defer f.Close()
-// 	enc := json.NewEncoder(f)
-// 	enc.SetIndent("", "\t")
-// 	enc.Encode(config)
-// }
-
 func main() {
+	if len(os.Args) != 3 {
+		printHelp()
+
+		os.Exit(1)
+	}
+
 	expFile, err := os.Open(os.Args[1])
 	if err != nil {
 		panic(err)
@@ -161,4 +106,11 @@ func main() {
 
 	// Clean up GoGym package before leaving
 	gogym.Close()
+}
+
+// printHelp prints a help menu that outlines the usage of the command
+func printHelp() {
+	msg := fmt.Sprintf("\nusage: %v config index", os.Args[0])
+
+	fmt.Println(msg)
 }

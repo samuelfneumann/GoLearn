@@ -1,6 +1,6 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 100000,
+	"MaxSteps": 50000,
 	"EnvConfig": {
 		"Environment": "Cartpole",
 		"Task": "Balance",
@@ -31,8 +31,8 @@
 			],
 			"Activations": [
 				[
-					"relu",
-					"relu"
+					"tanh",
+					"tanh"
 				]
 			],
 			"ValueFnLayers": [
@@ -49,8 +49,8 @@
 			],
 			"ValueFnActivations": [
 				[
-					"relu",
-					"relu"
+					"tanh",
+					"tanh"
 				]
 			],
 			"InitWFn": [
@@ -65,7 +65,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 1e-11,
+						"StepSize": 1e-4,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
@@ -78,7 +78,7 @@
 				{
 					"Type": "Adam",
 					"Config": {
-						"StepSize": 1e-10,
+						"StepSize": 1e-4,
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
