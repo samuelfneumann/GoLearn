@@ -286,6 +286,7 @@ configurations:
 |    Acrobot   | SwingUp, Balance (soon to come) |
 |  LunarLander |               Land              |
 |    Hopper    |               Hop               |
+|    Reacher   |               Reach             |
 
 Any other combination of `Environment`-`Task` will result in a panic
 when calling `CreateEnv()`.
@@ -713,3 +714,5 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 * [ ] Add ability to add transiiton to ER with nil next action -- then change in DeepQ and VAC
 
 * [ ] `Observe`, `ObserveFirst`, and `Step` of `agent.Agent` should return an error instead of panic
+
+* [ ] Move GAEBuffer and ExpReplay to a new `buffer` package
