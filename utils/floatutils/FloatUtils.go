@@ -7,6 +7,16 @@ import (
 	"gonum.org/v1/gonum/spatial/r1"
 )
 
+// All returns whether all elements of slice equal num
+func All(slice []float64, num float64) bool {
+	for _, elem := range slice {
+		if elem != num {
+			return false
+		}
+	}
+	return true
+}
+
 // Clip clips a floating point to within a minimum and maximum value.
 // If the floating point exceeds max, then the function returns the max
 // If min exceeds the floating point, then the function returns the min
@@ -229,4 +239,11 @@ func PreserveApply(slice []float64, f func(float64) float64) []float64 {
 		copySlice[i] = f(slice[i])
 	}
 	return copySlice
+}
+
+// Duplicate returns a copy of slice
+func Duplicate(slice []float64) []float64 {
+	newSlice := make([]float64, len(slice))
+	copy(newSlice, slice)
+	return newSlice
 }
