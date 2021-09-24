@@ -100,7 +100,6 @@ func NewConfig(envName EnvName, taskName TaskName, continuousActions bool,
 // the first timestep of the environment.
 func (c Config) CreateEnv(seed uint64) (env.Environment, ts.TimeStep,
 	error) {
-
 	var e env.Environment
 	var step ts.TimeStep
 	var err error

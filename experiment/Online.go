@@ -97,8 +97,16 @@ func (o *Online) RunEpisode() (bool, error) {
 		o.checkpoint(step)
 
 		// Observe the timestep and step the agent
-		o.agent.Observe(action, step)
-		o.agent.Step()
+		if err := o.agent.Observe(action, step); err != nil {
+			return o.currentSteps >= o.maxSteps,
+				fmt.Errorf("run episode: could not observe timestep: %v", err)
+		}
+
+		// Update the agent
+		if err := o.agent.Step(); err != nil {
+			return o.currentSteps >= o.maxSteps,
+				fmt.Errorf("run episode: could not step agent: %v", err)
+		}
 	}
 
 	o.progBar.AddMessage(fmt.Sprintf("Episode Length: %v", step.Number))
@@ -118,7 +126,7 @@ func (o *Online) Run() error {
 	for !ended {
 		ended, err = o.RunEpisode()
 		if err != nil {
-			return fmt.Errorf("run: %v", err)
+			return fmt.Errorf("run: could not finsh episode: %v", err)
 		}
 
 		o.agent.EndEpisode()

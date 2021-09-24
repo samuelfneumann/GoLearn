@@ -127,9 +127,9 @@ func (q *QLearning) SelectAction(t timestep.TimeStep) *mat.VecDense {
 
 // Step wraps the stepping operations of the QLearner so that stepping
 // is not permitted when in evaluation mode.
-func (q *QLearning) Step() {
+func (q *QLearning) Step() error {
 	if q.IsEval() {
-		return
+		return nil
 	}
-	q.Learner.Step()
+	return q.Learner.Step()
 }

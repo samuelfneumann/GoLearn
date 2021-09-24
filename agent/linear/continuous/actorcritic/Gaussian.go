@@ -3,7 +3,6 @@ package actorcritic
 import (
 	"fmt"
 	"math"
-	"os"
 
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/continuous/policy"
@@ -163,7 +162,7 @@ func (l *LinearGaussian) TdError(t ts.Transition) float64 {
 // by environment/wrappers.IndexTileCoding, that is, the feature vector
 // records the indices of non-zero components of a tile-coded state
 // observation vector.
-func (l *LinearGaussian) stepIndex() {
+func (l *LinearGaussian) stepIndex() error {
 	state := l.step.Observation
 	nextState := l.nextStep.Observation
 
@@ -286,18 +285,18 @@ func (l *LinearGaussian) stepIndex() {
 			)
 		}
 	}
+	return nil
 }
 
 // Step updates the algorithm's weights
-func (l *LinearGaussian) Step() {
+func (l *LinearGaussian) Step() error {
 	// If in evaluation mode, do not step
 	if l.IsEval() {
-		return
+		return nil
 	}
 
 	if l.useIndexTileCoding {
-		l.stepIndex()
-		return
+		return l.stepIndex()
 	}
 
 	state := l.step.Observation
@@ -364,24 +363,30 @@ func (l *LinearGaussian) Step() {
 	addStd := mat.NewDense(row, col, nil)
 	addStd.Scale(actorLR*δ, l.stdTrace)
 	l.stdWeights.Add(l.stdWeights, addStd)
+
+	return nil
 }
 
 // Observe records the previously selected action and the timestep
 // that it led to
-func (l *LinearGaussian) Observe(a mat.Vector, nextStep ts.TimeStep) {
+func (l *LinearGaussian) Observe(a mat.Vector, nextStep ts.TimeStep) error {
 	l.step = l.nextStep
 	l.action = a.(*mat.VecDense)
 	l.nextStep = nextStep
+
+	return nil
 }
 
 // ObserveFirst observes the first timestep in an episode
-func (l *LinearGaussian) ObserveFirst(t ts.TimeStep) {
+func (l *LinearGaussian) ObserveFirst(t ts.TimeStep) error {
 	if !t.First() {
-		fmt.Fprintf(os.Stderr, "warning: ObserveFirst() called on %v "+
-			"timestep", t.StepType)
+		return fmt.Errorf("observeFirst: timestep "+
+			"called on the first timestep (current timestep = %d)", t.Number)
 	}
 	l.step = t
 	l.nextStep = t
+
+	return nil
 }
 
 // EndEpisode adjusts variables after an episode has completed

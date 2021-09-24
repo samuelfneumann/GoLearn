@@ -21,11 +21,20 @@ type Agent interface {
 // Learner implements a learning algorithm that defines how weights are
 // updated.
 type Learner interface {
-	Step() // Performs an update
-	Observe(action mat.Vector, nextObs timestep.TimeStep)
-	ObserveFirst(timestep.TimeStep)
+	// Step performs a single update to the learner
+	Step() error
+
+	// Observe records that an action lead to some timestep
+	Observe(action mat.Vector, nextObs timestep.TimeStep) error
+
+	// ObserveFirst records the first timestep in an episode
+	ObserveFirst(timestep.TimeStep) error
+
+	// TdError returns the TD error on a transition
 	TdError(t timestep.Transition) float64
-	EndEpisode() // Cleanup at the end of episode
+
+	// EndEpisode performs cleanup at the end of an episode
+	EndEpisode()
 }
 
 // Policy represents a policy that an agent can have.

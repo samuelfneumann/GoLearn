@@ -2,7 +2,6 @@ package deepq
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
@@ -229,19 +228,20 @@ func NewQlearning(env environment.Environment, config qlearning.Config,
 }
 
 // ObserveFirst observes and records the first episodic timestep
-func (d *DeepQ) ObserveFirst(t ts.TimeStep) {
+func (d *DeepQ) ObserveFirst(t ts.TimeStep) error {
 	if !t.First() {
-		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be"+
-			"called on the first timestep (current timestep = %d)", t.Number)
+		return fmt.Errorf("observeFirst: timestep is not first "+
+			"(current timestep = %d)", t.Number)
 	}
 	d.prevStep = t
+	return nil
 }
 
 // Observe observes and records any timestep other than the first timestep
-func (d *DeepQ) Observe(a mat.Vector, nextStep ts.TimeStep) {
+func (d *DeepQ) Observe(a mat.Vector, nextStep ts.TimeStep) error {
 	if a.Len() != 1 {
-		fmt.Fprintf(os.Stderr, "Warning: value-based methods should not "+
-			"have multi-dimensional actions (action dim = %d)", a.Len())
+		return fmt.Errorf("observe: cannot observe "+
+			"multi-dimensional action (action dim = %d) for DeepQ", a.Len())
 	}
 
 	// Add to replay buffer
@@ -253,43 +253,43 @@ func (d *DeepQ) Observe(a mat.Vector, nextStep ts.TimeStep) {
 		transition := ts.NewTransition(d.prevStep, action, nextStep, nextAction)
 		err := d.replay.Add(transition)
 		if err != nil {
-			panic(fmt.Sprintf("observe: could not add to replay buffer: %v",
-				err))
+			return fmt.Errorf("observe: could not add to replay buffer: %v",
+				err)
 		}
 	}
 
 	d.prevStep = nextStep
+	return nil
 }
 
 // Step updates the weights of the Agent's Policies.
-func (d *DeepQ) Step() {
+func (d *DeepQ) Step() error {
 	if d.IsEval() {
-		return
+		return nil
 	}
 
 	// Don't update if replay buffer is empty or has insufficient
 	// samples to sample
 	S, A, R, discount, NextS, _, err := d.replay.Sample()
 	if expreplay.IsEmptyBuffer(err) || expreplay.IsInsufficientSamples(err) {
-		return
+		return nil
 	}
 
 	// Predict the action values in the next state NextS
 	err = d.targetNet.SetInput(NextS)
 	if err != nil {
-		msg := fmt.Sprintf("step: could not set target net input: %v", err)
-		panic(msg)
+		return fmt.Errorf("step: could not set target net input: %v", err)
 	}
 	err = d.targetNetVM.RunAll()
 	if err != nil {
-		panic(fmt.Sprintf("step: could not run target vm: %v", err))
+		return fmt.Errorf("step: could not run target vm: %v", err)
 	}
 
 	// Set the action values for the actions in the next state
 	err = G.Let(d.nextStateActionValues, d.targetNet.Output()[0])
 	if err != nil {
-		panic(fmt.Sprintf("step: could not set next state-action values: %v",
-			err))
+		return fmt.Errorf("step: could not set next state-action values: %v",
+			err)
 	}
 
 	d.targetNetVM.Reset()
@@ -299,7 +299,7 @@ func (d *DeepQ) Step() {
 		tensor.WithShape(d.batchSize))
 	err = G.Let(d.rewards, rewardTensor)
 	if err != nil {
-		panic(fmt.Sprintf("step: could not set reward: %v", err))
+		return fmt.Errorf("step: could not set reward: %v", err)
 	}
 
 	// Set the discount for the next action value
@@ -307,7 +307,7 @@ func (d *DeepQ) Step() {
 		tensor.WithShape(d.batchSize))
 	err = G.Let(d.discounts, discountTensor)
 	if err != nil {
-		panic(fmt.Sprintf("step: could not set discount: %v", err))
+		return fmt.Errorf("step: could not set discount: %v", err)
 	}
 
 	// Previous action one-hot vectors
@@ -317,25 +317,24 @@ func (d *DeepQ) Step() {
 	)
 	err = G.Let(d.selectedActions, prevActions)
 	if err != nil {
-		panic(fmt.Sprintf("step: could not set previous actions: %v", err))
+		return fmt.Errorf("step: could not set previous actions: %v", err)
 	}
 
 	// Predict the action values in state S
 	err = d.trainNet.SetInput(S)
 	if err != nil {
-		msg := fmt.Sprintf("step: could not set trainNet input: %v", err)
-		panic(msg)
+		return fmt.Errorf("step: could not set trainNet input: %v", err)
 	}
 
 	// Run the learning step
 	err = d.trainNetVM.RunAll()
 	if err != nil {
-		panic(fmt.Sprintf("step: could not run train vm: %v", err))
+		return fmt.Errorf("step: could not run train vm: %v", err)
 	}
 
 	err = d.solver.Step(d.trainNet.Model())
 	if err != nil {
-		panic(fmt.Sprintf("step: could not step solver: %v", err))
+		return fmt.Errorf("step: could not step solver: %v", err)
 	}
 
 	d.trainNetVM.Reset()
@@ -347,20 +346,22 @@ func (d *DeepQ) Step() {
 		if d.tau == 1.0 {
 			err = network.Set(d.targetNet, d.trainNet)
 			if err != nil {
-				panic("step: could not update target network")
+				return fmt.Errorf("step: could not update target network")
 			}
 		} else {
 			err = network.Polyak(d.targetNet, d.trainNet, d.tau)
 			if err != nil {
-				panic("step: could not update target network")
+				return fmt.Errorf("step: could not update target network")
 			}
 		}
 	}
 
 	err = network.Set(d.policy.Network(), d.trainNet)
 	if err != nil {
-		panic("step: could not update target network")
+		return fmt.Errorf("step: could not update target network")
 	}
+
+	return nil
 }
 
 // SelectAction runs the necessary VMs and then returns an action

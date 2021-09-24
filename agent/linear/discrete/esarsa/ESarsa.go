@@ -120,9 +120,9 @@ func (e *ESarsa) SelectAction(t timestep.TimeStep) *mat.VecDense {
 
 // Step wraps the stepping operations of the ESarsaLearner so that
 // stepping is not permitted when in evaluation mode.
-func (e *ESarsa) Step() {
+func (e *ESarsa) Step() error {
 	if e.IsEval() {
-		return
+		return nil
 	}
-	e.Learner.Step()
+	return e.Learner.Step()
 }

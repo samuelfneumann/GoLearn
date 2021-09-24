@@ -2,7 +2,6 @@ package vanillapg
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/environment"
@@ -219,35 +218,38 @@ func (v *VPG) IsEval() bool { return v.behaviour.IsEval() }
 
 // ObserveFirst observes and records information about the first
 // timestep in an episode.
-func (v *VPG) ObserveFirst(t ts.TimeStep) {
+func (v *VPG) ObserveFirst(t ts.TimeStep) error {
 	if !t.First() {
-		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be "+
-			"called on the first timestep (current timestep = %d)", t.Number)
+		return fmt.Errorf("observeFirst: timestep is not first "+
+			"(current timestep = %d)", t.Number)
 	}
 	v.prevStep = t
+
+	return nil
 }
 
 // Observe observes and records any timestep other than the first timestep
-func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
+func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) error {
 	// Finish current episode to end epoch
 	if v.finishingEpisode {
 		v.prevStep = nextStep
-		return
+		return nil
 	}
 
 	// Calculate value of previous step
 	o := v.prevStep.Observation.RawVector().Data
 	err := v.vValueFn.SetInput(o)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("observe: could not set value function input: %v", err)
 	}
 	err = v.vVM.RunAll()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("observe: could not run value function vm: %v", err)
 	}
 	vT := v.vValueFn.Output()[0].Data().([]float64)
 	v.vVM.Reset()
 	if len(vT) != 1 {
+		// This should never happen if using Config structs
 		panic("observe: multiple values predicted for state value")
 	}
 	r := nextStep.Reward
@@ -266,34 +268,39 @@ func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) {
 		} else {
 			err := v.vValueFn.SetInput(o)
 			if err != nil {
-				panic(err)
+				return fmt.Errorf("observe: could not set value function "+
+					"input for terminal step: %v", err)
 			}
 			err = v.vVM.RunAll()
 			if err != nil {
-				panic(err)
+				return fmt.Errorf("observe: could not run value function "+
+					"vm for terminal step: %v", err)
 			}
 			lastVal := v.vValueFn.Output()[0].Data().([]float64)
 			v.vVM.Reset()
 			if len(lastVal) != 1 {
-				panic("observe: multiple values predicted for next state value")
+				// This should never happen if using Config structs
+				panic("observe: multiple values predicted for next " +
+					"state value")
 			}
 			v.buffer.finishPath(lastVal[0])
 			v.finishingEpisode = (v.currentEpochStep == v.epochLength) &&
 				v.finishEpisodeOnEpochEnd
 		}
 	}
+	return nil
 }
 
 // Step updates the agent. If the agent is in evaluation mode, then
 // this function simply returns.
-func (v *VPG) Step() {
+func (v *VPG) Step() error {
 	if v.currentEpochStep < v.epochLength || v.IsEval() {
-		return
+		return nil
 	}
 
 	obs, act, adv, ret, err := v.buffer.get()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not sample from buffer: %v", err)
 	}
 
 	// Policy gradient step
@@ -304,14 +311,15 @@ func (v *VPG) Step() {
 	)
 	err = G.Let(v.advantages, advantagesTensor)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set advantages tensor: %v", err)
 	}
 	v.trainPolicy.LogPdfOf(obs, act)
 	if err := v.trainPolicyVM.RunAll(); err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set state and action for log PDF "+
+			"calculation: %v", err)
 	}
 	if err := v.trainPolicySolver.Step(v.trainPolicy.Network().Model()); err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not step policy solver: %v", err)
 	}
 	v.trainPolicyVM.Reset()
 
@@ -324,13 +332,15 @@ func (v *VPG) Step() {
 		)
 		err = G.Let(v.vTrainValueFnTargets, trainValueFnTargetsTensor)
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("step: could not set value function target: %v",
+				err)
 		}
 		if err := v.vTrainValueFnVM.RunAll(); err != nil {
-			panic(err)
+			return fmt.Errorf("step: could not run value function vm: %v", err)
 		}
 		if err := v.vSolver.Step(v.vTrainValueFn.Model()); err != nil {
-			panic(err)
+			return fmt.Errorf("step: could not step value function solver: %v",
+				err)
 		}
 		v.vTrainValueFnVM.Reset()
 	}
@@ -341,6 +351,8 @@ func (v *VPG) Step() {
 
 	v.completedEpochs++
 	v.currentEpochStep = 0
+
+	return nil
 }
 
 // TdError returns the TD error of the agent's value function for a

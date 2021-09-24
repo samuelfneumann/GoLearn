@@ -288,7 +288,7 @@ configurations:
 |    Hopper    |               Hop               |
 |    Reacher   |               Reach             |
 
-Any other combination of `Environment`-`Task` will result in a panic
+Any other combination of `Environment`-`Task` will result in an error
 when calling `CreateEnv()`.
 
 ### `gym` Package
@@ -711,8 +711,6 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 * [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
 
-* [ ] Add ability to add transiiton to ER with nil next action -- then change in DeepQ and VAC
+* [ ] Move GAEBuffer and ExpReplay to a new `buffer` package - in which case GAE buffer needs a public API
 
-* [ ] `Observe`, `ObserveFirst`, and `Step` of `agent.Agent` should return an error instead of panic
-
-* [ ] Move GAEBuffer and ExpReplay to a new `buffer` package
+* [ ] Rename `FifoRemove1ExpReplay` to `Default` and document what default means

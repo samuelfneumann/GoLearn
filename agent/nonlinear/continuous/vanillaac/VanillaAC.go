@@ -8,7 +8,6 @@ package vanillaac
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/samuelfneumann/golearn/agent"
 	env "github.com/samuelfneumann/golearn/environment"
@@ -273,18 +272,19 @@ func (v *VAC) Train() { v.behaviour.Train() }
 func (v *VAC) IsEval() bool { return v.behaviour.IsEval() }
 
 // ObserveFirst stores the first timestep in the episode
-func (v *VAC) ObserveFirst(t ts.TimeStep) {
+func (v *VAC) ObserveFirst(t ts.TimeStep) error {
 	if !t.First() {
-		fmt.Fprintf(os.Stderr, "Warning: ObserveFirst() should only be "+
-			"called on the first timestep (current timestep = %d", t.Number)
+		return fmt.Errorf("observeFirst: timestep "+
+			"called on the first timestep (current timestep = %d)", t.Number)
 	}
 
 	v.prevStep = t
+	return nil
 }
 
 // Observe stores an action taken in the environment and the next
 // time step as a result of taking that action
-func (v *VAC) Observe(action mat.Vector, nextStep ts.TimeStep) {
+func (v *VAC) Observe(action mat.Vector, nextStep ts.TimeStep) error {
 	fmt.Println(action)
 	if !nextStep.First() {
 		nextAction := mat.NewVecDense(v.actionDims, nil)
@@ -292,37 +292,40 @@ func (v *VAC) Observe(action mat.Vector, nextStep ts.TimeStep) {
 			nextStep, nextAction)
 		err := v.replay.Add(transition)
 		if err != nil {
-			panic(fmt.Sprintf("observe: could not add to replay buffer: %v",
-				err))
+			return fmt.Errorf("observe: could not add to replay buffer: %v",
+				err)
 		}
 	}
 
 	v.prevStep = nextStep
+	return nil
 }
 
 // Step performs the update of the agent, updating both the policy and
 // value function
-func (v *VAC) Step() {
+func (v *VAC) Step() error {
 	// If in evaluation mode, don't update
 	if v.IsEval() {
-		return
+		return nil
 	}
 
 	// Sample transitions from the replay buffer
 	S, A, rewards, discounts, NextS, _, err := v.replay.Sample()
 	if expreplay.IsEmptyBuffer(err) || expreplay.IsInsufficientSamples(err) {
-		return
+		return nil
 	}
 
 	// === === Get Values Needed To Compute Losses === ===
 	// Predict the state value for the policy update
 	err = v.vTargetValueFn.SetInput(S)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set target network input state: %v",
+			err)
 	}
 	err = v.vTargetValueFnVM.RunAll()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not run target network vm to compute "+
+			"state value: %v", err)
 	}
 
 	// Set the state value tensor placeholder
@@ -335,18 +338,21 @@ func (v *VAC) Step() {
 	)
 	err = G.Let(v.pStateValue, pStateValueTensor)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set state value for policy "+
+			"target: %v", err)
 	}
 	v.vTargetValueFnVM.Reset()
 
 	// Predict the next state value for the policy and critic updates
 	err = v.vTargetValueFn.SetInput(NextS)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set target network input "+
+			"next state: %v", err)
 	}
 	err = v.vTargetValueFnVM.RunAll()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not run target network vm to compute "+
+			"next state value: %v", err)
 	}
 
 	// Set the next state value tensor placeholders
@@ -359,7 +365,8 @@ func (v *VAC) Step() {
 	)
 	err = G.Let(v.pNextStateValue, pNextStateValueTensor)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set next state value for "+
+			"policy target: %v", err)
 	}
 	vNextStateValueTensor := tensor.NewDense(
 		tensor.Float64,
@@ -370,7 +377,8 @@ func (v *VAC) Step() {
 	)
 	err = G.Let(v.vNextStateValue, vNextStateValueTensor)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set next state value for "+
+			"critic target: %v", err)
 	}
 	v.vTargetValueFnVM.Reset()
 
@@ -382,7 +390,8 @@ func (v *VAC) Step() {
 	)
 	err = G.Let(v.pReward, pRewardTensor)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set reward for policy target: %v",
+			err)
 	}
 	vRewardTensor := tensor.NewDense(
 		tensor.Float64,
@@ -391,7 +400,8 @@ func (v *VAC) Step() {
 	)
 	err = G.Let(v.vReward, vRewardTensor)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set reward for critic target: %v",
+			err)
 	}
 
 	// Set the discount tensor placeholders
@@ -402,7 +412,8 @@ func (v *VAC) Step() {
 	)
 	err = G.Let(v.pDiscount, pDiscountTensor)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set discount for policy target: %v",
+			err)
 	}
 	vDiscountTensor := tensor.NewDense(
 		tensor.Float64,
@@ -411,30 +422,33 @@ func (v *VAC) Step() {
 	)
 	err = G.Let(v.vDiscount, vDiscountTensor)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set discount for critic target: %v",
+			err)
 	}
 
 	// === === Policy Step === ===
 	// Set the log probability of actions
 	_, err = v.trainPolicy.LogPdfOf(S, A)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not set state and action input to "+
+			"compute log PDF: %v", err)
 	}
 
 	// Update the policy weights
 	err = v.trainPolicyVM.RunAll()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not run policy vm: %v", err)
 	}
 	err = v.trainPolicySolver.Step(v.trainPolicy.Network().Model())
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not step policy solver: %v", err)
 	}
 
 	// Update behaviour policy
 	err = network.Set(v.behaviour.Network(), v.trainPolicy.Network())
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not copy training policy weights "+
+			"to behvaiour policy: %v", err)
 	}
 	v.trainPolicyVM.Reset()
 
@@ -442,15 +456,18 @@ func (v *VAC) Step() {
 	for i := 0; i < v.valueGradSteps; i++ {
 		err = v.vTrainValueFn.SetInput(S)
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("step: could not set critic input state on "+
+				"training iteration %d: %v", i, err)
 		}
 		err = v.vTrainValueFnVM.RunAll()
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("step: could not run critic vm on training "+
+				"iteration %: %v", i, err)
 		}
 		err = v.vSolver.Step(v.vTrainValueFn.Model())
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("step: could not run step critic solver on "+
+				"training iteration %: %v", i, err)
 		}
 		v.vTrainValueFnVM.Reset()
 	}
@@ -458,7 +475,8 @@ func (v *VAC) Step() {
 	// Update the online value function
 	err = network.Set(v.vValueFn, v.vTrainValueFn)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("step: could not copy training critic weights "+
+			"to online critic: %v", err)
 	}
 
 	// Update the target network
@@ -466,16 +484,15 @@ func (v *VAC) Step() {
 	if v.stepsSinceUpdate%v.targetUpdateInterval == 0 {
 		if v.tau == 1.0 {
 			err = network.Set(v.vTargetValueFn, v.vTrainValueFn)
-			if err != nil {
-				panic(err)
-			}
 		} else {
 			err = network.Polyak(v.vTargetValueFn, v.vTrainValueFn, v.tau)
-			if err != nil {
-				panic(err)
-			}
+		}
+		if err != nil {
+			return fmt.Errorf("step: could not update target critic: %v", err)
 		}
 	}
+
+	return nil
 }
 
 // TdError computes the TD error of a single transition
