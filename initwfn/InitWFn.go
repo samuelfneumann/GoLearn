@@ -23,6 +23,8 @@ const (
 	Zeroes   Type = "Zeroes"
 	Ones     Type = "Ones"
 	Constant Type = "Constant"
+	Uniform  Type = "Uniform"
+	Gaussian Type = "Gaussian"
 )
 
 // InitWFn wraps Gorgonia InitWFn so that they can be JSON marshalled and
@@ -65,6 +67,8 @@ func (i *InitWFn) UnmarshalJSON(data []byte) error {
 			string(Zeroes):   reflect.TypeOf(ZeroesConfig{}),
 			string(Ones):     reflect.TypeOf(OnesConfig{}),
 			string(Constant): reflect.TypeOf(ConstantConfig{}),
+			string(Uniform):  reflect.TypeOf(UniformConfig{}),
+			string(Gaussian): reflect.TypeOf(GaussianConfig{}),
 		})
 	if err != nil {
 		return err
