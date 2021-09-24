@@ -326,8 +326,8 @@ func (v *VPG) Step() error {
 	// Value function update
 	for i := 0; i < v.valueGradSteps; i++ {
 		if err := v.vTrainValueFn.SetInput(obs); err != nil {
-			return fmt.Errorf("step: could not set value function input: %v",
-				err)
+			return fmt.Errorf("step: could not set value function input "+
+				"at training iteration %d: %v", i, err)
 		}
 
 		trainValueFnTargetsTensor := tensor.NewDense(
@@ -337,15 +337,16 @@ func (v *VPG) Step() error {
 		)
 		err = G.Let(v.vTrainValueFnTargets, trainValueFnTargetsTensor)
 		if err != nil {
-			return fmt.Errorf("step: could not set value function target: %v",
-				err)
+			return fmt.Errorf("step: could not set value function target "+
+				"at training iteration %d: %v", i, err)
 		}
 		if err := v.vTrainValueFnVM.RunAll(); err != nil {
-			return fmt.Errorf("step: could not run value function vm: %v", err)
+			return fmt.Errorf("step: could not run value function vm "+
+				"at training iteration %d: %v", i, err)
 		}
 		if err := v.vSolver.Step(v.vTrainValueFn.Model()); err != nil {
-			return fmt.Errorf("step: could not step value function solver: %v",
-				err)
+			return fmt.Errorf("step: could not step value function solver "+
+				"at training iteration %d: %v", i, err)
 		}
 		v.vTrainValueFnVM.Reset()
 	}

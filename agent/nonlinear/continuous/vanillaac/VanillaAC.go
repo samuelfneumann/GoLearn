@@ -462,12 +462,12 @@ func (v *VAC) Step() error {
 		err = v.vTrainValueFnVM.RunAll()
 		if err != nil {
 			return fmt.Errorf("step: could not run critic vm on training "+
-				"iteration %: %v", i, err)
+				"iteration %d: %v", i, err)
 		}
 		err = v.vSolver.Step(v.vTrainValueFn.Model())
 		if err != nil {
 			return fmt.Errorf("step: could not run step critic solver on "+
-				"training iteration %: %v", i, err)
+				"training iteration %d: %v", i, err)
 		}
 		v.vTrainValueFnVM.Reset()
 	}
