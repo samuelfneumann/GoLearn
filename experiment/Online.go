@@ -136,6 +136,12 @@ func (o *Online) Run() error {
 	if env, ok := o.environment.(env.Closer); ok {
 		env.Close()
 	}
+
+	// Close the agent if needed
+	if agent, ok := o.agent.(ag.Closer); ok {
+		agent.Close()
+	}
+
 	o.progBar.Close()
 	return nil
 }

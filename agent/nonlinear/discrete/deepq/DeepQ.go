@@ -2,6 +2,7 @@ package deepq
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/samuelfneumann/golearn/agent"
 	"github.com/samuelfneumann/golearn/agent/linear/discrete/qlearning"
@@ -405,5 +406,44 @@ func (d *DeepQ) IsEval() bool {
 	return d.policy.IsEval()
 }
 
-// Cleanup at the end of an episode
+// EndEpisode performs cleanup at the end of an episode
 func (d *DeepQ) EndEpisode() {}
+
+// Close cleans up any used resources
+func (d *DeepQ) Close() error {
+	policyErr := d.policy.Close()
+	trainVMErr := d.trainNetVM.Close()
+	targetVMErr := d.targetNetVM.Close()
+
+	flag := false
+	var errBuilder strings.Builder
+	errBuilder.WriteString("close: could not close")
+
+	if policyErr != nil {
+		flag = true
+		errBuilder.WriteString(" policy")
+	}
+
+	if trainVMErr != nil {
+		if flag {
+			errBuilder.WriteString(", train network")
+		} else {
+			flag = true
+			errBuilder.WriteString(" train network")
+		}
+	}
+
+	if targetVMErr != nil {
+		if flag {
+			errBuilder.WriteString(", target network")
+		} else {
+			flag = true
+			errBuilder.WriteString(" target network")
+		}
+	}
+
+	if flag {
+		return fmt.Errorf(errBuilder.String())
+	}
+	return nil
+}

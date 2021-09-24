@@ -18,6 +18,12 @@ type Agent interface {
 	Policy
 }
 
+// A Closer is an agent that must be closed after it is done learning
+type Closer interface {
+	Agent
+	Close() error
+}
+
 // Learner implements a learning algorithm that defines how weights are
 // updated.
 type Learner interface {
@@ -62,6 +68,7 @@ type NNPolicy interface {
 	Clone() (NNPolicy, error)
 	CloneWithBatch(int) (NNPolicy, error)
 	Network() network.NeuralNet
+	Close() error
 }
 
 // EGreedyNNPolicy implements an epsilon greedy policy using neural

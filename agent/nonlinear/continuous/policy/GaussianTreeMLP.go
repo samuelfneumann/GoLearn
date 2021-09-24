@@ -168,6 +168,7 @@ func NewGaussianTreeMLP(env environment.Environment, batchForLogProb int,
 	source := rand.NewSource(seed)
 	normal, ok := distmv.NewNormal(means, stds, source)
 	if !ok {
+		// This should never happen
 		panic("newGaussianTreeMLP: could not create standard normal for " +
 			"action selection")
 	}
@@ -319,4 +320,12 @@ func (g *GaussianTreeMLP) Mean() G.Value {
 
 func (g *GaussianTreeMLP) StdDev() G.Value {
 	return g.stddevVal
+}
+
+// Close cleans up resources after the policy is no longer needed
+func (g *GaussianTreeMLP) Close() error {
+	if g.vm != nil {
+		return g.vm.Close()
+	}
+	return nil
 }

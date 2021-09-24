@@ -223,6 +223,14 @@ func (e *MultiHeadEGreedyMLP) SelectAction(t timestep.TimeStep) *mat.VecDense {
 	return mat.NewVecDense(1, []float64{float64(action)})
 }
 
+// Close cleans up resources after the policy is no longer needed
+func (e *MultiHeadEGreedyMLP) Close() error {
+	if e.vm != nil {
+		return e.vm.Close()
+	}
+	return nil
+}
+
 // numActions returns the number of actions that the policy chooses
 // between.
 func (e *MultiHeadEGreedyMLP) numActions() int {

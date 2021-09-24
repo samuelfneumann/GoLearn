@@ -8,6 +8,7 @@ package vanillaac
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/samuelfneumann/golearn/agent"
 	env "github.com/samuelfneumann/golearn/environment"
@@ -524,4 +525,63 @@ func (v *VAC) TdError(t ts.Transition) float64 {
 	}
 
 	return r + ℽ*nextStateValue[0] - stateValue[0]
+}
+
+// Close cleans up any used resources
+func (v *VAC) Close() error {
+	behaviourVMErr := v.behaviour.Close()
+	trainPolicyVMErr := v.trainPolicy.Close()
+	valueFnVMErr := v.vTrainValueFnVM.Close()
+	trainValueFnVMErr := v.vTrainValueFnVM.Close()
+	targetValueFnVMErr := v.vTargetValueFnVM.Close()
+
+	flag := false
+	var errBuilder strings.Builder
+	errBuilder.WriteString("close: could not close")
+
+	if behaviourVMErr != nil {
+		flag = true
+		errBuilder.WriteString(" behaviour policy")
+	}
+
+	if trainPolicyVMErr != nil {
+		if flag {
+			errBuilder.WriteString(", train policy")
+		} else {
+			flag = true
+			errBuilder.WriteString(" train policy")
+		}
+	}
+
+	if valueFnVMErr != nil {
+		if flag {
+			errBuilder.WriteString(", value function")
+		} else {
+			flag = true
+			errBuilder.WriteString(" value function")
+		}
+	}
+
+	if trainValueFnVMErr != nil {
+		if flag {
+			errBuilder.WriteString(", train value function")
+		} else {
+			flag = true
+			errBuilder.WriteString(" train value function")
+		}
+	}
+
+	if targetValueFnVMErr != nil {
+		if flag {
+			errBuilder.WriteString(", target value function")
+		} else {
+			flag = true
+			errBuilder.WriteString(" target value function")
+		}
+	}
+
+	if flag {
+		return fmt.Errorf(errBuilder.String())
+	}
+	return nil
 }

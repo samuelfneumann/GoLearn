@@ -361,3 +361,11 @@ func (c *CategoricalMLP) Eval() {
 func (c *CategoricalMLP) IsEval() bool {
 	return c.eval
 }
+
+// Close cleans up resources after the policy is no longer needed
+func (c *CategoricalMLP) Close() error {
+	if c.vm != nil {
+		return c.vm.Close()
+	}
+	return nil
+}
