@@ -18,7 +18,10 @@ type Type string
 const (
 	GlorotU Type = "GlorotU"
 	GlorotN Type = "GlorotN"
+	HeU     Type = "HeU"
+	HeN     Type = "HeN"
 	Zeroes  Type = "Zeroes"
+	Ones    Type = "Ones"
 )
 
 // InitWFn wraps Gorgonia InitWFn so that they can be JSON marshalled and
@@ -56,6 +59,10 @@ func (i *InitWFn) UnmarshalJSON(data []byte) error {
 		map[string]reflect.Type{
 			string(GlorotU): reflect.TypeOf(GlorotUConfig{}),
 			string(GlorotN): reflect.TypeOf(GlorotNConfig{}),
+			string(HeU):     reflect.TypeOf(HeUConfig{}),
+			string(HeN):     reflect.TypeOf(HeNConfig{}),
+			string(Zeroes):  reflect.TypeOf(ZeroesConfig{}),
+			string(Ones):    reflect.TypeOf(OnesConfig{}),
 		})
 	if err != nil {
 		return err
