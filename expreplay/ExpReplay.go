@@ -463,7 +463,6 @@ func (c *cache) Add(t timestep.Transition) error {
 	c.rewardCache[index] = t.Reward
 	c.discountCache[index] = t.Discount
 
-	c.wait.Wait()
 	return nil
 }
 

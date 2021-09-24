@@ -312,7 +312,6 @@ func (d *defaultCache) Add(t timestep.Transition) error {
 	d.rewardCache[index] = t.Reward
 	d.discountCache[index] = t.Discount
 
-	d.wait.Wait()
 	d.currentInUsePos = (d.currentInUsePos + 1) % d.MaxCapacity()
 	return nil
 }
