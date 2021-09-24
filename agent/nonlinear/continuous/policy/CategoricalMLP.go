@@ -17,6 +17,8 @@ import (
 	"gorgonia.org/tensor"
 )
 
+const minProb float64 = 1e-5
+
 // CategoricalMLP implements a categorical policy using an MLP to
 // predict action logits in each state. Given an environment with N
 // actions in each state, the probabilities of selecting any action
@@ -116,6 +118,10 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 	max := G.Must(G.Max(logits, 1))
 	logits = G.Must(G.BroadcastSub(logits, max, nil, []byte{1}))
 	probs := G.Must(G.Exp(logits))
+
+	// Offset the probabilities
+	offset := G.NewConstant(minProb, G.WithShape())
+	probs = G.Must(G.Add(probs, offset))
 
 	// Compute the log probability of actions that are input by an
 	// external source using the LogProbOf() method.
