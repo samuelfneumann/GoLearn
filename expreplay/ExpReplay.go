@@ -157,7 +157,7 @@ func New(remover, sampler Selector, minCapacity, maxCapacity, featureSize,
 	}
 
 	if _, ok := remover.(*fifoSelector); ok && remover.BatchSize() == 1 {
-		return newFifoRemove1Cache(sampler, minCapacity, maxCapacity, featureSize,
+		return newDefaultCache(sampler, minCapacity, maxCapacity, featureSize,
 			actionSize, includeNextAction), nil
 	}
 
