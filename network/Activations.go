@@ -11,10 +11,17 @@ import (
 type activationType string
 
 const (
-	relu     activationType = "relu"
-	identity activationType = "identity"
-	tanh     activationType = "tanh"
-	nil_     activationType = "nil"
+	relu      activationType = "relu"
+	softplus  activationType = "softplu"
+	identity  activationType = "identity"
+	tanh      activationType = "tanh"
+	logarithm activationType = "log"
+	sigmoid   activationType = "sigmoid"
+	sin       activationType = "sin"
+	cos       activationType = "cos"
+	sqrt      activationType = "sqrt"
+	mish      activationType = "mish"
+	nil_      activationType = "nil"
 )
 
 // Activation represents an activation function type
@@ -56,10 +63,34 @@ func (a *Activation) UnmarshalJSON(data []byte) error {
 	switch decoded {
 	case relu:
 		*a = *ReLU()
+
 	case identity:
 		*a = *Identity()
+
 	case tanh:
 		*a = *TanH()
+
+	case sigmoid:
+		*a = *Sigmoid()
+
+	case sin:
+		*a = *Sin()
+
+	case cos:
+		*a = *Cos()
+
+	case sqrt:
+		*a = *Sqrt()
+
+	case mish:
+		*a = *Mish()
+
+	case logarithm:
+		*a = *Log()
+
+	case softplus:
+		*a = *Softplus()
+
 	default:
 		return fmt.Errorf("unmarshalJSON: illegal Activation type")
 	}
@@ -87,7 +118,7 @@ func (a *Activation) GobDecode(encoded []byte) error {
 	return nil
 }
 
-// Nil returns a nil *Activation
+// Nil returns a nil activation
 func Nil() *Activation {
 	return &Activation{
 		activationType: nil_,
@@ -95,7 +126,7 @@ func Nil() *Activation {
 	}
 }
 
-// Identity returns an identity *Activation
+// Identity returns an identity activation
 func Identity() *Activation {
 	return &Activation{
 		activationType: identity,
@@ -105,7 +136,7 @@ func Identity() *Activation {
 	}
 }
 
-// ReLU returns a ReLU *Activation
+// ReLU returns a rectified linear unit activation
 func ReLU() *Activation {
 	return &Activation{
 		activationType: relu,
@@ -113,10 +144,66 @@ func ReLU() *Activation {
 	}
 }
 
-// TanH returns a tanh *Activation
+// TanH returns a hyperbolic tanget activation
 func TanH() *Activation {
 	return &Activation{
 		activationType: tanh,
 		f:              G.Tanh,
+	}
+}
+
+// Sigmoid returns a sigmoid activation
+func Sigmoid() *Activation {
+	return &Activation{
+		activationType: sigmoid,
+		f:              G.Sigmoid,
+	}
+}
+
+// Sin returns a sine activation
+func Sin() *Activation {
+	return &Activation{
+		activationType: sin,
+		f:              G.Sin,
+	}
+}
+
+// Cos returns a cosine activation
+func Cos() *Activation {
+	return &Activation{
+		activationType: cos,
+		f:              G.Cos,
+	}
+}
+
+// Sqrt returns a sqare root activation
+func Sqrt() *Activation {
+	return &Activation{
+		activationType: sqrt,
+		f:              G.Sqrt,
+	}
+}
+
+// Mish returns a mish activation
+func Mish() *Activation {
+	return &Activation{
+		activationType: mish,
+		f:              G.Mish,
+	}
+}
+
+// Log returns a logarithm activation
+func Log() *Activation {
+	return &Activation{
+		activationType: logarithm,
+		f:              G.Log,
+	}
+}
+
+// Softplus returns a softplus activation
+func Softplus() *Activation {
+	return &Activation{
+		activationType: softplus,
+		f:              G.Softplus,
 	}
 }
