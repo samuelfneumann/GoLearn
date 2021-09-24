@@ -453,12 +453,11 @@ func (v *VAC) Step() error {
 	v.trainPolicyVM.Reset()
 
 	// === === Value Function Train === ===
+	err = v.vTrainValueFn.SetInput(S)
+	if err != nil {
+		return fmt.Errorf("step: could not set critic input state: %v", err)
+	}
 	for i := 0; i < v.valueGradSteps; i++ {
-		err = v.vTrainValueFn.SetInput(S)
-		if err != nil {
-			return fmt.Errorf("step: could not set critic input state on "+
-				"training iteration %d: %v", i, err)
-		}
 		err = v.vTrainValueFnVM.RunAll()
 		if err != nil {
 			return fmt.Errorf("step: could not run critic vm on training "+

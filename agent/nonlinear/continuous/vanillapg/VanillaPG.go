@@ -323,23 +323,24 @@ func (v *VPG) Step() error {
 	}
 	v.trainPolicyVM.Reset()
 
-	// Value function update
-	for i := 0; i < v.valueGradSteps; i++ {
-		if err := v.vTrainValueFn.SetInput(obs); err != nil {
-			return fmt.Errorf("step: could not set value function input "+
-				"at training iteration %d: %v", i, err)
-		}
+	// Set value function input
+	if err := v.vTrainValueFn.SetInput(obs); err != nil {
+		return fmt.Errorf("step: could not set value function input: %v", err)
+	}
 
-		trainValueFnTargetsTensor := tensor.NewDense(
-			tensor.Float64,
-			v.vTrainValueFnTargets.Shape(),
-			tensor.WithBacking(ret),
-		)
-		err = G.Let(v.vTrainValueFnTargets, trainValueFnTargetsTensor)
-		if err != nil {
-			return fmt.Errorf("step: could not set value function target "+
-				"at training iteration %d: %v", i, err)
-		}
+	// Set value function target
+	trainValueFnTargetsTensor := tensor.NewDense(
+		tensor.Float64,
+		v.vTrainValueFnTargets.Shape(),
+		tensor.WithBacking(ret),
+	)
+	err = G.Let(v.vTrainValueFnTargets, trainValueFnTargetsTensor)
+	if err != nil {
+		return fmt.Errorf("step: could not set value function target: %v", err)
+	}
+
+	// Update value function
+	for i := 0; i < v.valueGradSteps; i++ {
 		if err := v.vTrainValueFnVM.RunAll(); err != nil {
 			return fmt.Errorf("step: could not run value function vm "+
 				"at training iteration %d: %v", i, err)
