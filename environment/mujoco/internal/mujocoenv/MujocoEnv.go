@@ -371,9 +371,11 @@ func (m *MujocoEnv) ActionSpec() environment.Spec {
 
 // Close performs cleanup of MuJoCo resources once the environment
 // is no longer needed.
-func (m *MujocoEnv) Close() {
+func (m *MujocoEnv) Close() error {
 	C.mj_deleteModel(m.Model)
 	C.mj_deleteData(m.Data)
+
+	return nil
 }
 
 // ID returns the ID of object with name name

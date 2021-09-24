@@ -158,3 +158,10 @@ func (g *GymEnv) End(*ts.TimeStep) bool {
 func (g *GymEnv) AtGoal(mat.Matrix) bool {
 	panic("atGoal: cannot calculate at goal for GymEnv")
 }
+
+// Close performs resource cleanup after the environment is no longer
+// needed
+func (g *GymEnv) Close() error {
+	g.Environment.Close()
+	return nil
+}

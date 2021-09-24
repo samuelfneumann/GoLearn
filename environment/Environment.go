@@ -55,7 +55,7 @@ type PixelEnvironment interface {
 // Closer is an environment which can be closed
 type Closer interface {
 	Environment
-	Close()
+	Close() error
 }
 
 // RowColer is an environment that can return the rows and columns of
