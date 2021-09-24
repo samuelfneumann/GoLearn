@@ -137,6 +137,9 @@ func AddFauxF32(n *G.Node) (retVal *G.Node, err error) {
 
 // LogSumExp calculates the log of the summation of exponentials of
 // all logits along the given axis.
+//
+// Use this in place of Gorgonia's LogSumExp, which has the final sum
+// and log interchanged, which is incorrect.
 func LogSumExp(logits *G.Node, along int) *G.Node {
 	max := G.Must(G.Max(logits, along))
 
