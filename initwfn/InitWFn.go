@@ -16,12 +16,13 @@ type Type string
 
 // Available InitWFn types
 const (
-	GlorotU Type = "GlorotU"
-	GlorotN Type = "GlorotN"
-	HeU     Type = "HeU"
-	HeN     Type = "HeN"
-	Zeroes  Type = "Zeroes"
-	Ones    Type = "Ones"
+	GlorotU  Type = "GlorotU"
+	GlorotN  Type = "GlorotN"
+	HeU      Type = "HeU"
+	HeN      Type = "HeN"
+	Zeroes   Type = "Zeroes"
+	Ones     Type = "Ones"
+	Constant Type = "Constant"
 )
 
 // InitWFn wraps Gorgonia InitWFn so that they can be JSON marshalled and
@@ -57,12 +58,13 @@ func (i *InitWFn) UnmarshalJSON(data []byte) error {
 		"Type",
 		"Config",
 		map[string]reflect.Type{
-			string(GlorotU): reflect.TypeOf(GlorotUConfig{}),
-			string(GlorotN): reflect.TypeOf(GlorotNConfig{}),
-			string(HeU):     reflect.TypeOf(HeUConfig{}),
-			string(HeN):     reflect.TypeOf(HeNConfig{}),
-			string(Zeroes):  reflect.TypeOf(ZeroesConfig{}),
-			string(Ones):    reflect.TypeOf(OnesConfig{}),
+			string(GlorotU):  reflect.TypeOf(GlorotUConfig{}),
+			string(GlorotN):  reflect.TypeOf(GlorotNConfig{}),
+			string(HeU):      reflect.TypeOf(HeUConfig{}),
+			string(HeN):      reflect.TypeOf(HeNConfig{}),
+			string(Zeroes):   reflect.TypeOf(ZeroesConfig{}),
+			string(Ones):     reflect.TypeOf(OnesConfig{}),
+			string(Constant): reflect.TypeOf(ConstantConfig{}),
 		})
 	if err != nil {
 		return err

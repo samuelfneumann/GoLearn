@@ -46,3 +46,28 @@ func (o OnesConfig) Type() Type {
 func (o OnesConfig) Create() G.InitWFn {
 	return G.Ones()
 }
+
+// ConstantConfig implements a configuration of a weight initializer
+// that initializes all weights to a constant value.
+type ConstantConfig struct {
+	Value float64
+}
+
+// Constant returns a new zeroes weight intializer
+func NewConstant(value float64) (*InitWFn, error) {
+	config := ConstantConfig{value}
+
+	return newInitWFn(config)
+}
+
+// Type returns the type of the weight initializer created using this
+// config
+func (c ConstantConfig) Type() Type {
+	return Constant
+}
+
+// Create creates the Gorgonia weight initializer from this
+// initializer config
+func (c ConstantConfig) Create() G.InitWFn {
+	return G.ValuesOf(c.Value)
+}
