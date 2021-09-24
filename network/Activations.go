@@ -108,12 +108,36 @@ func (a *Activation) GobDecode(encoded []byte) error {
 	switch decoded {
 	case relu:
 		*a = *ReLU()
+
 	case identity:
 		*a = *Identity()
+
 	case tanh:
 		*a = *TanH()
+
+	case sigmoid:
+		*a = *Sigmoid()
+
+	case sin:
+		*a = *Sin()
+
+	case cos:
+		*a = *Cos()
+
+	case sqrt:
+		*a = *Sqrt()
+
+	case mish:
+		*a = *Mish()
+
+	case logarithm:
+		*a = *Log()
+
+	case softplus:
+		*a = *Softplus()
+
 	default:
-		return fmt.Errorf("gobdecode: illegal Activation type")
+		return fmt.Errorf("unmarshalJSON: illegal Activation type")
 	}
 	return nil
 }
