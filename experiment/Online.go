@@ -134,12 +134,16 @@ func (o *Online) Run() error {
 
 	// Close the environment if needed
 	if env, ok := o.environment.(env.Closer); ok {
-		env.Close()
+		if err := env.Close(); err != nil {
+			return fmt.Errorf("run: could not close environment: %v", err)
+		}
 	}
 
 	// Close the agent if needed
 	if agent, ok := o.agent.(ag.Closer); ok {
-		agent.Close()
+		if err := agent.Close(); err != nil {
+			return fmt.Errorf("run: could not close agent: %v", err)
+		}
 	}
 
 	o.progBar.Close()

@@ -712,7 +712,3 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 * [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
 
 * [ ] Move GAEBuffer and ExpReplay to a new `buffer` package - in which case GAE buffer needs a public API
-
-* [ ] Rename `FifoRemove1ExpReplay` to `Default` and document what default means
-
-* [ ] Agents should have a Close() method, or create an agent.Closer interface, and check if agent is a Closer before closing at the end of main
