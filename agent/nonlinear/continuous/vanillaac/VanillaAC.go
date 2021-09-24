@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/buffer/expreplay"
 	env "github.com/samuelfneumann/golearn/environment"
-	"github.com/samuelfneumann/golearn/expreplay"
 	"github.com/samuelfneumann/golearn/network"
 	ts "github.com/samuelfneumann/golearn/timestep"
 	"github.com/samuelfneumann/golearn/utils/floatutils"

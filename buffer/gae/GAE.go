@@ -1,26 +1,24 @@
-// Package vanillapg implements the Vanilla Policy Gradient or REINFORCE
-// algorithm with generalized advantage estimation (GAE)
-//
-// Adapted from https://github.com/openai/spinningup/blob/master/spinup/algos/tf1/vpg/vpg.py
-package vanillapg
+// Package gae implements functionality for storing a generalized
+// advantage estimate buffer
+package gae
 
 import (
 	"fmt"
 
+	"github.com/samuelfneumann/golearn/utils/matutils"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"
-	"github.com/samuelfneumann/golearn/utils/matutils"
 )
 
 // Interesting: This is a GAE(λ) buffer. What about n-Step GAE?
 
-// gaeBuffer implements a forward view generalized advantage estimate -
-// GAE(λ) -  buffer following https://arxiv.org/abs/1506.02438. This
+// Buffer implements a forward view generalized advantage estimate -
+// GAE(λ) - buffer following https://arxiv.org/abs/1506.02438. This
 // implementation is adapted from:
 //
 // https://github.com/openai/spinningup/tree/master/spinup/algos/tf1/vpg
-type gaeBuffer struct {
+type Buffer struct {
 	obsSize    int // Size of state observations
 	actionSize int // Number of action dimensions
 	maxSize    int // Max buffer size
@@ -40,8 +38,8 @@ type gaeBuffer struct {
 	valBuffer []float64
 }
 
-// newGAEBuffer creates and returns a new gaeBuffer.
-func newGAEBuffer(obsDim, actDim, size int, lambda, gamma float64) *gaeBuffer {
+// New creates and returns a new GAE(λ) buffer
+func New(obsDim, actDim, size int, lambda, gamma float64) *Buffer {
 	obsBuffer := make([]float64, size*obsDim)
 	actBuffer := make([]float64, size*actDim)
 	advBuffer := make([]float64, size)
@@ -49,7 +47,7 @@ func newGAEBuffer(obsDim, actDim, size int, lambda, gamma float64) *gaeBuffer {
 	retBuffer := make([]float64, size)
 	valBuffer := make([]float64, size)
 
-	return &gaeBuffer{
+	return &Buffer{
 		obsSize:      obsDim,
 		actionSize:   actDim,
 		maxSize:      size,
@@ -66,9 +64,9 @@ func newGAEBuffer(obsDim, actDim, size int, lambda, gamma float64) *gaeBuffer {
 	}
 }
 
-// store stores a single timestep state, action, reward, and value to
-// the gaeBuffer.
-func (v *gaeBuffer) store(obs, act []float64, rew, val float64) error {
+// Store stores a single timestep state, action, reward, and value to
+// the Buffer.
+func (v *Buffer) Store(obs, act []float64, rew, val float64) error {
 	if v.currentPos >= v.maxSize {
 		return fmt.Errorf("store: cannot add new transition, buffer at" +
 			"maximum capacity")
@@ -82,10 +80,12 @@ func (v *gaeBuffer) store(obs, act []float64, rew, val float64) error {
 			v.actionSize, len(act))
 	}
 
+	// Add observations
 	start := v.currentPos * v.obsSize
 	stop := start + v.obsSize
 	copy(v.obsBuffer[start:stop], obs)
 
+	// Add actions
 	start = v.currentPos * v.actionSize
 	stop = start + v.actionSize
 	copy(v.actBuffer[start:stop], act)
@@ -96,7 +96,7 @@ func (v *gaeBuffer) store(obs, act []float64, rew, val float64) error {
 	return nil
 }
 
-// finishPath computes advatange estimates using GAE(λ) and
+// FinishPath computes advatange estimates using GAE(λ) and
 // rewards-to-go estiamtes for each state for the current trajectory.
 // This should be called at the end of a trajectory or when one gets
 // cut off by an epoch ending.
@@ -109,7 +109,7 @@ func (v *gaeBuffer) store(obs, act []float64, rew, val float64) error {
 // parameter is also used to compute the generalized advantage estimate
 // for all states. See SpinningUp's Tensorflow implementation of
 // vpgBuffer for more details (https://github.com/openai/spinningup).
-func (v *gaeBuffer) finishPath(lastVal float64) {
+func (v *Buffer) FinishPath(lastVal float64) {
 	start := v.pathStartIdx
 	stop := v.currentPos
 	rews := append(v.rewBuffer[start:stop], lastVal)
@@ -134,6 +134,32 @@ func (v *gaeBuffer) finishPath(lastVal float64) {
 	copy(v.retBuffer[start:stop], rewsToGo[:len(rewsToGo)-1])
 
 	v.pathStartIdx = v.currentPos
+}
+
+// Get returns the observations, action, advantages, and returns stored
+// in the buffer. Advantages are first standardized to mean 0 and
+// standard deviation 1.
+func (v *Buffer) Get() ([]float64, []float64, []float64, []float64, error) {
+	if v.currentPos != v.maxSize {
+		err := fmt.Errorf("get: buffer must be full before sampling")
+		return nil, nil, nil, nil, err
+	}
+
+	v.currentPos = 0
+	v.pathStartIdx = 0
+
+	// Advantage normalization
+	adv := mat.NewVecDense(len(v.advBuffer), v.advBuffer)
+	ones := matutils.VecOnes(adv.Len())
+	mean := stat.Mean(v.advBuffer, nil)
+	std := stat.StdDev(v.advBuffer, nil) + 1e-8
+	stdVec := mat.NewVecDense(adv.Len(), nil)
+	stdVec.AddScaledVec(stdVec, std, ones)
+
+	adv.AddScaledVec(adv, -mean, ones)
+	adv.DivElemVec(adv, stdVec)
+
+	return v.obsBuffer, v.actBuffer, adv.RawVector().Data, v.retBuffer, nil
 }
 
 // discountCumSum computes and returns the discounted cumulative sum
@@ -162,30 +188,4 @@ func discountCumSum(x *mat.VecDense, discount float64) []float64 {
 	}
 
 	return cumSums
-}
-
-// get returns the observations, action, advantages, and returns stored
-// in the buffer. Advantages are first standardized to mean 0 and
-// standard deviation 1.
-func (v *gaeBuffer) get() ([]float64, []float64, []float64, []float64, error) {
-	if v.currentPos != v.maxSize {
-		err := fmt.Errorf("get: buffer must be full before sampling")
-		return nil, nil, nil, nil, err
-	}
-
-	v.currentPos = 0
-	v.pathStartIdx = 0
-
-	// Advantage normalization
-	adv := mat.NewVecDense(len(v.advBuffer), v.advBuffer)
-	ones := matutils.VecOnes(adv.Len())
-	mean := stat.Mean(v.advBuffer, nil)
-	std := stat.StdDev(v.advBuffer, nil) + 1e-8
-	stdVec := mat.NewVecDense(adv.Len(), nil)
-	stdVec.AddScaledVec(stdVec, std, ones)
-
-	adv.AddScaledVec(adv, -mean, ones)
-	adv.DivElemVec(adv, stdVec)
-
-	return v.obsBuffer, v.actBuffer, adv.RawVector().Data, v.retBuffer, nil
 }

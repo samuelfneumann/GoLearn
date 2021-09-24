@@ -2,7 +2,7 @@ package vanillaac
 
 import (
 	"github.com/samuelfneumann/golearn/agent"
-	"github.com/samuelfneumann/golearn/expreplay"
+	"github.com/samuelfneumann/golearn/buffer/expreplay"
 	"github.com/samuelfneumann/golearn/initwfn"
 	"github.com/samuelfneumann/golearn/network"
 	"github.com/samuelfneumann/golearn/solver"

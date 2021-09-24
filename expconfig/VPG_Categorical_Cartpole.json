@@ -1,6 +1,6 @@
 {
 	"Type": "OnlineExperiment",
-	"MaxSteps": 3000000,
+	"MaxSteps": 100000,
 	"EnvConfig": {
 		"Environment": "Cartpole",
 		"Task": "Balance",
@@ -75,7 +75,8 @@
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
-						"Batch": 1
+						"Batch": 1,
+						"Clip": -1.0
 					}
 				}
 			],
@@ -87,7 +88,8 @@
 						"Epsilon": 1e-8,
 						"Beta1": 0.9,
 						"Beta2": 0.999,
-						"Batch": 1
+						"Batch": 1,
+						"Clip": -1.0
 					}
 				}
 			],

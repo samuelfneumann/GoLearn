@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/buffer/gae"
 	"github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/network"
 	ts "github.com/samuelfneumann/golearn/timestep"
@@ -57,7 +58,7 @@ type VPG struct {
 	advantages        *G.Node // For gradient construction
 	logProb           *G.Node // For gradient construction
 
-	buffer           *gaeBuffer
+	buffer           *gae.Buffer
 	epochLength      int
 	currentEpochStep int
 	completedEpochs  int
@@ -114,7 +115,7 @@ func New(env environment.Environment, c agent.Config,
 	// Create the VPG buffer
 	features := env.ObservationSpec().Shape.Len()
 	actionDims := env.ActionSpec().Shape.Len()
-	buffer := newGAEBuffer(features, actionDims, config.batchSize(),
+	buffer := gae.New(features, actionDims, config.batchSize(),
 		config.lambda(), config.gamma())
 
 	// Create the prediction value function
@@ -255,7 +256,7 @@ func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) error {
 	}
 	r := nextStep.Reward
 	a := action.(*mat.VecDense).RawVector().Data
-	v.buffer.store(o, a, r, vT[0])
+	v.buffer.Store(o, a, r, vT[0])
 
 	// Update obs (critical!)
 	v.prevStep = nextStep
@@ -265,7 +266,7 @@ func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) error {
 	terminal := nextStep.Last() || v.currentEpochStep == v.epochLength
 	if terminal {
 		if nextStep.TerminalEnd() {
-			v.buffer.finishPath(0.0)
+			v.buffer.FinishPath(0.0)
 		} else {
 			err := v.vValueFn.SetInput(o)
 			if err != nil {
@@ -284,7 +285,7 @@ func (v *VPG) Observe(action mat.Vector, nextStep ts.TimeStep) error {
 				panic("observe: multiple values predicted for next " +
 					"state value")
 			}
-			v.buffer.finishPath(lastVal[0])
+			v.buffer.FinishPath(lastVal[0])
 			v.finishingEpisode = (v.currentEpochStep == v.epochLength) &&
 				v.finishEpisodeOnEpochEnd
 		}
@@ -299,7 +300,7 @@ func (v *VPG) Step() error {
 		return nil
 	}
 
-	obs, act, adv, ret, err := v.buffer.get()
+	obs, act, adv, ret, err := v.buffer.Get()
 	if err != nil {
 		return fmt.Errorf("step: could not sample from buffer: %v", err)
 	}

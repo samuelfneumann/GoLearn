@@ -710,5 +710,3 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 * [ ] Add `gym` to the `EnvConfig` structs.
 
 * [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
-
-* [ ] Move GAEBuffer and ExpReplay to a new `buffer` package - in which case GAE buffer needs a public API

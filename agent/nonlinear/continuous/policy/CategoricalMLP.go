@@ -112,9 +112,9 @@ func NewCategoricalMLP(env environment.Environment, batchForLogProb int,
 
 	// Logits and probabilities of action selection for the current
 	// policy in the state(s) inputted to the policy's neural net.
-	// * Can be made more numerically stable my first subtracting the
-	// * maximum logit before exponentiating
 	logits := net.Prediction()[0]
+	max := G.Must(G.Max(logits, 1))
+	logits = G.Must(G.BroadcastSub(logits, max, nil, []byte{1}))
 	probs := G.Must(G.Exp(logits))
 
 	// Compute the log probability of actions that are input by an
