@@ -325,6 +325,11 @@ func (v *VPG) Step() error {
 
 	// Value function update
 	for i := 0; i < v.valueGradSteps; i++ {
+		if err := v.vTrainValueFn.SetInput(obs); err != nil {
+			return fmt.Errorf("step: could not set value function input: %v",
+				err)
+		}
+
 		trainValueFnTargetsTensor := tensor.NewDense(
 			tensor.Float64,
 			v.vTrainValueFnTargets.Shape(),
