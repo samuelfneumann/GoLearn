@@ -21,8 +21,7 @@ func NewDefaultAdam(stepSize float64, batchSize int) (*Solver, error) {
 
 // NewAdam returns a new Adam Solver
 func NewAdam(stepSize, epsilon, beta1, beta2 float64, batchSize int,
-	clip float64) (*Solver,
-	error) {
+	clip float64) (*Solver, error) {
 	adam := AdamConfig{
 		StepSize: stepSize,
 		Epsilon:  epsilon,

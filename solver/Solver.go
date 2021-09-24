@@ -16,6 +16,7 @@ type Type string
 // Available solver types
 const (
 	Adam    Type = "Adam"
+	RMSProp Type = "RMSProp"
 	Vanilla Type = "Vanilla"
 )
 
@@ -53,6 +54,7 @@ func (s *Solver) UnmarshalJSON(data []byte) error {
 		map[string]reflect.Type{
 			string(Vanilla): reflect.TypeOf(VanillaConfig{}),
 			string(Adam):    reflect.TypeOf(AdamConfig{}),
+			string(RMSProp): reflect.TypeOf(RMSPropConfig{}),
 		})
 	if err != nil {
 		return err
