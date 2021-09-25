@@ -233,7 +233,9 @@ func Mish() *Activation {
 // taken.
 func Log1p() *Activation {
 	logFn := func(n *G.Node) (*G.Node, error) {
-		if n, err := G.Abs(n); err != nil {
+		var err error
+
+		if n, err = G.Abs(n); err != nil {
 			return nil, fmt.Errorf("log1p: could not compute absolute "+
 				"value: %v", err)
 		}
