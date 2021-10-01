@@ -1,18 +1,31 @@
 // Package op provides extended Gorgonia graph operations.
 //
-// Adapted from aunum/G.ld on GitHub
+// This package is deprecated. Please see github.com/samuelfneumann/gop
 package op
 
 import (
+	"fmt"
 	"math"
+	"os"
 
 	"github.com/samuelfneumann/golearn/utils/tensorutils"
 	G "gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 )
 
+func init() {
+	// Print deprecation warning when using package
+	red := "\033[31m"
+	reset := "\033[0m"
+	fmt.Fprintf(os.Stderr, red+"WARNING: ")
+	fmt.Fprintf(os.Stderr, "package op is deprecated and will be "+
+		"removed in a future version of GoLearn, use "+
+		"github.com/samuelfneumann/gop instead\n"+reset)
+}
+
 // Clip clips the value of a node
 func Clip(value *G.Node, min, max float64) (retVal *G.Node, err error) {
+
 	// Construct clipping nodes
 	var minNode, maxNode *G.Node
 	switch value.Dtype() {
