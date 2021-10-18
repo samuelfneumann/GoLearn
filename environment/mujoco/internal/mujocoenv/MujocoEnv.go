@@ -161,7 +161,8 @@ const (
 )
 
 // init performs setup before the package can be run by initialziing
-// and activating MuJoCo
+// and activating MuJoCo. Activation of MuJoCo is kept here for
+// backwards compatability.
 func init() {
 	// Activate MuJoCo
 	home, err := os.UserHomeDir()

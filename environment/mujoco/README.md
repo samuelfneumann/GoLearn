@@ -20,11 +20,14 @@ The `XML` files that describe [MuJoCo](http://www.mujoco.org/) environments are 
 - walker2d.xml
 
 ## How To Use
-The `mujoco` packge uses `cgo` to interface with [MuJoCo](http://www.mujoco.org/). You must
-first have all the required files for [MuJoCo](http://www.mujoco.org/) on your system and
-a valid [MuJoCo](http://www.mujoco.org/) license key. The license key should
-be named `mjkey.txt` and should be placed in `~/.mujoco`. This package
-assumes you will be using [MuJoCo](http://www.mujoco.org/) 2.0.
+The `mujoco` packge uses `cgo` to interface with [MuJoCo](http://www.mujoco.org/). 
+
+You must first have all the required files for [MuJoCo](http://www.mujoco.org/) on your system and
+a valid [MuJoCo](http://www.mujoco.org/) license key (if using MuJoCo 2.0 ore before). 
+The license key should be named `mjkey.txt` and should be placed in `~/.mujoco`. This package
+assumes you will be using [MuJoCo](http://www.mujoco.org/) 2.0 or later. It has not been tested
+for any versions of [MuJoCo](http://www.mujoco.org/) prior to 2.0, but may still work with
+earlier versions.
 
 This pacakge needs to know where the [MuJoCo](http://www.mujoco.org/) shared library
 is and where the [MuJoCo](http://www.mujoco.org/) header files are. There are two ways
