@@ -164,7 +164,7 @@ func (o *Online) track(t ts.TimeStep) {
 	}
 }
 
-// checkpoint checkpoints the current state of the environment
+// checkpoint checkpoints the current state of the experiment
 func (o *Online) checkpoint(t ts.TimeStep) {
 	for _, c := range o.checkpointers {
 		c.Checkpoint(t)
