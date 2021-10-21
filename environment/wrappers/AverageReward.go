@@ -38,7 +38,7 @@ import (
 // generate the differential TD error to use in updates. Usually, the
 // agent.Learner of the agent.Agent that is acting in the environment
 // should be used. If not, the differential return may diverge,
-// resulting in algorithms that do no learn.
+// resulting in algorithms that do not learn.
 type AverageReward struct {
 	environment.Environment
 	avgReward    float64
@@ -46,7 +46,7 @@ type AverageReward struct {
 	useTDError   bool
 
 	// learner calculates the TD error for the average reward update target
-	learner agent.Learner
+	learner agent.TdErrorer
 
 	// The last timestep is needed to calculate the TD error, since it stores
 	// the reward R_{t} for the last action A_{t} taken in the last state S_{t}
@@ -66,6 +66,8 @@ type AverageReward struct {
 // the average reward estimate is updated using the TD error of a
 // registered learner as the update target or not. If false, then the
 // environmental reward is used as the average reward update target.
+// Each method of learning the TdError is acceptable, but the first
+// method (where useTDError == True) is lower variance. See the RL Book.
 func NewAverageReward(env environment.Environment, init, learningRate float64,
 	useTDError bool) (*AverageReward, ts.TimeStep, error) {
 	// Get the first step from the embedded environment
@@ -106,7 +108,7 @@ func (a *AverageReward) Reset() (ts.TimeStep, error) {
 
 }
 
-// Register registers an agent.Learner with the environment so that
+// Register registers an agent.TdErrorer with the environment so that
 // the TD error can be calculated and used to update the average reward
 // estimate.
 //
@@ -115,7 +117,7 @@ func (a *AverageReward) Reset() (ts.TimeStep, error) {
 // before calling the Step() method. Failure to do so will result in a
 // panic. If the useTDError parameter was set to false, then this
 // method will have no effect.
-func (a *AverageReward) Register(l agent.Learner) {
+func (a *AverageReward) Register(l agent.TdErrorer) {
 	a.learner = l
 }
 

@@ -36,11 +36,16 @@ type Learner interface {
 	// ObserveFirst records the first timestep in an episode
 	ObserveFirst(timestep.TimeStep) error
 
-	// TdError returns the TD error on a transition
-	TdError(t timestep.Transition) float64
-
 	// EndEpisode performs cleanup at the end of an episode
 	EndEpisode()
+}
+
+// TdErrorer is a Learner that can return the TdError of some transition
+type TdErrorer interface {
+	Learner
+
+	// TdError returns the TD error on a transition
+	TdError(t timestep.Transition) float64
 }
 
 // Policy represents a policy that an agent can have.
@@ -51,8 +56,8 @@ type Learner interface {
 // makes to the weights are reflected in the actions the Policy chooses
 type Policy interface {
 	SelectAction(t timestep.TimeStep) *mat.VecDense
-	Eval()        // Set agent to evaluation mode
-	Train()       // Set agent to training mode
+	Eval()        // Set policy to evaluation mode
+	Train()       // Set policy to training mode
 	IsEval() bool // Indicates if in evaluation mode
 }
 
