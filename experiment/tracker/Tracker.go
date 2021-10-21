@@ -39,7 +39,7 @@ func LoadFData(filename string) []float64 {
 	return data
 }
 
-// LoadIDataloads and returns the data saved by a Tracker as a []int
+// LoadIData loads and returns the data saved by a Tracker as a []int
 func LoadIData(filename string) []int {
 	// Open file
 	file, err := os.Open(filename)
