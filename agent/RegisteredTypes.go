@@ -20,12 +20,14 @@ const (
 	GaussianActorCriticLinear Type = "GaussianActorCritic-Linear"
 
 	// Deep methods
+	// Policy learning methods
 	CategoricalVanillaPGMLP  Type = "CategoricalVanillaPG-MLP"
 	GaussianVanillaPGTreeMLP Type = "GaussianVanillaPG-TreeMLP"
 
 	GaussianVanillaACTreeMLP Type = "GaussianVanillaAC-TreeMLP"
 	CategoricalVanillaACMLP  Type = "CategoricalVanillaAC-MLP"
 
+	// Value-based methods
 	EGreedyDeepQMLP Type = "EGreedyDeepQ-MLP"
 )
 

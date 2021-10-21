@@ -137,7 +137,6 @@ func (c Config) Type() agent.Type {
 // DeepQ agent.
 func (c Config) Validate() error {
 	// Error checking
-
 	if len(c.Layers) != len(c.Biases) {
 		msg := fmt.Sprintf("new: invalid number of biases\n\twant(%v)"+
 			"\n\thave(%v)", len(c.Layers), len(c.Biases))
