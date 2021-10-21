@@ -76,7 +76,7 @@ type Config interface {
 Each `Config` struct uniquely determines the set of hyperparameters and
 options of a specific agent. If you try to create an `Agent` for which
 the `ValidAgent()` `Config` method would return `false`, the `Agent`
-constructor will panic.
+constructor will return an error.
 
 How can we create an agent? Imagine we have agent `X` defined in
 package `xagent`. In package `xagent` then, there will be a Configuration
@@ -699,7 +699,7 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 * [ ] Cartpole SwingUp would be nice to implement
 
-* [ ] Would be nice to have the acitons in discrete pendulum determined by min and max discrete actions. E.g. Action i -> (action i / minDiscreteAction) - MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction * MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
+* [ ] Would be nice to have the actions in discrete pendulum determined by min and max discrete actions. E.g. Action i -> (action i / minDiscreteAction) - MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction * MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
 
 * [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files.
 
@@ -710,3 +710,5 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 * [ ] Add `gym` to the `EnvConfig` structs.
 
 * [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
+
+* [ ] All input nodes should have unique names. Use `gop.Unique()`.
