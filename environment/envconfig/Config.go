@@ -79,7 +79,8 @@ type Config struct {
 	TileCoding tileCodingConfig
 }
 
-// NewConfig returns a new environment Config
+// NewConfig returns a new environment Config describing an environment with
+// default task and physical paramters
 func NewConfig(envName EnvName, taskName TaskName, continuousActions bool,
 	episodeCutoff uint, discount float64, gym bool) Config {
 	if gym {

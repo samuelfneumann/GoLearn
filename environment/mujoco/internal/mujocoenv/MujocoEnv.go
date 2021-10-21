@@ -5,9 +5,10 @@ package mujocoenv
 // * Leaving the cgo directives in so VSCode doesn't complain, even though
 // * CGOCFLAGS and CGOLDFLAGS have been set.
 
-// #cgo CFLAGS: -O2 -I/home/samuel/.mujoco/mujoco200linux/include -mavx -pthread
-// #cgo LDFLAGS: -L/home/samuel/.mujoco/mujoco200linux/bin -lmujoco200nogl
-// #define DIMS 3
+// #cgo CFLAGS: -O2 -I/home/samuel/.mujoco/mujoco200_linux/include
+// #cgo LDFLAGS: -L/home/samuel/.mujoco/mujoco200_linux/bin -l mujoco200nogl
+//
+// #define DIMS 3  // Number of physical dimensions in space
 // #include "mujoco.h"
 // #include <stdio.h>
 // #include <stdlib.h>
