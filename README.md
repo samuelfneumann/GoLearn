@@ -712,3 +712,5 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 * [ ] Add `TimeLimit` to `gym` package so that time limits can be altered
 
 * [ ] All input nodes should have unique names. Use `gop.Unique()`.
+
+* [ ] VAC still gets NaNs. Problem could be with Multi-dim actions in GaussianTreeMLP. Does VPG also get NaNs??

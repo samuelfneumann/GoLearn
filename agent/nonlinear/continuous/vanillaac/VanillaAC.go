@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/samuelfneumann/golearn/agent"
+	"github.com/samuelfneumann/golearn/agent/nonlinear/continuous/policy"
 	"github.com/samuelfneumann/golearn/buffer/expreplay"
 	env "github.com/samuelfneumann/golearn/environment"
 	"github.com/samuelfneumann/golearn/network"
@@ -255,8 +256,10 @@ func New(e env.Environment, c agent.Config, seed int64) (agent.Agent, error) {
 // SelectAction returns an action for the timestep t
 func (v *VAC) SelectAction(t ts.TimeStep) *mat.VecDense {
 	a := v.behaviour.SelectAction(t)
+
+	// ! Standard deviation is taking off to infinity. Maybe use gop.Clamp()
 	fmt.Println()
-	fmt.Println(a)
+	fmt.Println(v.trainPolicy.(*policy.GaussianTreeMLP).StdDev())
 	return a
 }
 
@@ -286,7 +289,7 @@ func (v *VAC) ObserveFirst(t ts.TimeStep) error {
 // Observe stores an action taken in the environment and the next
 // time step as a result of taking that action
 func (v *VAC) Observe(action mat.Vector, nextStep ts.TimeStep) error {
-	fmt.Println(action)
+	//fmt.Println(action)
 	if !nextStep.First() {
 		nextAction := mat.NewVecDense(v.actionDims, nil)
 		transition := ts.NewTransition(v.prevStep, action.(*mat.VecDense),
