@@ -271,7 +271,7 @@ func (m *MujocoEnv) QPos() []float64 {
 
 // QVel returns the current velocity of the model
 func (m *MujocoEnv) QVel() []float64 {
-	return F64SliceC2Go(m.Data.qvel, m.Nq)
+	return F64SliceC2Go(m.Data.qvel, m.Nv)
 }
 
 // SetState sets the underlying position and velocity for the model
