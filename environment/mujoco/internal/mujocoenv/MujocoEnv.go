@@ -132,6 +132,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
+// MjObjType represents a specific type of MuJoCo object
 type MjObjType int
 
 const (
