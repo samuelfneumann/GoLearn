@@ -697,11 +697,11 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 ## ToDo
 
+* [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files.
+
 * [ ] Cartpole SwingUp would be nice to implement
 
 * [ ] Would be nice to have the actions in discrete pendulum determined by min and max discrete actions. E.g. Action i -> (action i / minDiscreteAction) - MinContinuousAction and similarly for max actions. Then, (MaxDiscreteAction * MinDiscreteAction) / 2 would be the 0 (do nothing) action which is the middle action.
-
-* [ ] Eventually, it would be nice to have environments and tasks JSON serializable in the same manner as Solvers and InitWFns. This would make the config files super configurable...Instead of using default environment values all the time, we could have configurable environments through the JSON config files.
 
 * [ ] Readme should mention that all configurations in a ConfigList should be compatible. E.g. if you have 3 hidden layers, then you must have 3 activations, etc.
 
@@ -713,4 +713,16 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 
 * [ ] All input nodes should have unique names. Use `gop.Unique()`.
 
+=== Most Pressing ===
 * [ ] VAC still gets NaNs. Problem could be with Multi-dim actions in GaussianTreeMLP. Does VPG also get NaNs??
+*
+* [ ] I believe the issue with VAC and VPG is that the Gaussian policy does not clamp the standard deviation. Make sure this is clamped!
+
+* [ ] Use `GoTile` for tile coder
+
+* [ ] 'tracker' package can be reworked. Instead, proved a bunch of different hooks, which are called at set times. For example, there will be a set of hooks called before the experiment is run, before each episode, before each timestep, after each timestep, after each episode, and after the experiment is done. In such a case, we will need an interface for:
+	* Pre/post-episode hooks, which is just a function that takes in the agent and environment
+	* Pre/post-episode hook, which takes in the agent, environment, and first step
+	* pre/post-timestep hook which takes in a timestep
+	* Then, the agent and environment interfaces should be extended such that they have an `Info` method, which will return info tracked by the agent or environment. The hooks can then use these.
+	* Add hook wrappers that will call the hook only every N episodes or N steps
