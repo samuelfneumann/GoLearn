@@ -726,3 +726,7 @@ sequential runs of hyperparameter setting `m` of the `Agent` in the
 	* pre/post-timestep hook which takes in a timestep
 	* Then, the agent and environment interfaces should be extended such that they have an `Info` method, which will return info tracked by the agent or environment. The hooks can then use these.
 	* Add hook wrappers that will call the hook only every N episodes or N steps
+* [ ] Discount factor should be returned by the environment on each timestep,
+  and adapted by the task such that timeouts do not cause episode termination.
+  That is, if an episode ends by the goal being reached, a discount factor of 0
+  is returned. Otherwise, a discount factor of γ is returned
