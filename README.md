@@ -1,5 +1,15 @@
 # GoLearn: Reinforcement Learning in Go
 
+---
+
+**NOTE **
+
+This repo is no longer under active development. Until a Go deep learning library that surpasses the quality/number of features of Gorgonia is released (e.g. something similar to tensorflow), this repo will no longer actively be maintained. But I'll will be back soon! 
+
+Until then, I've moved my code to Julia. See you when the Go neural network library comes out!
+
+---
+
 GoLearn is a reinforcement learning Go module. It implements many environments
 for reinforcement learning as well as agents. It also allows users to easily
 run experiments through `JSON` configuration files without ever touching
