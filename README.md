@@ -2,7 +2,7 @@
 
 ---
 
-**NOTE **
+**No Longer Maintained until Go gets a Library Equivalent to PyTOrch or TensorFlow**
 
 This repo is no longer under active development. Until a Go deep learning library that surpasses the quality/number of features of Gorgonia is released (e.g. something similar to tensorflow), this repo will no longer actively be maintained. But I'll will be back soon! 
 
